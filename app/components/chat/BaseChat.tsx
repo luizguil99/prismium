@@ -33,8 +33,39 @@ import StarterTemplates from './StarterTemplates';
 import type { ActionAlert } from '~/types/actions';
 import ChatAlert from './ChatAlert';
 import { LLMManager } from '~/lib/modules/llm/manager';
+import { useGit } from '~/lib/hooks/useGit';
+import { detectProjectCommands, createCommandsMessage } from '~/utils/projectCommands';
+import { generateId } from '~/utils/fileUtils';
+import { getPromptCloning } from '~/utils/promptCloning';
+import ignore from 'ignore';
 
 const TEXTAREA_MIN_HEIGHT = 76;
+
+const IGNORE_PATTERNS = [
+  'node_modules/**',
+  '.git/**',
+  '.github/**',
+  '.vscode/**',
+  '**/*.jpg',
+  '**/*.jpeg',
+  '**/*.png',
+  'dist/**',
+  'build/**',
+  '.next/**',
+  'coverage/**',
+  '.cache/**',
+  '.vscode/**',
+  '.idea/**',
+  '**/*.log',
+  '**/.DS_Store',
+  '**/npm-debug.log*',
+  '**/yarn-debug.log*',
+  '**/yarn-error.log*',
+  '**/*lock.json',
+  '**/*lock.yaml',
+];
+
+const ig = ignore().add(IGNORE_PATTERNS);
 
 interface BaseChatProps {
   textareaRef?: React.RefObject<HTMLTextAreaElement> | undefined;
@@ -84,8 +115,6 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       input = '',
       enhancingPrompt,
       handleInputChange,
-
-      // promptEnhanced,
       enhancePrompt,
       sendMessage,
       handleStop,
@@ -109,6 +138,8 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
     const [transcript, setTranscript] = useState('');
     const [isModelLoading, setIsModelLoading] = useState<string | undefined>('all');
+    const [isProcessingTemplate, setIsProcessingTemplate] = useState(false);
+    const { ready, gitClone } = useGit();
 
     const getProviderSettings = useCallback(() => {
       let providerSettings: Record<string, IProviderSetting> | undefined = undefined;
@@ -241,22 +272,155 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       }
     };
 
-    const handleSendMessage = (event: React.UIEvent, messageInput?: string) => {
+    const handleSendMessage = async (event: React.UIEvent, messageInput?: string) => {
       if (sendMessage) {
-        sendMessage(event, messageInput);
+        const message = messageInput || input;
+        const lowerMessage = message.toLowerCase();
+
+        // Verifica se é um pedido de template
+        if (lowerMessage.includes('fazer') || lowerMessage.includes('criar')) {
+          event.preventDefault();
+
+          if (!ready) {
+            toast.error('Sistema Git não está pronto');
+            return;
+          }
+
+          if (isProcessingTemplate) {
+            return;
+          }
+
+          try {
+            setIsProcessingTemplate(true);
+
+            // Identificar o template
+            const isTypeScript = lowerMessage.includes('typescript') || lowerMessage.includes('ts');
+            const repo = isTypeScript
+              ? 'https://github.com/shadcn/ui'
+              : 'https://github.com/luizguil99/Shadcn-js-template';
+
+            // Clonar o repositório
+            const { workdir, data } = await gitClone(repo);
+
+            // Preparar os arquivos
+            const filePaths = Object.keys(data).filter((filePath) => !ig.ignores(filePath));
+            const textDecoder = new TextDecoder('utf-8');
+            const fileContents = filePaths
+              .map((filePath) => {
+                const { data: content, encoding } = data[filePath];
+                return {
+                  path: filePath,
+                  content:
+                    encoding === 'utf8' ? content : content instanceof Uint8Array ? textDecoder.decode(content) : '',
+                };
+              })
+              .filter((f) => f.content);
+
+            // Encontrar e ler o package.json
+            const packageJson = fileContents.find((f) => f.path.endsWith('package.json'));
+            let dependencies = {};
+
+            if (packageJson) {
+              try {
+                dependencies = JSON.parse(packageJson.content).dependencies || {};
+              } catch (e) {
+                console.error('Erro ao parsear package.json:', e);
+              }
+            }
+
+            // Instalar dependências
+            toast.info('Instalando dependências...');
+
+            await new Promise<void>((resolve) => {
+              // Usando import dinâmico para evitar require
+              import('child_process').then((childProcess) => {
+                const process = childProcess.spawn('npm', ['install'], {
+                  cwd: workdir,
+                  shell: true,
+                });
+
+                process.on('close', (code: number) => {
+                  if (code === 0) {
+                    toast.success('Dependências instaladas com sucesso!');
+                  } else {
+                    toast.error('Erro ao instalar dependências');
+                  }
+
+                  resolve();
+                });
+              });
+            });
+
+            // Iniciar servidor de desenvolvimento
+            toast.info('Iniciando servidor de desenvolvimento...');
+
+            const childProcess = await import('child_process');
+            const devServer = childProcess.spawn('npm', ['run', 'dev'], {
+              cwd: workdir,
+              shell: true,
+            });
+
+            devServer.stdout.on('data', (data: Buffer) => {
+              console.log(`Dev server: ${data.toString()}`);
+            });
+
+            devServer.stderr.on('data', (data: Buffer) => {
+              console.error(`Dev server error: ${data.toString()}`);
+            });
+
+            // Criar mensagem com os arquivos
+            const filesMessage: Message = {
+              role: 'assistant',
+              content: `Template ${isTypeScript ? 'TypeScript' : 'JavaScript'} + Shadcn UI clonado com sucesso em ${workdir}! 
+              
+<boltArtifact id="imported-files" title="Template Files" type="bundled">
+${fileContents
+  .map(
+    (file) => `<boltAction type="file" filePath="${file.path}">
+${file.content}
+</boltAction>`,
+  )
+  .join('\n')}
+</boltArtifact>`,
+              id: generateId(),
+              createdAt: new Date(),
+            };
+
+            const messages = [filesMessage];
+
+            const commands = await detectProjectCommands(fileContents);
+            const commandsMessage = createCommandsMessage(commands);
+
+            if (commandsMessage) {
+              messages.push(commandsMessage);
+            }
+
+            // Importar os arquivos para o chat
+            await importChat?.(`Template: ${isTypeScript ? 'TypeScript' : 'JavaScript'} + Shadcn UI`, messages);
+
+            // Criar mensagem com contexto usando o promptCloning
+            const contextMessage = getPromptCloning(isTypeScript, workdir, fileContents, dependencies);
+
+            // Enviar mensagem com contexto para a IA
+            sendMessage(event, contextMessage);
+          } catch (error) {
+            console.error('Erro ao clonar template:', error);
+            toast.error('Erro ao clonar template');
+
+            // Enviar mensagem normal em caso de erro
+            sendMessage(event, message);
+          } finally {
+            setIsProcessingTemplate(false);
+          }
+        } else {
+          // Mensagem normal
+          sendMessage(event, messageInput);
+        }
 
         if (recognition) {
-          recognition.abort(); // Stop current recognition
-          setTranscript(''); // Clear transcript
+          recognition.abort();
+          setTranscript('');
           setIsListening(false);
-
-          // Clear the input by triggering handleInputChange with empty value
-          if (handleInputChange) {
-            const syntheticEvent = {
-              target: { value: '' },
-            } as React.ChangeEvent<HTMLTextAreaElement>;
-            handleInputChange(syntheticEvent);
-          }
         }
       }
     };
