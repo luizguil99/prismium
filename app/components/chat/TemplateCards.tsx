@@ -11,9 +11,9 @@ import { Folder, ArrowRight } from 'lucide-react';
 const templates = [
   {
     id: 1,
-    title: 'Next.js + Tailwind Starter',
-    description: 'Template moderno com Next.js 14, Tailwind CSS e TypeScript',
-    repo: 'https://github.com/shadcn-ui/next-template',
+    title: 'Shadcn + JavaScript',
+    description: 'Template completo com Vite, Tailwind e Shadcn UI',
+    repo: 'https://github.com/luizguil99/Shadcn-js-template',
     tags: ['Next.js', 'Tailwind', 'TypeScript'],
   },
   {
