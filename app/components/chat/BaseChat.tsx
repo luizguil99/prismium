@@ -21,6 +21,7 @@ import { ExportChatButton } from '~/components/chat/chatExportAndImport/ExportCh
 import { ImportButtons } from '~/components/chat/chatExportAndImport/ImportButtons';
 import { ExamplePrompts } from '~/components/chat/ExamplePrompts';
 import GitCloneButton from './GitCloneButton';
+import TemplateCards from './TemplateCards';
 
 import FilePreview from './FilePreview';
 import { ModelSelector } from '~/components/chat/ModelSelector';
@@ -599,10 +600,13 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
             </div>
             <div className="flex flex-col justify-center gap-5">
               {!chatStarted && (
-                <div className="flex justify-center gap-2">
-                  {ImportButtons(importChat)}
-                  <GitCloneButton importChat={importChat} />
-                </div>
+                <>
+                  <div className="flex justify-center gap-2">
+                    {ImportButtons(importChat)}
+                    <GitCloneButton importChat={importChat} />
+                  </div>
+                  <TemplateCards importChat={importChat} />
+                </>
               )}
               {!chatStarted &&
                 ExamplePrompts((event, messageInput) => {
