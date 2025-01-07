@@ -185,6 +185,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
           if (handleInputChange) {
             const syntheticEvent = {
               target: { value: transcript },
+              preventDefault: () => {},
             } as React.ChangeEvent<HTMLTextAreaElement>;
             handleInputChange(syntheticEvent);
           }
@@ -197,7 +198,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
 
         setRecognition(recognition);
       }
-    }, []);
+    }, [handleInputChange]);
 
     useEffect(() => {
       if (typeof window !== 'undefined') {
@@ -292,7 +293,6 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
 
           try {
             setIsProcessingTemplate(true);
-
             // Identificar o template
             const isTypeScript = lowerMessage.includes('typescript') || lowerMessage.includes('ts');
             const repo = isTypeScript
@@ -319,7 +319,6 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
             // Encontrar e ler o package.json
             const packageJson = fileContents.find((f) => f.path.endsWith('package.json'));
             let dependencies = {};
-
             if (packageJson) {
               try {
                 dependencies = JSON.parse(packageJson.content).dependencies || {};
@@ -330,42 +329,35 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
 
             // Instalar dependências
             toast.info('Instalando dependências...');
+            await new Promise((resolve) => {
+              const process = require('child_process').spawn('npm', ['install'], {
+                cwd: workdir,
+                shell: true,
+              });
 
-            await new Promise<void>((resolve) => {
-              // Usando import dinâmico para evitar require
-              import('child_process').then((childProcess) => {
-                const process = childProcess.spawn('npm', ['install'], {
-                  cwd: workdir,
-                  shell: true,
-                });
-
-                process.on('close', (code: number) => {
-                  if (code === 0) {
-                    toast.success('Dependências instaladas com sucesso!');
-                  } else {
-                    toast.error('Erro ao instalar dependências');
-                  }
-
-                  resolve();
-                });
+              process.on('close', (code) => {
+                if (code === 0) {
+                  toast.success('Dependências instaladas com sucesso!');
+                } else {
+                  toast.error('Erro ao instalar dependências');
+                }
+                resolve();
               });
             });
 
             // Iniciar servidor de desenvolvimento
             toast.info('Iniciando servidor de desenvolvimento...');
-
-            const childProcess = await import('child_process');
-            const devServer = childProcess.spawn('npm', ['run', 'dev'], {
+            const devServer = require('child_process').spawn('npm', ['run', 'dev'], {
               cwd: workdir,
               shell: true,
             });
 
-            devServer.stdout.on('data', (data: Buffer) => {
-              console.log(`Dev server: ${data.toString()}`);
+            devServer.stdout.on('data', (data) => {
+              console.log(`Dev server: ${data}`);
             });
 
-            devServer.stderr.on('data', (data: Buffer) => {
-              console.error(`Dev server error: ${data.toString()}`);
+            devServer.stderr.on('data', (data) => {
+              console.error(`Dev server error: ${data}`);
             });
 
             // Criar mensagem com os arquivos
@@ -376,7 +368,8 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
 <boltArtifact id="imported-files" title="Template Files" type="bundled">
 ${fileContents
   .map(
-    (file) => `<boltAction type="file" filePath="${file.path}">
+    (file) =>
+      `<boltAction type="file" filePath="${file.path}">
 ${file.content}
 </boltAction>`,
   )
@@ -387,10 +380,8 @@ ${file.content}
             };
 
             const messages = [filesMessage];
-
             const commands = await detectProjectCommands(fileContents);
             const commandsMessage = createCommandsMessage(commands);
-
             if (commandsMessage) {
               messages.push(commandsMessage);
             }
@@ -403,10 +394,17 @@ ${file.content}
 
             // Enviar mensagem com contexto para a IA
             sendMessage(event, contextMessage);
+
+            // Limpar o input após clonar
+            if (handleInputChange) {
+              const syntheticEvent = {
+                target: { value: '' },
+              } as React.ChangeEvent<HTMLTextAreaElement>;
+              handleInputChange(syntheticEvent);
+            }
           } catch (error) {
             console.error('Erro ao clonar template:', error);
             toast.error('Erro ao clonar template');
-
             // Enviar mensagem normal em caso de erro
             sendMessage(event, message);
           } finally {
