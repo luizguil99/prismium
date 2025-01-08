@@ -5,15 +5,42 @@ import { toast } from 'react-toastify';
 import { LoadingOverlay } from '~/components/ui/LoadingOverlay';
 import { Folder, ArrowRight } from 'lucide-react';
 import { templates } from '~/utils/templates';
-import { useTemplateManager } from '~/hooks/useTemplateManager';
+import { detectProjectCommands, createCommandsMessage } from '~/utils/projectCommands';
+import { generateId } from '~/utils/fileUtils';
+import ignore from 'ignore';
+
+const IGNORE_PATTERNS = [
+  'node_modules/**',
+  '.git/**',
+  '.github/**',
+  '.vscode/**',
+  '**/*.jpg',
+  '**/*.jpeg',
+  '**/*.png',
+  'dist/**',
+  'build/**',
+  '.next/**',
+  'coverage/**',
+  '.cache/**',
+  '.idea/**',
+  '**/*.log',
+  '**/.DS_Store',
+  '**/npm-debug.log*',
+  '**/yarn-debug.log*',
+  '**/yarn-error.log*',
+  '**/*lock.json',
+  '**/*lock.yaml',
+];
+
+const ig = ignore().add(IGNORE_PATTERNS);
 
 interface TemplateCardsProps {
   importChat?: (description: string, messages: Message[]) => Promise<void>;
 }
 
 export default function TemplateCards({ importChat }: TemplateCardsProps) {
-  const { ready } = useGit();
-  const { handlePromptAndClone, loadingId } = useTemplateManager();
+  const { ready, gitClone } = useGit();
+  const [loadingId, setLoadingId] = useState<number | null>(null);
   const [hoveredId, setHoveredId] = useState<number | null>(null);
 
   const handleClone = async (template: (typeof templates)[0]) => {
@@ -22,10 +49,60 @@ export default function TemplateCards({ importChat }: TemplateCardsProps) {
       return;
     }
 
+    setLoadingId(template.id);
+
     try {
-      await handlePromptAndClone('', importChat);
+      const { workdir, data } = await gitClone(template.repo);
+
+      if (importChat) {
+        const filePaths = Object.keys(data).filter((filePath) => !ig.ignores(filePath));
+        console.log(filePaths);
+
+        const textDecoder = new TextDecoder('utf-8');
+
+        const fileContents = filePaths
+          .map((filePath) => {
+            const { data: content, encoding } = data[filePath];
+            return {
+              path: filePath,
+              content: encoding === 'utf8' ? content : content instanceof Uint8Array ? textDecoder.decode(content) : '',
+            };
+          })
+          .filter((f) => f.content);
+
+        const commands = await detectProjectCommands(fileContents);
+        const commandsMessage = createCommandsMessage(commands);
+
+        const filesMessage: Message = {
+          role: 'assistant',
+          content: `Cloning the template ${template.title} into ${workdir}
+<boltArtifact id="imported-files" title="Template Files" type="bundled">
+${fileContents
+  .map(
+    (file) =>
+      `<boltAction type="file" filePath="${file.path}">
+${file.content}
+</boltAction>`,
+  )
+  .join('\n')}
+</boltArtifact>`,
+          id: generateId(),
+          createdAt: new Date(),
+        };
+
+        const messages = [filesMessage];
+
+        if (commandsMessage) {
+          messages.push(commandsMessage);
+        }
+
+        await importChat(`Template: ${template.title}`, messages);
+      }
     } catch (error) {
       console.error('Erro ao clonar template:', error);
+      toast.error('Falha ao importar repositório');
+    } finally {
+      setLoadingId(null);
     }
   };
 
@@ -40,7 +117,7 @@ export default function TemplateCards({ importChat }: TemplateCardsProps) {
             onMouseEnter={() => setHoveredId(template.id)}
             onMouseLeave={() => setHoveredId(null)}
           >
-            {loadingId === template.id && <LoadingOverlay />}
+            {loadingId === template.id && <LoadingOverlay message="Aguarde enquanto clonamos o template..." />}
             <div className="p-6">
               <div className="flex items-start justify-between mb-4">
                 <h3 className="font-medium text-lg text-bolt-elements-textPrimary group-hover:text-bolt-elements-textPrimaryHover transition-colors">
