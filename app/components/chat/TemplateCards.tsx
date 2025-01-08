@@ -1,44 +1,19 @@
 import { useGit } from '~/lib/hooks/useGit';
 import type { Message } from 'ai';
-import { detectProjectCommands, createCommandsMessage } from '~/utils/projectCommands';
-import { generateId } from '~/utils/fileUtils';
 import { useState } from 'react';
 import { toast } from 'react-toastify';
 import { LoadingOverlay } from '~/components/ui/LoadingOverlay';
 import { Folder, ArrowRight } from 'lucide-react';
-
-// Templates disponíveis com projetos reais e úteis
-const templates = [
-  {
-    id: 1,
-    title: 'Shadcn + JavaScript',
-    description: 'Template completo com Vite, Tailwind e Shadcn UI',
-    repo: 'https://github.com/luizguil99/Shadcn-js-template',
-    tags: ['Next.js', 'Tailwind', 'TypeScript'],
-  },
-  {
-    id: 2,
-    title: 'Vite + React + Tailwind',
-    description: 'Template minimalista com Vite, React e Tailwind CSS',
-    repo: 'https://github.com/shadcn-ui/ui',
-    tags: ['Vite', 'React', 'Tailwind'],
-  },
-  {
-    id: 3,
-    title: 'T3 Stack Starter',
-    description: 'Template completo com Next.js, tRPC, Prisma e mais',
-    repo: 'https://github.com/t3-oss/create-t3-app',
-    tags: ['Next.js', 'tRPC', 'Prisma'],
-  },
-];
+import { templates } from '~/utils/templates';
+import { useTemplateManager } from '~/hooks/useTemplateManager';
 
 interface TemplateCardsProps {
   importChat?: (description: string, messages: Message[]) => Promise<void>;
 }
 
 export default function TemplateCards({ importChat }: TemplateCardsProps) {
-  const { ready, gitClone } = useGit();
-  const [loadingId, setLoadingId] = useState<number | null>(null);
+  const { ready } = useGit();
+  const { handlePromptAndClone, loadingId } = useTemplateManager();
   const [hoveredId, setHoveredId] = useState<number | null>(null);
 
   const handleClone = async (template: (typeof templates)[0]) => {
@@ -47,59 +22,10 @@ export default function TemplateCards({ importChat }: TemplateCardsProps) {
       return;
     }
 
-    setLoadingId(template.id);
-
     try {
-      const { workdir, data } = await gitClone(template.repo);
-
-      if (importChat) {
-        const filePaths = Object.keys(data);
-        const textDecoder = new TextDecoder('utf-8');
-
-        const fileContents = filePaths
-          .map((filePath) => {
-            const { data: content, encoding } = data[filePath];
-            return {
-              path: filePath,
-              content: encoding === 'utf8' ? content : content instanceof Uint8Array ? textDecoder.decode(content) : '',
-            };
-          })
-          .filter((f) => f.content);
-
-        const commands = await detectProjectCommands(fileContents);
-        const commandsMessage = createCommandsMessage(commands);
-
-        const filesMessage: Message = {
-          role: 'assistant',
-          content: `Clonando o template ${template.title} de ${template.repo} para ${workdir}
-<boltArtifact id="imported-files" title="Template Files" type="bundled">
-${fileContents
-  .map(
-    (file) =>
-      `<boltAction type="file" filePath="${file.path}">
-${file.content}
-</boltAction>`,
-  )
-  .join('\n')}
-</boltArtifact>`,
-          id: generateId(),
-          createdAt: new Date(),
-        };
-
-        const messages = [filesMessage];
-
-        if (commandsMessage) {
-          messages.push(commandsMessage);
-        }
-
-        await importChat(`Template: ${template.title}`, messages);
-        toast.success('Template clonado com sucesso!');
-      }
+      await handlePromptAndClone('', importChat);
     } catch (error) {
       console.error('Erro ao clonar template:', error);
-      toast.error('Erro ao clonar template');
-    } finally {
-      setLoadingId(null);
     }
   };
 

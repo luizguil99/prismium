@@ -15,6 +15,7 @@ import { SendButton } from './SendButton.client';
 import { APIKeyManager, getApiKeysFromCookies } from './APIKeyManager';
 import Cookies from 'js-cookie';
 import * as Tooltip from '@radix-ui/react-tooltip';
+import { useTemplateManager } from '~/hooks/useTemplateManager';
 
 import styles from './BaseChat.module.scss';
 import { ExportChatButton } from '~/components/chat/chatExportAndImport/ExportChatButton';
@@ -241,9 +242,29 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       }
     };
 
+    const { handlePromptAndClone, loadingId } = useTemplateManager();
+
+    const processMessage = async (event: React.UIEvent, messageInput?: string) => {
+      const finalInput = messageInput || input;
+
+      if (finalInput.toLowerCase().includes('criar') || 
+          finalInput.toLowerCase().includes('fazer') ||
+          finalInput.toLowerCase().includes('desenvolver')) {
+        // Tenta usar o template primeiro
+        const templateUsed = await handlePromptAndClone(finalInput, importChat);
+        if (!templateUsed) {
+          // Se não encontrou template adequado, envia normalmente
+          sendMessage?.(event, finalInput);
+        }
+      } else {
+        // Mensagem normal, sem template
+        sendMessage?.(event, finalInput);
+      }
+    };
+
     const handleSendMessage = (event: React.UIEvent, messageInput?: string) => {
       if (sendMessage) {
-        sendMessage(event, messageInput);
+        processMessage(event, messageInput);
 
         if (recognition) {
           recognition.abort(); // Stop current recognition
@@ -625,6 +646,11 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       </div>
     );
 
-    return <Tooltip.Provider delayDuration={200}>{baseChat}</Tooltip.Provider>;
+    return (
+      <Tooltip.Provider delayDuration={200}>
+        {loadingId !== null && <div>Loading template...</div>}
+        {baseChat}
+      </Tooltip.Provider>
+    );
   },
 );
