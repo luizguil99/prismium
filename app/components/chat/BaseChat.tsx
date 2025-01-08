@@ -16,6 +16,12 @@ import { APIKeyManager, getApiKeysFromCookies } from './APIKeyManager';
 import Cookies from 'js-cookie';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { useTemplateManager } from '~/hooks/useTemplateManager';
+import { templates } from '~/utils/templates';
+import { useGit } from '~/lib/hooks/useGit';
+import { detectProjectCommands, createCommandsMessage } from '~/utils/projectCommands';
+import { generateId } from '~/utils/fileUtils';
+import ignore from 'ignore';
+import { toast } from 'react-toastify';
 
 import styles from './BaseChat.module.scss';
 import { ExportChatButton } from '~/components/chat/chatExportAndImport/ExportChatButton';
@@ -29,13 +35,37 @@ import { ModelSelector } from '~/components/chat/ModelSelector';
 import { SpeechRecognitionButton } from '~/components/chat/SpeechRecognition';
 import type { IProviderSetting, ProviderInfo } from '~/types/model';
 import { ScreenshotStateManager } from './ScreenshotStateManager';
-import { toast } from 'react-toastify';
 import StarterTemplates from './StarterTemplates';
 import type { ActionAlert } from '~/types/actions';
 import ChatAlert from './ChatAlert';
 import { LLMManager } from '~/lib/modules/llm/manager';
 
 const TEXTAREA_MIN_HEIGHT = 76;
+
+const IGNORE_PATTERNS = [
+  'node_modules/**',
+  '.git/**',
+  '.github/**',
+  '.vscode/**',
+  '**/*.jpg',
+  '**/*.jpeg',
+  '**/*.png',
+  'dist/**',
+  'build/**',
+  '.next/**',
+  'coverage/**',
+  '.cache/**',
+  '.idea/**',
+  '**/*.log',
+  '**/.DS_Store',
+  '**/npm-debug.log*',
+  '**/yarn-debug.log*',
+  '**/yarn-error.log*',
+  '**/*lock.json',
+  '**/*lock.yaml',
+];
+
+const ig = ignore().add(IGNORE_PATTERNS);
 
 interface BaseChatProps {
   textareaRef?: React.RefObject<HTMLTextAreaElement> | undefined;
@@ -85,8 +115,6 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       input = '',
       enhancingPrompt,
       handleInputChange,
-
-      // promptEnhanced,
       enhancePrompt,
       sendMessage,
       handleStop,
@@ -99,9 +127,10 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       messages,
       actionAlert,
       clearAlert,
-    },
+    }: BaseChatProps,
     ref,
   ) => {
+    const { ready, gitClone } = useGit();
     const TEXTAREA_MAX_HEIGHT = chatStarted ? 400 : 200;
     const [apiKeys, setApiKeys] = useState<Record<string, string>>(getApiKeysFromCookies());
     const [modelList, setModelList] = useState(MODEL_LIST);
@@ -245,20 +274,68 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     const { handlePromptAndClone, loadingId } = useTemplateManager();
 
     const processMessage = async (event: React.UIEvent, messageInput?: string) => {
-      const finalInput = messageInput || input;
+      if (!messageInput && !textareaRef?.current?.value) {
+        return;
+      }
 
-      if (finalInput.toLowerCase().includes('criar') || 
-          finalInput.toLowerCase().includes('fazer') ||
-          finalInput.toLowerCase().includes('desenvolver')) {
-        // Tenta usar o template primeiro
-        const templateUsed = await handlePromptAndClone(finalInput, importChat);
-        if (!templateUsed) {
-          // Se não encontrou template adequado, envia normalmente
-          sendMessage?.(event, finalInput);
+      const input = messageInput || textareaRef.current.value;
+
+      // Verifica se é a primeira mensagem e se contém palavras-chave do template Shadcn
+      if (messages?.length === 0 && input.toLowerCase().includes('shadcn')) {
+        const shadcnTemplate = templates.find(t => t.id === 1); // Template Shadcn
+        if (shadcnTemplate && importChat) {
+          try {
+            const { workdir, data } = await gitClone(shadcnTemplate.repo);
+            const filePaths = Object.keys(data).filter((filePath) => !ig.ignores(filePath));
+            
+            const textDecoder = new TextDecoder('utf-8');
+            const fileContents = filePaths
+              .map((filePath) => {
+                const { data: content, encoding } = data[filePath];
+                return {
+                  path: filePath,
+                  content: encoding === 'utf8' ? content : content instanceof Uint8Array ? textDecoder.decode(content) : '',
+                };
+              })
+              .filter((f) => f.content);
+
+            const commands = await detectProjectCommands(fileContents);
+            const commandsMessage = createCommandsMessage(commands);
+
+            const filesMessage: Message = {
+              role: 'assistant',
+              content: `Iniciando projeto com template ${shadcnTemplate.title}
+<boltArtifact id="imported-files" title="Template Files" type="bundled">
+${fileContents
+  .map(
+    (file) =>
+      `<boltAction type="file" filePath="${file.path}">
+${file.content}
+</boltAction>`,
+  )
+  .join('\n')}
+</boltArtifact>`,
+              id: generateId(),
+              createdAt: new Date(),
+            };
+
+            const templateMessages = [filesMessage];
+            if (commandsMessage) {
+              templateMessages.push(commandsMessage);
+            }
+
+            await importChat(`Template: ${shadcnTemplate.title}`, templateMessages);
+            return;
+          } catch (error) {
+            console.error('Erro ao importar template:', error);
+            toast.error('Falha ao importar template');
+          }
         }
-      } else {
-        // Mensagem normal, sem template
-        sendMessage?.(event, finalInput);
+      }
+
+      // Continua com o processamento normal da mensagem
+      if (sendMessage) {
+        sendMessage(event, input);
       }
     };
 
