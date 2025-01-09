@@ -1,4 +1,7 @@
 import { X, Code2, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
+import { useGit } from '~/lib/hooks/useGit';
+import { templates } from '~/utils/templates';
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -7,7 +10,56 @@ interface CreateProjectModalProps {
 }
 
 export function CreateProjectModal({ isOpen, onClose, templateType }: CreateProjectModalProps) {
+  const { ready, gitClone } = useGit();
+  const [loadingId, setLoadingId] = useState<number | null>(null);
+
   if (!isOpen) return null;
+
+  const handleClone = async (templateId: number) => {
+    if (!ready) {
+      console.error('Sistema Git não está pronto');
+      return;
+    }
+
+    const template = templates.find((t) => t.id === templateId);
+    if (!template) return;
+
+    setLoadingId(template.id);
+
+    try {
+      const { workdir, data } = await gitClone(template.repo);
+
+      if (data) {
+        const textDecoder = new TextDecoder('utf-8');
+        const filePaths = Object.keys(data);
+
+        const fileContents = filePaths
+          .map((filePath) => {
+            const { data: content, encoding } = data[filePath];
+            return {
+              path: filePath,
+              content: encoding === 'utf8' ? content : content instanceof Uint8Array ? textDecoder.decode(content) : '',
+            };
+          })
+          .filter((f) => f.content);
+
+        console.log(
+          'Arquivos clonados:',
+          fileContents.map((f) => f.path),
+        );
+      }
+
+      console.log(`Template clonado com sucesso em ${workdir}`);
+      onClose();
+    } catch (error) {
+      console.error('Erro ao clonar template:', error);
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
+  // Filtra apenas os templates Shadcn
+  const shadcnTemplates = templates.filter((t) => t.keywords.includes('shadcn'));
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -35,41 +87,32 @@ export function CreateProjectModal({ isOpen, onClose, templateType }: CreateProj
             <div className="space-y-4">
               <h3 className="text-[#8B98A9] text-sm font-medium uppercase tracking-wider mb-4">Select Language</h3>
 
-              <button className="w-full group flex items-center justify-between p-4 rounded-lg border border-[#2A2F3A]/50 bg-[#151922]/50 hover:bg-[#1F2937]/80 hover:border-blue-500/30 transition-all duration-200">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-yellow-500/20 to-orange-500/20 flex items-center justify-center">
-                    <span className="text-yellow-400 font-mono text-sm font-bold">JS</span>
+              {shadcnTemplates.map((template) => (
+                <button
+                  key={template.id}
+                  onClick={() => handleClone(template.id)}
+                  disabled={loadingId !== null}
+                  className="w-full group flex items-center justify-between p-4 rounded-lg border border-[#2A2F3A]/50 bg-[#151922]/50 hover:bg-[#1F2937]/80 hover:border-blue-500/30 transition-all duration-200 relative"
+                >
+                  {loadingId === template.id && (
+                    <div className="absolute inset-0 bg-[#151922]/80 backdrop-blur-sm rounded-lg flex items-center justify-center">
+                      <div className="text-blue-400">Clonando template...</div>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-yellow-500/20 to-orange-500/20 flex items-center justify-center">
+                      <span className="text-yellow-400 font-mono text-sm font-bold">
+                        {template.title.includes('TypeScript') ? 'TS' : 'JS'}
+                      </span>
+                    </div>
+                    <div className="text-left">
+                      <h4 className="text-[#D9DFE7] font-medium">{template.title}</h4>
+                      <p className="text-[#8B98A9] text-sm">{template.description}</p>
+                    </div>
                   </div>
-                  <div className="text-left">
-                    <h4 className="text-[#D9DFE7] font-medium">JavaScript</h4>
-                    <p className="text-[#8B98A9] text-sm">Build with JavaScript + Node.js</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-[#8B98A9] group-hover:text-blue-400 transition-colors" />
-              </button>
-
-              <button className="w-full group flex items-center justify-between p-4 rounded-lg border border-[#2A2F3A]/50 bg-[#151922]/50 hover:bg-[#1F2937]/80 hover:border-blue-500/30 transition-all duration-200">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center">
-                    <span className="text-blue-400 font-mono text-sm font-bold">TS</span>
-                  </div>
-                  <div className="text-left">
-                    <h4 className="text-[#D9DFE7] font-medium">TypeScript</h4>
-                    <p className="text-[#8B98A9] text-sm">Build with TypeScript + Node.js</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-[#8B98A9] group-hover:text-blue-400 transition-colors" />
-              </button>
-            </div>
-
-            <div className="pt-6">
-              <button
-                onClick={onClose}
-                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
-              >
-                Create Project
-                <ChevronRight size={18} />
-              </button>
+                  <ChevronRight className="w-5 h-5 text-[#8B98A9] group-hover:text-blue-400 transition-colors" />
+                </button>
+              ))}
             </div>
           </div>
         </div>

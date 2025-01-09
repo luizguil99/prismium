@@ -134,11 +134,7 @@ export default function Templates() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0B0E14] to-[#151922] text-white">
-      <CreateProjectModal 
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        templateType={selectedTemplate}
-      />
+      <CreateProjectModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} templateType={selectedTemplate} />
       <div className="max-w-[1400px] mx-auto px-4 md:px-8 lg:px-16 py-8">
         {/* Header com Dashboard e Search */}
         <div className="flex flex-col sm:flex-row items-center justify-between py-6 gap-4 border-b border-[#2A2F3A]/20">
