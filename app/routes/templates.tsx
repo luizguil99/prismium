@@ -96,95 +96,83 @@ const allWebTemplates = [
 
 export default function Templates() {
   return (
-    <div className="min-h-screen bg-[#0B0E14] text-white p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-12">
-        <div>
-          <h1 className="text-3xl font-semibold mb-2">Templates</h1>
-          <p className="text-gray-400">
-            Comece um novo workspace a partir de um dos nossos templates cuidadosamente desenvolvidos
-          </p>
-        </div>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <input
-            type="text"
-            placeholder="Buscar templates"
-            className="bg-[#1A1E26] border border-gray-700 rounded-md pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-blue-500"
-          />
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex gap-8">
-        {/* Left Sidebar */}
-        <div className="w-64">
-          {categories.map((category) => (
-            <button
-              key={category.id}
-              className="w-full flex items-center justify-between text-gray-400 hover:text-white hover:bg-[#1A1E26] px-4 py-2 rounded-md transition-colors"
-            >
-              <span>{category.title}</span>
-              <category.icon className="w-4 h-4" />
-            </button>
-          ))}
-        </div>
-
-        {/* Right Content */}
-        <div className="flex-1">
-          {/* Featured Templates */}
-          <div className="mb-12">
-            <h2 className="text-lg font-medium mb-4">Templates de apps web em destaque</h2>
-            <div className="grid grid-cols-3 gap-4">
-              {featuredTemplates.map((template) => (
-                <div
-                  key={template.id}
-                  className="bg-[#1A1E26] border border-gray-800 rounded-lg p-6 hover:border-gray-700 transition-colors"
-                >
-                  <div className="text-2xl mb-3">{template.icon}</div>
-                  <h3 className="font-medium mb-2">{template.title}</h3>
-                  <p className="text-sm text-gray-400">{template.description}</p>
-                </div>
-              ))}
-            </div>
+    <div className="min-h-screen bg-[#0B0E14] text-white">
+      <div className="max-w-[1400px] mx-auto px-16">
+        {/* Header com Dashboard e Search */}
+        <div className="flex items-center justify-between py-6">
+          <div className="flex items-center gap-2 text-gray-400">
+            <ChevronRight size={16} />
+            <span>Dashboard</span>
           </div>
-
-          {/* All Web Templates */}
-          <div>
-            <h2 className="text-lg font-medium mb-4">Todos os templates de apps web</h2>
-            <div className="space-y-2">
-              {allWebTemplates.map((template) => (
-                <div
-                  key={template.id}
-                  className="bg-[#1A1E26] border border-gray-800 rounded-lg p-4 hover:border-gray-700 transition-colors flex items-center gap-4"
-                >
-                  <div className="text-2xl">{template.icon}</div>
-                  <div>
-                    <h3 className="font-medium">{template.title}</h3>
-                    <p className="text-sm text-gray-400">{template.description}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+            <input
+              type="text"
+              placeholder="Search templates"
+              className="bg-[#1A1F2A] border border-[#2A2F3A] rounded-md pl-10 pr-4 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 w-[250px]"
+            />
           </div>
         </div>
-      </div>
 
-      {/* Footer */}
-      <div className="mt-12 pt-8 border-t border-gray-800 flex items-center justify-between text-sm text-gray-400">
-        <div className="flex items-center gap-4">
-          <span className="flex items-center gap-2">
-            <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-            Status
-          </span>
-          <span>Fórum de Discussão</span>
-          <span>Solicitações de Recursos</span>
+        {/* Título e Descrição */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold mb-2">Templates</h1>
+          <p className="text-gray-400">Start a new workspace from one of our hand-crafted starting templates</p>
         </div>
-        <div className="flex items-center gap-4">
-          <span>Sobre o IDX</span>
-          <span>RSS</span>
-          <span>Termos</span>
-          <span>Privacidade</span>
+
+        {/* Layout Principal */}
+        <div className="flex gap-8">
+          {/* Categorias */}
+          <div className="w-[200px] space-y-1">
+            {categories.map((category) => (
+              <button
+                key={category.id}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-md bg-[#1A1F2A] text-gray-400 hover:bg-[#2A2F3A] hover:text-white transition-colors"
+              >
+                <span>{category.title}</span>
+                <category.icon size={16} />
+              </button>
+            ))}
+          </div>
+
+          {/* Container dos Templates */}
+          <div className="flex-1 max-w-[900px]">
+            {/* Featured Templates */}
+            <div className="mb-8">
+              <h2 className="text-sm font-medium text-gray-400 mb-3">Featured web app templates</h2>
+              <div className="grid grid-cols-3 gap-4">
+                {featuredTemplates.map((template) => (
+                  <button
+                    key={template.id}
+                    className="bg-[#1A1F2A] p-3 rounded-lg text-left hover:bg-[#2A2F3A] transition-colors border border-[#2A2F3A] group h-[140px]"
+                  >
+                    <div className="mb-2">{template.icon}</div>
+                    <h3 className="font-medium mb-1 group-hover:text-blue-400 text-sm">{template.title}</h3>
+                    <p className="text-xs text-gray-400 line-clamp-2">{template.description}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* All Templates */}
+            <div>
+              <h2 className="text-sm font-medium text-gray-400 mb-3">All web app templates</h2>
+              <div className="space-y-1">
+                {allWebTemplates.map((template) => (
+                  <button
+                    key={template.id}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg bg-[#1A1F2A] hover:bg-[#2A2F3A] text-left group"
+                  >
+                    <div className="flex-shrink-0">{template.icon}</div>
+                    <div>
+                      <h3 className="font-medium group-hover:text-blue-400 text-sm">{template.title}</h3>
+                      <p className="text-xs text-gray-400">{template.description}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
