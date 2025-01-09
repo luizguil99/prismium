@@ -1,4 +1,4 @@
-import { ChevronRight, Search } from 'lucide-react';
+import { ChevronRight, Search, ArrowRight } from 'lucide-react';
 
 // Importando as logos
 import logoAngular from '../lib/png/logo_angular.svg.png';
@@ -101,7 +101,10 @@ export default function Templates() {
             <span className="text-sm font-medium">Dashboard</span>
           </div>
           <div className="relative group">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 group-hover:text-blue-500 transition-colors" size={16} />
+            <Search
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 group-hover:text-blue-500 transition-colors"
+              size={16}
+            />
             <input
               type="text"
               placeholder="Search templates..."
@@ -132,7 +135,10 @@ export default function Templates() {
                   className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-[#1A1F2A]/60 backdrop-blur-sm border border-[#2A2F3A]/50 text-gray-300 hover:bg-[#2A2F3A]/80 hover:text-white hover:border-blue-500/30 transition-all duration-200 group"
                 >
                   <span className="font-medium">{category.title}</span>
-                  <category.icon size={16} className="text-blue-500/70 group-hover:translate-x-1 transition-transform" />
+                  <category.icon
+                    size={16}
+                    className="text-blue-500/70 group-hover:translate-x-1 transition-transform"
+                  />
                 </button>
               ))}
             </div>
@@ -145,24 +151,31 @@ export default function Templates() {
               <h2 className="text-[#8B98A9] font-['Segoe UI'] text-sm font-medium uppercase tracking-wider mb-6">
                 Featured Templates
               </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {featuredTemplates.map((template) => (
                   <button
                     key={template.id}
-                    className="group relative flex flex-col h-[200px] bg-[#11161E]/60 backdrop-blur-sm border border-[#2A2F3A]/50 rounded-xl text-left hover:bg-[#1F2937]/80 hover:border-blue-500/30 transition-all duration-200 p-6 overflow-hidden"
+                    className="group relative flex flex-col h-[180px] bg-[#11161E]/60 backdrop-blur-sm border border-[#2A2F3A]/50 rounded-xl text-left hover:bg-[#1F2937]/80 hover:border-blue-500/30 transition-all duration-200 p-5 overflow-hidden"
                   >
                     <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <div className="relative">
-                      <div className="mb-auto transform group-hover:scale-110 transition-transform duration-200">
+                    <div className="relative flex flex-col h-full">
+                      <div className="mb-3 transform group-hover:scale-110 transition-transform duration-200">
                         {template.icon}
                       </div>
                       <div className="mt-auto">
                         <h3 className="text-[#D9DFE7] font-['Segoe UI'] text-lg font-semibold leading-tight mb-2 group-hover:text-blue-400 transition-colors">
                           {template.title}
                         </h3>
-                        <p className="text-[#8B98A9] text-sm leading-relaxed line-clamp-2 group-hover:text-gray-300 transition-colors">
+                        <p className="text-[#8B98A9] text-sm leading-relaxed line-clamp-2 group-hover:text-gray-300 transition-colors mb-3">
                           {template.description}
                         </p>
+                        <div className="flex items-center text-blue-500 text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                          <span>Get started</span>
+                          <ArrowRight
+                            size={16}
+                            className="ml-2 transform group-hover:translate-x-1 transition-transform"
+                          />
+                        </div>
                       </div>
                     </div>
                   </button>
@@ -194,7 +207,10 @@ export default function Templates() {
                           {template.description}
                         </p>
                       </div>
-                      <ChevronRight size={16} className="ml-auto text-gray-500 group-hover:text-blue-500 transform group-hover:translate-x-1 transition-all" />
+                      <ChevronRight
+                        size={16}
+                        className="ml-auto text-gray-500 group-hover:text-blue-500 transform group-hover:translate-x-1 transition-all"
+                      />
                     </div>
                   </button>
                 ))}
