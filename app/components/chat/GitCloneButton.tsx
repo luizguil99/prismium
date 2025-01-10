@@ -6,6 +6,7 @@ import { generateId } from '~/utils/fileUtils';
 import { useState } from 'react';
 import { toast } from 'react-toastify';
 import { LoadingOverlay } from '~/components/ui/LoadingOverlay';
+import { Github } from 'lucide-react';
 
 const IGNORE_PATTERNS = [
   'node_modules/**',
@@ -114,9 +115,9 @@ ${file.content}
       <button
         onClick={onClick}
         title="Clone a Git Repo"
-        className="px-4 py-2 rounded-lg border border-bolt-elements-borderColor bg-bolt-elements-prompt-background text-bolt-elements-textPrimary hover:bg-bolt-elements-background-depth-3 transition-all flex items-center gap-2"
+        className="px-4 py-2 rounded-lg bg-[#1A1F2A]/60 backdrop-blur-sm border border-[#2A2F3A]/50 text-gray-300 hover:bg-[#2A2F3A]/80 hover:border-blue-500/30 transition-all flex items-center gap-2"
       >
-        <span className="i-ph:git-branch" />
+        <Github className="w-4 h-4 text-blue-500" />
         Clone a Git Repo
       </button>
       {loading && <LoadingOverlay message="Please wait while we clone the repository..." />}

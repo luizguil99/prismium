@@ -3,7 +3,8 @@ import type { Message } from 'ai';
 import { toast } from 'react-toastify';
 import { MAX_FILES, isBinaryFile, shouldIncludeFile } from '~/utils/fileUtils';
 import { createChatFromFolder } from '~/utils/folderImport';
-import { logStore } from '~/lib/stores/logs'; // Assuming logStore is imported from this location
+import { logStore } from '~/lib/stores/logs';
+import { Folder } from 'lucide-react';
 
 interface ImportFolderButtonProps {
   className?: string;
@@ -105,24 +106,22 @@ export const ImportFolderButton: React.FC<ImportFolderButtonProps> = ({ classNam
     <>
       <input
         type="file"
-        id="folder-import"
+        id="folder-input"
         className="hidden"
         webkitdirectory=""
         directory=""
         onChange={handleFileChange}
-        {...({} as any)}
       />
       <button
-        onClick={() => {
-          const input = document.getElementById('folder-import');
-          input?.click();
-        }}
+        onClick={() => document.getElementById('folder-input')?.click()}
         className={className}
         disabled={isLoading}
+        title="Import a folder"
       >
-        <div className="i-ph:upload-simple" />
+        <Folder className="w-4 h-4 text-blue-500" />
         {isLoading ? 'Importing...' : 'Import Folder'}
       </button>
+      {isLoading && <div>Loading...</div>}
     </>
   );
 };
