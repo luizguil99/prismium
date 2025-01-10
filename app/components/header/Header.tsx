@@ -9,7 +9,7 @@ import { useLocation } from '@remix-run/react';
 export function Header() {
   const chat = useStore(chatStore);
   const location = useLocation();
-  const headerClasses = location.pathname === '/' ? 'flex items-center absolute w-full p-5 border-b h-[var(--header-height)]' : 'flex items-center p-5 border-b h-[var(--header-height)]';
+  const headerClasses = location.pathname === '/' ? 'flex items-center  w-full p-5 border-b h-[var(--header-height)]' : 'flex items-center p-5 border-b h-[var(--header-height)]';
 
   return (
     <header
@@ -23,7 +23,7 @@ export function Header() {
         <a href="/" className="text-2xl font-semibold text-accent flex items-center">
           {/* <span className="i-bolt:logo-text?mask w-[46px] inline-block" /> */}
           <img src="/logo-light-styled.png" alt="logo" className="w-[90px] inline-block dark:hidden" />
-          <img src="/logo-dark-styled.png" alt="logo" className="w-[90px] inline-block hidden dark:block" />
+          <img src="/app/lib/png/Group3.png" alt="logo" className="w-[120px] inline-block hidden dark:block" />
         </a>
       </div>
       {chat.started && ( // Display ChatDescription and HeaderActionButtons only when the chat has started.
