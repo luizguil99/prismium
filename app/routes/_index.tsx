@@ -13,7 +13,7 @@ export const loader = () => json({});
 
 export default function Index() {
   return (
-    <div className="flex flex-col h-full w-full bg-bolt-elements-background-depth-1">
+    <div className="flex flex-col h-full w-full bg-gradient-to-b from-[#0B0E14] to-[#151922]">
       <BackgroundRays />
       <Header />
       <ClientOnly fallback={<BaseChat />}>{() => <Chat />}</ClientOnly>

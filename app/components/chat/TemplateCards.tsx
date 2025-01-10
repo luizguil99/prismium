@@ -3,7 +3,7 @@ import type { Message } from 'ai';
 import { useState } from 'react';
 import { toast } from 'react-toastify';
 import { LoadingOverlay } from '~/components/ui/LoadingOverlay';
-import { Folder, ArrowRight } from 'lucide-react';
+import { ArrowRight, ChevronRight } from 'lucide-react';
 import { templates } from '~/utils/templates';
 import { detectProjectCommands, createCommandsMessage } from '~/utils/projectCommands';
 import { generateId } from '~/utils/fileUtils';
@@ -41,7 +41,7 @@ interface TemplateCardsProps {
 export default function TemplateCards({ importChat }: TemplateCardsProps) {
   const { ready, gitClone } = useGit();
   const [loadingId, setLoadingId] = useState<number | null>(null);
-  const [hoveredId, setHoveredId] = useState<number | null>(null);
+  const [isAnimating, setIsAnimating] = useState(false);
 
   const handleClone = async (template: (typeof templates)[0]) => {
     if (!ready) {
@@ -107,48 +107,49 @@ ${file.content}
   };
 
   return (
-    <div className="mt-8 w-full max-w-4xl mx-auto">
-      <h2 className="text-lg font-semibold mb-6 text-center text-bolt-elements-textPrimary">Templates Populares</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {templates.map((template) => (
-          <div
-            key={template.id}
-            className="group relative bg-bolt-elements-background-depth-2 rounded-xl border border-bolt-elements-borderColor overflow-hidden hover:border-bolt-elements-borderColorHover transition-all duration-200 shadow-sm hover:shadow-md"
-            onMouseEnter={() => setHoveredId(template.id)}
-            onMouseLeave={() => setHoveredId(null)}
-          >
-            {loadingId === template.id && <LoadingOverlay message="Aguarde enquanto clonamos o template..." />}
-            <div className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <h3 className="font-medium text-lg text-bolt-elements-textPrimary group-hover:text-bolt-elements-textPrimaryHover transition-colors">
-                  {template.title}
-                </h3>
-                <Folder className="w-5 h-5 text-bolt-elements-textSecondary group-hover:text-bolt-elements-textPrimaryHover transition-colors" />
+    <div className="w-full max-w-4xl mx-auto">
+      <h2 className="text-[#8B98A9] font-['Segoe UI'] text-sm font-medium uppercase tracking-wider mb-6">
+        Templates Populares
+      </h2>
+      <div className="relative overflow-hidden">
+        <div
+          className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 transition-all duration-200 ease-in-out transform ${
+            isAnimating ? 'scale-[0.98] opacity-80' : 'scale-100 opacity-100'
+          }`}
+        >
+          {templates.map((template) => (
+            <button
+              type="button"
+              key={template.id}
+              onClick={() => handleClone(template)}
+              disabled={!ready || loadingId !== null}
+              className="group relative flex flex-col h-[180px] bg-[#11161E]/60 backdrop-blur-sm border border-[#2A2F3A]/50 rounded-xl text-left hover:bg-[#1F2937]/80 hover:border-blue-500/30 transition-all duration-200 p-5 overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loadingId === template.id && <LoadingOverlay message="Aguarde enquanto clonamos o template..." />}
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="relative flex flex-col h-full">
+                <div className="mb-3 transform group-hover:translate-x-1 transition-transform duration-200">
+                  {template.icon}
+                </div>
+                <div className="mt-auto">
+                  <h3 className="text-[#D9DFE7] font-['Segoe UI'] text-lg font-semibold leading-tight mb-2 group-hover:text-blue-400 transition-colors">
+                    {template.title}
+                  </h3>
+                  <p className="text-[#8B98A9] text-sm leading-relaxed line-clamp-2 group-hover:text-gray-300 transition-colors mb-3">
+                    {template.description}
+                  </p>
+                  <div className="flex items-center text-blue-500 text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span>Usar Template</span>
+                    <ArrowRight
+                      size={16}
+                      className="ml-2 transform group-hover:translate-x-1 transition-transform"
+                    />
+                  </div>
+                </div>
               </div>
-              <p className="text-bolt-elements-textSecondary text-sm mb-6 line-clamp-2">{template.description}</p>
-              <div className="flex flex-wrap gap-2 mb-6">
-                {template.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="px-2 py-1 bg-bolt-elements-background-depth-3 rounded-md text-xs text-bolt-elements-textSecondary"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-              <button
-                onClick={() => handleClone(template)}
-                disabled={!ready || loadingId !== null}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-bolt-elements-background-depth-3 hover:bg-bolt-elements-background-depth-4 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-all duration-200 text-bolt-elements-textPrimary group-hover:text-bolt-elements-textPrimaryHover"
-              >
-                <span>Usar Template</span>
-                <ArrowRight
-                  className={`w-4 h-4 transition-transform duration-200 ${hoveredId === template.id ? 'translate-x-1' : ''}`}
-                />
-              </button>
-            </div>
-          </div>
-        ))}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

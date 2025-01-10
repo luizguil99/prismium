@@ -1,0 +1,55 @@
+.settings-tabs button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  text-align: left;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+  margin-bottom: 0.5rem;
+}
+.settings-tabs button.active {
+  background: var(--bolt-elements-button-primary-background);
+  color: var(--bolt-elements-textPrimary);
+}
+.settings-tabs button:not(.active) {
+  background: var(--bolt-elements-bg-depth-3);
+  color: var(--bolt-elements-textPrimary);
+}
+.settings-tabs button:not(.active):hover {
+  background: var(--bolt-elements-button-primary-backgroundHover);
+}
+
+.settings-button {
+  background-color: var(--bolt-elements-button-primary-background);
+  color: var(--bolt-elements-textPrimary);
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  transition: background-color 0.2s;
+}
+.settings-button:hover {
+  background-color: var(--bolt-elements-button-primary-backgroundHover);
+}
+
+.settings-danger-area {
+  background-color: transparent;
+  color: var(--bolt-elements-textPrimary);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-style: solid;
+  border-color: var(--bolt-elements-button-danger-backgroundHover);
+  border-width: thin;
+}
+.settings-danger-area button {
+  background-color: var(--bolt-elements-button-danger-background);
+  color: var(--bolt-elements-button-danger-text);
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  transition: background-color 0.2s;
+}
+.settings-danger-area button:hover {
+  background-color: var(--bolt-elements-button-danger-backgroundHover);
+}/*# sourceMappingURL=Settings.module.css.map */

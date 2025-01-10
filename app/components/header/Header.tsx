@@ -4,13 +4,16 @@ import { chatStore } from '~/lib/stores/chat';
 import { classNames } from '~/utils/classNames';
 import { HeaderActionButtons } from './HeaderActionButtons.client';
 import { ChatDescription } from '~/lib/persistence/ChatDescription.client';
+import { useLocation } from '@remix-run/react';
 
 export function Header() {
   const chat = useStore(chatStore);
+  const location = useLocation();
+  const headerClasses = location.pathname === '/' ? 'flex items-center absolute w-full p-5 border-b h-[var(--header-height)]' : 'flex items-center p-5 border-b h-[var(--header-height)]';
 
   return (
     <header
-      className={classNames('flex items-center p-5 border-b h-[var(--header-height)]', {
+      className={classNames(headerClasses, {
         'border-transparent': !chat.started,
         'border-bolt-elements-borderColor': chat.started,
       })}
