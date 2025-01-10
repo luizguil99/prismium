@@ -420,6 +420,70 @@ ${file.content}
       }
     };
 
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    const SettingsModal = () => {
+      if (!isModalOpen) return null;
+
+      return (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-[#1A1F2A] border border-[#2A2F3A]/50 rounded-lg w-[500px] max-w-[90vw]">
+            {/* Header do Modal */}
+            <div className="flex justify-between items-center p-4 border-b border-[#2A2F3A]/50">
+              <h2 className="text-lg font-semibold text-gray-200">Configurações do Modelo</h2>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="p-2 rounded-lg hover:bg-[#2A2F3A]/30 text-gray-400 hover:text-gray-200 transition-all duration-200"
+              >
+                <div className="i-ph:x text-xl" />
+              </button>
+            </div>
+
+            {/* Conteúdo do Modal */}
+            <div className="p-6 space-y-6">
+              {/* Seleção de Provedor */}
+              <div className="space-y-4">
+                <ModelSelector
+                  key={provider?.name + ':' + modelList.length}
+                  model={model}
+                  setModel={setModel}
+                  modelList={modelList}
+                  provider={provider}
+                  setProvider={setProvider}
+                  providerList={providerList || (PROVIDER_LIST as ProviderInfo[])}
+                  apiKeys={apiKeys}
+                  modelLoading={isModelLoading}
+                />
+                
+                {/* Gerenciamento de API Key */}
+                {(providerList || []).length > 0 && provider && (
+                  <div className="mt-4">
+                    <APIKeyManager
+                      provider={provider}
+                      apiKey={apiKeys[provider.name] || ''}
+                      setApiKey={(key) => {
+                        onApiKeysChange(provider.name, key);
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer do Modal */}
+            <div className="flex justify-end gap-2 p-4 border-t border-[#2A2F3A]/50">
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="px-4 py-2 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-all duration-200"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
     const baseChat = (
       <div
         ref={ref}
@@ -602,23 +666,37 @@ ${file.content}
                         disabled={isStreaming}
                       />
                       {chatStarted && <ClientOnly>{() => <ExportChatButton exportChat={exportChat} />}</ClientOnly>}
-                      <IconButton
-                        title="Model Settings"
-                        className={classNames(
-                          'p-2 rounded-lg bg-[#1A1F2A]/60 backdrop-blur-sm border border-[#2A2F3A]/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
-                          {
-                            'bg-bolt-elements-item-backgroundAccent text-bolt-elements-item-contentAccent':
-                              isModelSettingsCollapsed,
-                            'bg-bolt-elements-item-backgroundDefault text-bolt-elements-item-contentDefault':
-                              !isModelSettingsCollapsed,
-                          },
-                        )}
-                        onClick={() => setIsModelSettingsCollapsed(!isModelSettingsCollapsed)}
-                        disabled={!providerList || providerList.length === 0}
-                      >
-                        <div className={`i-ph:caret-${isModelSettingsCollapsed ? 'right' : 'down'} text-lg`} />
-                        {isModelSettingsCollapsed ? <span className="text-xs">{model}</span> : <span />}
-                      </IconButton>
+                      
+                      <div className="flex items-center gap-1">
+                        <IconButton
+                          title="Model Settings"
+                          className={classNames(
+                            'p-2 rounded-lg bg-[#1A1F2A]/60 backdrop-blur-sm border border-[#2A2F3A]/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
+                            {
+                              'bg-bolt-elements-item-backgroundAccent text-bolt-elements-item-contentAccent':
+                                isModelSettingsCollapsed,
+                              'bg-bolt-elements-item-backgroundDefault text-bolt-elements-item-contentDefault':
+                                !isModelSettingsCollapsed,
+                            },
+                          )}
+                          onClick={() => setIsModelSettingsCollapsed(!isModelSettingsCollapsed)}
+                          disabled={!providerList || providerList.length === 0}
+                        >
+                          <div className={`i-ph:caret-${isModelSettingsCollapsed ? 'right' : 'down'} text-lg`} />
+                          {isModelSettingsCollapsed ? <span className="text-xs">{model}</span> : <span />}
+                        </IconButton>
+
+                        <IconButton
+                          title="Configure API"
+                          className={classNames(
+                            'p-2 rounded-lg bg-[#1A1F2A]/60 backdrop-blur-sm border border-[#2A2F3A]/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200'
+                          )}
+                          onClick={() => setIsModalOpen(true)}
+                          disabled={!providerList || providerList.length === 0}
+                        >
+                          <div className="i-ph:gear text-lg" />
+                        </IconButton>
+                      </div>
                     </div>
                     {input.length > 3 ? (
                       <div className="text-xs text-bolt-elements-textTertiary">
@@ -792,7 +870,7 @@ ${file.content}
 
     return (
       <Tooltip.Provider delayDuration={200}>
-        {loadingId !== null && <div>Loading template...</div>}
+        <SettingsModal />
         {baseChat}
       </Tooltip.Provider>
     );
