@@ -140,10 +140,7 @@ ${file.content}
                   </p>
                   <div className="flex items-center text-blue-500 text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
                     <span>Usar Template</span>
-                    <ArrowRight
-                      size={16}
-                      className="ml-2 transform group-hover:translate-x-1 transition-transform"
-                    />
+                    <ArrowRight size={16} className="ml-2 transform group-hover:translate-x-1 transition-transform" />
                   </div>
                 </div>
               </div>

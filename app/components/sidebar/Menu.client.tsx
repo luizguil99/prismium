@@ -151,7 +151,7 @@ export const Menu = () => {
         <div className="p-4 select-none">
           <a
             href="/"
-            className="flex gap-2 items-center bg-[#0042DA] text-white hover:bg-[#0042DA]/90 rounded-lg p-3 transition-all duration-200 mb-4 shadow-sm"
+            className="flex gap-2 items-center bg-[#3B82F6] text-white hover:bg-[#3B82F6]/90 rounded-lg p-3 transition-all duration-200 mb-4 shadow-sm"
           >
             <span className="inline-block i-bolt:chat scale-110" />
             Start new chat

@@ -37,7 +37,7 @@ export function HistoryItem({ item, onDelete, onDuplicate, exportChat }: History
       />
       <button
         type="submit"
-        className="i-ph:check scale-110 hover:text-bolt-elements-item-contentAccent"
+        className="i-ph:check scale-110 hover:text-[#548BE4]"
         onMouseDown={handleSubmit}
       />
     </form>

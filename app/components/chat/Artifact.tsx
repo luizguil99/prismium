@@ -186,7 +186,7 @@ const ActionList = memo(({ actions }: ActionListProps) => {
                       {type !== 'start' ? (
                         <div className="i-svg-spinners:90-ring-with-bg"></div>
                       ) : (
-                        <div className="i-ph:terminal-window-duotone"></div>
+                        <div className="i-ph:terminal-window-duotone text-[#548BE4]"></div>
                       )}
                     </>
                   ) : status === 'pending' ? (
@@ -201,15 +201,22 @@ const ActionList = memo(({ actions }: ActionListProps) => {
                   <div>
                     Create{' '}
                     <code
-                      className="bg-bolt-elements-artifacts-inlineCode-background text-bolt-elements-artifacts-inlineCode-text px-1.5 py-1 rounded-md text-bolt-elements-item-contentAccent hover:underline cursor-pointer"
+                      className="bg-bolt-elements-artifacts-inlineCode-background text-bolt-elements-artifacts-inlineCode-text px-1.5 py-1 rounded-md text-[#548BE4] hover:underline cursor-pointer"
                       onClick={() => openArtifactInWorkbench(action.filePath)}
                     >
-                      {action.filePath}
+                      {action.filePath.includes('/') ? (
+                        <>
+                          <span className="text-gray-400">src/</span>
+                          <span className="text-[#548BE4]">{action.filePath.split('/').pop()}</span>
+                        </>
+                      ) : (
+                        <span className="text-[#548BE4]">{action.filePath}</span>
+                      )}
                     </code>
                   </div>
                 ) : type === 'shell' ? (
                   <div className="flex items-center w-full min-h-[28px]">
-                    <span className="flex-1">Run command</span>
+                    <span className="flex-1 text-white">Run command</span>
                   </div>
                 ) : type === 'start' ? (
                   <a
@@ -219,7 +226,7 @@ const ActionList = memo(({ actions }: ActionListProps) => {
                     }}
                     className="flex items-center w-full min-h-[28px]"
                   >
-                    <span className="flex-1">Start Application</span>
+                    <span className="flex-1 text-white">Start Application</span>
                   </a>
                 ) : null}
               </div>

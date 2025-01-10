@@ -244,7 +244,7 @@ export default function DataTab() {
               <div className="flex gap-4">
                 <button
                   onClick={handleExportAllChats}
-                  className="px-4 py-2 bg-bolt-elements-button-primary-background hover:bg-bolt-elements-button-primary-backgroundHover text-bolt-elements-textPrimary rounded-lg transition-colors"
+                  className="px-4 py-2 bg-[#548BE4]/80 hover:bg-[#548BE4] text-white rounded-lg transition-colors"
                 >
                   Export All Chats
                 </button>
@@ -269,11 +269,11 @@ export default function DataTab() {
               <div className="flex gap-4">
                 <button
                   onClick={handleExportSettings}
-                  className="px-4 py-2 bg-bolt-elements-button-primary-background hover:bg-bolt-elements-button-primary-backgroundHover text-bolt-elements-textPrimary rounded-lg transition-colors"
+                  className="px-4 py-2 bg-[#548BE4]/80 hover:bg-[#548BE4] text-white rounded-lg transition-colors"
                 >
                   Export Settings
                 </button>
-                <label className="px-4 py-2 bg-bolt-elements-button-primary-background hover:bg-bolt-elements-button-primary-backgroundHover text-bolt-elements-textPrimary rounded-lg transition-colors cursor-pointer">
+                <label className="px-4 py-2 bg-[#548BE4]/80 hover:bg-[#548BE4] text-white rounded-lg transition-colors cursor-pointer">
                   Import Settings
                   <input type="file" accept=".json" onChange={handleImportSettings} className="hidden" />
                 </label>
@@ -288,11 +288,11 @@ export default function DataTab() {
               <div className="flex gap-4">
                 <button
                   onClick={handleExportApiKeyTemplate}
-                  className="px-4 py-2 bg-bolt-elements-button-primary-background hover:bg-bolt-elements-button-primary-backgroundHover text-bolt-elements-textPrimary rounded-lg transition-colors"
+                  className="px-4 py-2 bg-[#548BE4]/80 hover:bg-[#548BE4] text-white rounded-lg transition-colors"
                 >
                   Download Template
                 </button>
-                <label className="px-4 py-2 bg-bolt-elements-button-primary-background hover:bg-bolt-elements-button-primary-backgroundHover text-bolt-elements-textPrimary rounded-lg transition-colors cursor-pointer">
+                <label className="px-4 py-2 bg-[#548BE4]/80 hover:bg-[#548BE4] text-white rounded-lg transition-colors cursor-pointer">
                   Import API Keys
                   <input type="file" accept=".json" onChange={handleImportApiKeys} className="hidden" />
                 </label>

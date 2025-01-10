@@ -12,8 +12,8 @@
     margin-bottom: 0.5rem;
 
     &.active {
-      background: var(--bolt-elements-button-primary-background);
-      color: var(--bolt-elements-textPrimary);
+      background: #548BE4;
+      color: white;
     }
 
     &:not(.active) {
@@ -21,21 +21,22 @@
       color: var(--bolt-elements-textPrimary);
 
       &:hover {
-        background: var(--bolt-elements-button-primary-backgroundHover);
+        background: #548BE4;
+        color: white;
       }
     }
   }
 }
 
 .settings-button {
-  background-color: var(--bolt-elements-button-primary-background);
-  color: var(--bolt-elements-textPrimary);
+  background-color: #548BE4;
+  color: white;
   border-radius: 0.5rem;
   padding: 0.5rem 1rem;
   transition: background-color 0.2s;
 
   &:hover {
-    background-color: var(--bolt-elements-button-primary-backgroundHover);
+    background-color: #4B7DD0;
   }
 }
 

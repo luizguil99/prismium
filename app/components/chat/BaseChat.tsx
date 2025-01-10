@@ -454,7 +454,7 @@ ${file.content}
                   apiKeys={apiKeys}
                   modelLoading={isModelLoading}
                 />
-                
+
                 {/* Gerenciamento de API Key */}
                 {(providerList || []).length > 0 && provider && (
                   <div className="mt-4">
@@ -666,7 +666,7 @@ ${file.content}
                         disabled={isStreaming}
                       />
                       {chatStarted && <ClientOnly>{() => <ExportChatButton exportChat={exportChat} />}</ClientOnly>}
-                      
+
                       <div className="flex items-center gap-1">
                         <IconButton
                           title="Model Settings"
@@ -689,7 +689,7 @@ ${file.content}
                         <IconButton
                           title="Configure API"
                           className={classNames(
-                            'p-2 rounded-lg bg-[#1A1F2A]/60 backdrop-blur-sm border border-[#2A2F3A]/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200'
+                            'p-2 rounded-lg bg-[#1A1F2A]/60 backdrop-blur-sm border border-[#2A2F3A]/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
                           )}
                           onClick={() => setIsModalOpen(true)}
                           disabled={!providerList || providerList.length === 0}

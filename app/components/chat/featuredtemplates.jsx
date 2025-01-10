@@ -60,10 +60,7 @@ export default function FeaturedTemplates({ handlePromptAndClone }) {
                   </p>
                   <div className="flex items-center text-blue-500 text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
                     <span>Get started</span>
-                    <ChevronRight
-                      size={16}
-                      className="ml-2 transform group-hover:translate-x-1 transition-transform"
-                    />
+                    <ChevronRight size={16} className="ml-2 transform group-hover:translate-x-1 transition-transform" />
                   </div>
                 </div>
               </div>
