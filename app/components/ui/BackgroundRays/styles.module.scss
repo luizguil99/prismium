@@ -1,13 +1,13 @@
 .rayContainer {
-  // Theme-specific colors
-  --ray-color-primary: color-mix(in srgb, #0042DA, transparent 40%);
-  --ray-color-secondary: color-mix(in srgb, #0EA5E9, transparent 40%);
-  --ray-color-accent: color-mix(in srgb, #2563EB, transparent 40%);
+  // Cores dos rays com um toque mais moderno
+  --ray-color-primary: color-mix(in srgb, #3b82f6, transparent 34%);
+  --ray-color-secondary: color-mix(in srgb, #ec4899, transparent 48%);
+  --ray-color-accent: color-mix(in srgb, #8b5cf6, transparent 45%);
 
-  // Theme-specific gradients
-  --ray-gradient-primary: radial-gradient(var(--ray-color-primary) 0%, transparent 80%);
-  --ray-gradient-secondary: radial-gradient(var(--ray-color-secondary) 0%, transparent 80%);
-  --ray-gradient-accent: radial-gradient(var(--ray-color-accent) 0%, transparent 80%);
+  // Gradientes com efeito mais suave
+  --ray-gradient-primary: radial-gradient(circle at center, var(--ray-color-primary) 0%, transparent 70%);
+  --ray-gradient-secondary: radial-gradient(circle at center, var(--ray-color-secondary) 0%, transparent 70%);
+  --ray-gradient-accent: radial-gradient(circle at center, var(--ray-color-accent) 0%, transparent 70%);
 
   position: fixed;
   inset: 0;
@@ -15,20 +15,24 @@
   animation: fadeIn 1.5s ease-out;
   pointer-events: none;
   z-index: 0;
-  //   background-color: transparent;
 
+  // Ajuste do blend mode para melhor contraste
   :global(html[data-theme='dark']) & {
     mix-blend-mode: screen;
+    opacity: 0.7;
   }
 
   :global(html[data-theme='light']) & {
-    mix-blend-mode: multiply;
+    mix-blend-mode: soft-light;
+    opacity: 0.5;
   }
 }
 
 .lightRay {
   position: absolute;
   border-radius: 100%;
+  filter: blur(60px);
+  transition: all 0.5s ease;
 
   :global(html[data-theme='dark']) & {
     mix-blend-mode: screen;
@@ -40,39 +44,35 @@
   }
 }
 
+// Posicionamento e tamanho dos rays
 .ray1 {
-  width: 600px;
-  height: 800px;
+  width: 800px;
+  height: 1000px;
   background: var(--ray-gradient-primary);
-  transform: rotate(65deg);
-  top: -500px;
-  left: -100px;
-  filter: blur(80px);
-  opacity: 0.6;
-  animation: float1 15s infinite ease-in-out;
+  transform: rotate(45deg);
+  top: -300px;
+  left: -200px;
+  animation: pulse 8s ease-in-out infinite alternate;
 }
 
 .ray2 {
-  width: 400px;
-  height: 600px;
+  width: 600px;
+  height: 800px;
   background: var(--ray-gradient-secondary);
   transform: rotate(-30deg);
-  top: -300px;
-  left: 200px;
-  filter: blur(60px);
-  opacity: 0.6;
-  animation: float2 18s infinite ease-in-out;
+  top: 40%;
+  right: -200px;
+  animation: pulse 10s ease-in-out infinite alternate-reverse;
 }
 
 .ray3 {
-  width: 500px;
-  height: 400px;
+  width: 700px;
+  height: 900px;
   background: var(--ray-gradient-accent);
-  top: -320px;
-  left: 500px;
-  filter: blur(65px);
-  opacity: 0.5;
-  animation: float3 20s infinite ease-in-out;
+  transform: rotate(15deg);
+  bottom: -300px;
+  left: 30%;
+  animation: pulse 12s ease-in-out infinite alternate;
 }
 
 .ray4 {
@@ -132,6 +132,18 @@
   filter: blur(58px);
   opacity: 0.6;
   animation: float8 14s infinite ease-in-out;
+}
+
+// Animação suave de pulso
+@keyframes pulse {
+  0% {
+    transform: scale(1) rotate(0deg);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1.1) rotate(5deg);
+    opacity: 0.7;
+  }
 }
 
 @keyframes float1 {

@@ -11,10 +11,10 @@ export default function FeaturedTemplates({ handlePromptAndClone }) {
           Featured Templates
         </h2>
         <div className="flex items-center gap-2">
-          <button className="p-2 rounded-lg bg-[#1A1F2A]/60 border border-[#2A2F3A]/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200">
+          <button className="p-2 rounded-lg bg-black/60 border border-[#2A2F3A]/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200">
             <ChevronLeft size={20} />
           </button>
-          <button className="p-2 rounded-lg bg-[#1A1F2A]/60 border border-[#2A2F3A]/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200">
+          <button className="p-2 rounded-lg bg-black/60 border border-[#2A2F3A]/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200">
             <ChevronRight size={20} />
           </button>
         </div>
@@ -44,7 +44,7 @@ export default function FeaturedTemplates({ handlePromptAndClone }) {
             <button
               key={template.id}
               onClick={() => handlePromptAndClone(template.title)}
-              className="group relative flex flex-col h-[180px] bg-[#11161E]/60 backdrop-blur-sm border border-[#2A2F3A]/50 rounded-xl text-left hover:bg-[#1F2937]/80 hover:border-blue-500/30 transition-all duration-200 p-5 overflow-hidden"
+              className="group relative flex flex-col h-[180px] bg-black/60 backdrop-blur-sm border border-[#2A2F3A]/50 rounded-xl text-left hover:bg-black/80 hover:border-blue-500/30 transition-all duration-200 p-5 overflow-hidden"
             >
               <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
               <div className="relative flex flex-col h-full">
