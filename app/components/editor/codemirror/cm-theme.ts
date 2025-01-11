@@ -19,7 +19,7 @@ const materialHighContrast = EditorView.theme({
   '.cm-gutters': {
     backgroundColor: '#0F111A !important',
     color: '#464B5D',
-  }
+  },
 });
 
 export const darkTheme = EditorView.theme({}, { dark: true });
