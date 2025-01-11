@@ -1,0 +1,32 @@
+/* Estilização do scroll do terminal */
+.terminalContainer {
+  :global {
+    /* Estilização da barra de rolagem */
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+
+    /* Estilização do track (fundo) da barra de rolagem */
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 4px;
+    }
+
+    /* Estilização do thumb (a parte que move) da barra de rolagem */
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      transition: background 0.2s;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.15);
+      }
+    }
+
+    /* Estilização dos cantos da barra de rolagem */
+    ::-webkit-scrollbar-corner {
+      background: transparent;
+    }
+  }
+}

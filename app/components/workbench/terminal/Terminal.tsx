@@ -5,6 +5,8 @@ import { forwardRef, memo, useEffect, useImperativeHandle, useRef } from 'react'
 import type { Theme } from '~/lib/stores/theme';
 import { createScopedLogger } from '~/utils/logger';
 import { getTerminalTheme } from './theme';
+import styles from './Terminal.module.scss';
+import classNames from 'classnames';
 
 const logger = createScopedLogger('Terminal');
 
@@ -83,7 +85,7 @@ export const Terminal = memo(
         };
       }, []);
 
-      return <div className={className} ref={terminalElementRef} />;
+      return <div className={classNames(className, styles.terminalContainer)} ref={terminalElementRef} />;
     },
   ),
 );
