@@ -1,8 +1,26 @@
 import { Compartment, type Extension } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode';
+import { materialDark } from '@uiw/codemirror-theme-material';
 import type { Theme } from '~/types/theme.js';
 import type { EditorSettings } from './CodeMirrorEditor.js';
+
+// Customizando o tema Material com alto contraste
+const materialHighContrast = EditorView.theme({
+  '&': {
+    backgroundColor: '#0F111A !important',
+  },
+  '.cm-content': {
+    color: '#FFFFFF',
+  },
+  '.cm-line': {
+    fontWeight: '500',
+  },
+  '.cm-gutters': {
+    backgroundColor: '#0F111A !important',
+    color: '#464B5D',
+  }
+});
 
 export const darkTheme = EditorView.theme({}, { dark: true });
 export const themeSelection = new Compartment();
@@ -188,5 +206,5 @@ function getLightTheme() {
 }
 
 function getDarkTheme() {
-  return vscodeDark;
+  return [materialDark, materialHighContrast];
 }

@@ -125,6 +125,12 @@ importers:
       '@remix-run/react':
         specifier: ^2.15.0
         version: 2.15.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.7.2)
+      '@uiw/codemirror-theme-dracula':
+        specifier: ^4.23.7
+        version: 4.23.7(@codemirror/language@6.10.6)(@codemirror/state@6.4.1)(@codemirror/view@6.35.0)
+      '@uiw/codemirror-theme-material':
+        specifier: ^4.23.7
+        version: 4.23.7(@codemirror/language@6.10.6)(@codemirror/state@6.4.1)(@codemirror/view@6.35.0)
       '@uiw/codemirror-theme-vscode':
         specifier: ^4.23.6
         version: 4.23.6(@codemirror/language@6.10.6)(@codemirror/state@6.4.1)(@codemirror/view@6.35.0)
@@ -2544,11 +2550,24 @@ packages:
     resolution: {integrity: sha512-1Hm7THLpO6ww5QU6H/Qp+AusUUl+z/CAm3cNZZ0jQvon9yicgO7Rwd+/WWRpMKLYV6p2UvdbR27c86rzCPpreg==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
+  '@uiw/codemirror-theme-dracula@4.23.7':
+    resolution: {integrity: sha512-Q+N3OQV9jiUxCcT4ihOQKzjmDrh//KvMnjGZPlgurWft1+328G6qBZu4peqiykKlAEQRbZVxOMaxOXfTLItNAw==}
+
+  '@uiw/codemirror-theme-material@4.23.7':
+    resolution: {integrity: sha512-PSuPTPMA4/a6tiBmeAPLlxl98Ehk9D7WYab419PW664eHdzziTU6v9uqZ+nEtJvAwb7E5m2la+DhTndvttdiQA==}
+
   '@uiw/codemirror-theme-vscode@4.23.6':
     resolution: {integrity: sha512-xUo1ic+Kk5hnv5gy+cXU12GZVSnDjic8s8weKq8loPHF1dSR1e6gkKVIKZRnvoOZ302taKRk7phWpBUaWIuKQg==}
 
   '@uiw/codemirror-themes@4.23.6':
     resolution: {integrity: sha512-0dpuLQW+V6zrKvfvor/eo71V3tpr2L2Hsu8QZAdtSzksjWABxTOzH3ShaBRxCEsrz6sU9sa9o7ShwBMMDz59bQ==}
+    peerDependencies:
+      '@codemirror/language': '>=6.0.0'
+      '@codemirror/state': '>=6.0.0'
+      '@codemirror/view': '>=6.0.0'
+
+  '@uiw/codemirror-themes@4.23.7':
+    resolution: {integrity: sha512-UNf1XOx1hG9OmJnrtT86PxKcdcwhaNhbrcD+nsk8WxRJ3n5c8nH6euDvgVPdVLPwbizsaQcZTILACgA/FjRpVg==}
     peerDependencies:
       '@codemirror/language': '>=6.0.0'
       '@codemirror/state': '>=6.0.0'
@@ -8718,6 +8737,22 @@ snapshots:
       '@typescript-eslint/types': 8.17.0
       eslint-visitor-keys: 4.2.0
 
+  '@uiw/codemirror-theme-dracula@4.23.7(@codemirror/language@6.10.6)(@codemirror/state@6.4.1)(@codemirror/view@6.35.0)':
+    dependencies:
+      '@uiw/codemirror-themes': 4.23.7(@codemirror/language@6.10.6)(@codemirror/state@6.4.1)(@codemirror/view@6.35.0)
+    transitivePeerDependencies:
+      - '@codemirror/language'
+      - '@codemirror/state'
+      - '@codemirror/view'
+
+  '@uiw/codemirror-theme-material@4.23.7(@codemirror/language@6.10.6)(@codemirror/state@6.4.1)(@codemirror/view@6.35.0)':
+    dependencies:
+      '@uiw/codemirror-themes': 4.23.7(@codemirror/language@6.10.6)(@codemirror/state@6.4.1)(@codemirror/view@6.35.0)
+    transitivePeerDependencies:
+      - '@codemirror/language'
+      - '@codemirror/state'
+      - '@codemirror/view'
+
   '@uiw/codemirror-theme-vscode@4.23.6(@codemirror/language@6.10.6)(@codemirror/state@6.4.1)(@codemirror/view@6.35.0)':
     dependencies:
       '@uiw/codemirror-themes': 4.23.6(@codemirror/language@6.10.6)(@codemirror/state@6.4.1)(@codemirror/view@6.35.0)
@@ -8727,6 +8762,12 @@ snapshots:
       - '@codemirror/view'
 
   '@uiw/codemirror-themes@4.23.6(@codemirror/language@6.10.6)(@codemirror/state@6.4.1)(@codemirror/view@6.35.0)':
+    dependencies:
+      '@codemirror/language': 6.10.6
+      '@codemirror/state': 6.4.1
+      '@codemirror/view': 6.35.0
+
+  '@uiw/codemirror-themes@4.23.7(@codemirror/language@6.10.6)(@codemirror/state@6.4.1)(@codemirror/view@6.35.0)':
     dependencies:
       '@codemirror/language': 6.10.6
       '@codemirror/state': 6.4.1
