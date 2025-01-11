@@ -70,7 +70,37 @@ function getEditorTheme(settings: EditorSettings) {
       backgroundColor: 'var(--cm-matching-bracket)',
     },
     '.cm-activeLine': {
-      background: 'var(--cm-activeLineBackgroundColor)',
+      background: 'transparent',
+    },
+    '.cm-line': {
+      '&[style*="background"]': {
+        '&::after': {
+          content: '""',
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          width: '100%',
+          height: '100%',
+          background: 'linear-gradient(90deg, rgba(28, 126, 214, 0.1), rgba(28, 126, 214, 0.15))',
+          boxShadow: '0 0 15px rgba(28, 126, 214, 0.1)',
+          animation: 'pulse 2s infinite',
+          pointerEvents: 'none',
+        }
+      }
+    },
+    '@keyframes pulse': {
+      '0%': {
+        opacity: 0.7,
+        transform: 'translateX(-2px)',
+      },
+      '50%': {
+        opacity: 1,
+        transform: 'translateX(0)',
+      },
+      '100%': {
+        opacity: 0.7,
+        transform: 'translateX(-2px)',
+      }
     },
     '.cm-gutters': {
       background: 'var(--cm-gutter-backgroundColor)',

@@ -15,7 +15,11 @@ import {
   showTooltip,
   tooltips,
   type Tooltip,
+  ViewPlugin,
+  ViewUpdate,
+  Decoration,
 } from '@codemirror/view';
+import { RangeSet } from '@codemirror/state';
 import { memo, useEffect, useRef, useState, type MutableRefObject } from 'react';
 import type { Theme } from '~/types/theme';
 import { classNames } from '~/utils/classNames';
@@ -113,6 +117,55 @@ const editableStateField = StateField.define<boolean>({
 
     return value;
   },
+});
+
+// Extensão para rastrear a última linha modificada
+const trackLastModifiedLine = ViewPlugin.fromClass(class {
+  lastLine: number = 0;
+  decorations: RangeSet<Decoration>;
+
+  constructor(view: EditorView) {
+    // Começa na primeira linha
+    this.lastLine = 0;
+    this.decorations = this.getDecorations(view);
+  }
+
+  update(update: ViewUpdate) {
+    if (update.docChanged) {
+      const changes = update.changes;
+      let maxLine = this.lastLine;
+
+      changes.iterChanges((fromA, toA, fromB, toB) => {
+        const lineNumber = update.state.doc.lineAt(toB).number - 1;
+        if (lineNumber > maxLine) {
+          maxLine = lineNumber;
+        }
+      });
+
+      this.lastLine = maxLine;
+      this.decorations = this.getDecorations(update.view);
+    }
+  }
+
+  getDecorations(view: EditorView) {
+    try {
+      const line = view.state.doc.line(this.lastLine + 1);
+      return RangeSet.of([
+        Decoration.line({
+          attributes: {
+            style: "position: relative; background: rgba(28, 126, 214, 0.1); transition: all 0.2s ease;"
+          }
+        }).range(line.from)
+      ]);
+    } catch {
+      return RangeSet.empty;
+    }
+  }
+}, {
+  decorations: v => v.decorations,
+  provide: plugin => EditorView.atomicRanges.of(view => {
+    return view.plugin(plugin)?.decorations || RangeSet.empty;
+  })
 });
 
 export const CodeMirrorEditor = memo(
@@ -355,6 +408,7 @@ function newEditorState(
           return icon;
         },
       }),
+      trackLastModifiedLine,
       ...extensions,
     ],
   });
