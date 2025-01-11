@@ -47,6 +47,7 @@ import logoNextjs from '~/lib/png/logo_nextjs.svg.png';
 import logoReact from '~/lib/png/logo_react.svg.png';
 import logoVue from '~/lib/png/logo_vue.svg fill@2x.png';
 import { ChevronRight, ChevronLeft, Search, ArrowRight, Github } from 'lucide-react';
+import BackgroundRays from '../ui/BackgroundRays';
 
 const TEXTAREA_MIN_HEIGHT = 76;
 
@@ -487,11 +488,12 @@ ${file.content}
     const baseChat = (
       <div
         ref={ref}
-        className={classNames(styles.BaseChat, 'relative flex h-full w-full overflow-hidden')}
+        className={classNames(styles.BaseChat, 'relative flex h-full w-full overflow-hidden bg-black')}
         data-chat-visible={showChat}
       >
+        <BackgroundRays />
         <ClientOnly>{() => <Menu />}</ClientOnly>
-        <div ref={scrollRef} className="flex flex-col lg:flex-row overflow-y-auto w-full h-full">
+        <div ref={scrollRef} className="flex flex-col lg:flex-row overflow-y-auto w-full h-full ">
           <div className={classNames(styles.Chat, 'flex flex-col flex-grow lg:min-w-[var(--chat-min-width)] h-full')}>
             {!chatStarted && (
               <div id="intro" className="mt-[16vh] max-w-chat mx-auto text-center px-4 lg:px-0">
@@ -539,7 +541,7 @@ ${file.content}
                 </div>
                 <div
                   className={classNames(
-                    'relative shadow-xs border border-[#2A2F3A]/50 backdrop-blur rounded-lg bg-[#1A1F2A]/60',
+                    'relative shadow-xs border border-[#2A2F3A]/50 backdrop-blur rounded-lg bg-black',
                   )}
                 >
                   <textarea
@@ -635,7 +637,7 @@ ${file.content}
                     <div className="flex gap-1 items-center">
                       <IconButton
                         title="Upload file"
-                        className="p-2 rounded-lg bg-[#1A1F2A]/60 backdrop-blur-sm border border-[#2A2F3A]/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200"
+                        className="p-2 rounded-lg bg-black border border-[#2A2F3A]/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200"
                         onClick={() => handleFileUpload()}
                       >
                         <div className="i-ph:paperclip text-xl"></div>
@@ -644,7 +646,7 @@ ${file.content}
                         title="Enhance prompt"
                         disabled={input.length === 0 || enhancingPrompt}
                         className={classNames(
-                          'p-2 rounded-lg bg-[#1A1F2A]/60 backdrop-blur-sm border border-[#2A2F3A]/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
+                          'p-2 rounded-lg bg-black border border-[#2A2F3A]/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
                           enhancingPrompt ? 'opacity-100' : '',
                         )}
                         onClick={() => {
@@ -671,7 +673,7 @@ ${file.content}
                         <IconButton
                           title="Model Settings"
                           className={classNames(
-                            'p-2 rounded-lg bg-[#1A1F2A]/60 backdrop-blur-sm border border-[#2A2F3A]/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
+                            'p-2 rounded-lg bg-black border border-[#2A2F3A]/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
                             {
                               'bg-bolt-elements-item-backgroundAccent text-bolt-elements-item-contentAccent':
                                 isModelSettingsCollapsed,
@@ -689,7 +691,7 @@ ${file.content}
                         <IconButton
                           title="Configure API"
                           className={classNames(
-                            'p-2 rounded-lg bg-[#1A1F2A]/60 backdrop-blur-sm border border-[#2A2F3A]/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
+                            'p-2 rounded-lg bg-black border border-[#2A2F3A]/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
                           )}
                           onClick={() => setIsModalOpen(true)}
                           disabled={!providerList || providerList.length === 0}
@@ -729,7 +731,7 @@ ${file.content}
                     <div className="space-y-3">
                       <button
                         onClick={() => handlePromptAndClone('React')}
-                        className="w-full group relative flex items-center gap-6 px-6 py-4 rounded-xl bg-[#11161E]/60 backdrop-blur-sm border border-[#2A2F3A]/50 hover:bg-[#1F2937]/80 hover:border-blue-500/30 transition-all duration-200 text-left"
+                        className="w-full group relative flex items-center gap-6 px-6 py-4 rounded-xl bg-black border border-[#2A2F3A]/50 hover:bg-black hover:border-blue-500/30 transition-all duration-200 text-left"
                       >
                         <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl" />
                         <div className="relative flex items-center gap-6 w-full">
@@ -753,7 +755,7 @@ ${file.content}
 
                       <button
                         onClick={() => handlePromptAndClone('Next.js')}
-                        className="w-full group relative flex items-center gap-6 px-6 py-4 rounded-xl bg-[#11161E]/60 backdrop-blur-sm border border-[#2A2F3A]/50 hover:bg-[#1F2937]/80 hover:border-blue-500/30 transition-all duration-200 text-left"
+                        className="w-full group relative flex items-center gap-6 px-6 py-4 rounded-xl bg-black border border-[#2A2F3A]/50 hover:bg-black hover:border-blue-500/30 transition-all duration-200 text-left"
                       >
                         <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl" />
                         <div className="relative flex items-center gap-6 w-full">
@@ -777,7 +779,7 @@ ${file.content}
 
                       <button
                         onClick={() => handlePromptAndClone('Vue')}
-                        className="w-full group relative flex items-center gap-6 px-6 py-4 rounded-xl bg-[#11161E]/60 backdrop-blur-sm border border-[#2A2F3A]/50 hover:bg-[#1F2937]/80 hover:border-blue-500/30 transition-all duration-200 text-left"
+                        className="w-full group relative flex items-center gap-6 px-6 py-4 rounded-xl bg-black border border-[#2A2F3A]/50 hover:bg-black hover:border-blue-500/30 transition-all duration-200 text-left"
                       >
                         <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl" />
                         <div className="relative flex items-center gap-6 w-full">
@@ -801,7 +803,7 @@ ${file.content}
 
                       <button
                         onClick={() => handlePromptAndClone('Angular')}
-                        className="w-full group relative flex items-center gap-6 px-6 py-4 rounded-xl bg-[#11161E]/60 backdrop-blur-sm border border-[#2A2F3A]/50 hover:bg-[#1F2937]/80 hover:border-blue-500/30 transition-all duration-200 text-left"
+                        className="w-full group relative flex items-center gap-6 px-6 py-4 rounded-xl bg-black border border-[#2A2F3A]/50 hover:bg-black hover:border-blue-500/30 transition-all duration-200 text-left"
                       >
                         <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl" />
                         <div className="relative flex items-center gap-6 w-full">
@@ -825,7 +827,7 @@ ${file.content}
 
                       <button
                         onClick={() => handlePromptAndClone('Astro')}
-                        className="w-full group relative flex items-center gap-6 px-6 py-4 rounded-xl bg-[#11161E]/60 backdrop-blur-sm border border-[#2A2F3A]/50 hover:bg-[#1F2937]/80 hover:border-blue-500/30 transition-all duration-200 text-left"
+                        className="w-full group relative flex items-center gap-6 px-6 py-4 rounded-xl bg-black border border-[#2A2F3A]/50 hover:bg-black hover:border-blue-500/30 transition-all duration-200 text-left"
                       >
                         <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl" />
                         <div className="relative flex items-center gap-6 w-full">

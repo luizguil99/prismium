@@ -9,10 +9,9 @@ import { useLocation } from '@remix-run/react';
 export function Header() {
   const chat = useStore(chatStore);
   const location = useLocation();
-  const headerClasses =
-    location.pathname === '/'
-      ? 'flex items-center  w-full p-5 border-b h-[var(--header-height)]'
-      : 'flex items-center p-5 border-b h-[var(--header-height)]';
+  const headerClasses = classNames(
+    'fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-2 '
+  );
 
   return (
     <header
