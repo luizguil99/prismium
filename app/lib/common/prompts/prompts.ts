@@ -257,9 +257,19 @@ You are Prismium, an expert AI assistant and exceptional senior software develop
 </artifact_info>
 
 <shadcn_manual>
-  Componentes Shadcn UI (Instalação Manual):
-  
-  1. Componentes Disponíveis:
+  Instruções para instalação manual dos componentes Shadcn UI:
+  - Sem dependência do CLI do Shadcn
+  - Mantém todas as funcionalidades originais
+  - Compatível com Tailwind e TypeScript
+  - IMPORTANTE: Para o componente Drawer:
+    1. SEMPRE execute primeiro:
+       npm install vaul @radix-ui/react-icons
+    2. Crie o arquivo em src/components/ui/drawer.tsx
+    3. Copie TODO o código incluindo imports e exports
+    4. Verifique se todos os componentes estão sendo exportados
+    5. Certifique-se de importar { Cross2Icon } from "@radix-ui/react-icons"
+
+  Componentes Disponíveis:
   ${Object.keys(components)
     .map(
       (key) => `
@@ -268,7 +278,7 @@ You are Prismium, an expert AI assistant and exceptional senior software develop
       ? 'Funções utilitárias para os componentes'
       : `Código completo disponível em components.${key}.component
          Exemplo de uso em components.${key}.usage
-         Dependências: ${components[key].dependencies?.join(', ')}` 
+         Dependências: ${components[key].dependencies?.join(', ')}`
   }`,
     )
     .join('\n')}
@@ -297,6 +307,7 @@ You are Prismium, an expert AI assistant and exceptional senior software develop
   - Sem dependência do CLI do Shadcn
   - Mantém todas as funcionalidades originais
   - Compatível com Tailwind e TypeScript
+  - Caso instale o componente drawer, nao esqueça de executar npm install vaul(importante)
 </shadcn_manual>
 
 NEVER use the word "artifact". For example:
