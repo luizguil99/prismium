@@ -8,7 +8,7 @@ import type { EditorSettings } from './CodeMirrorEditor.js';
 // Customizando o tema Material com alto contraste
 const materialHighContrast = EditorView.theme({
   '&': {
-    backgroundColor: '#0F111A !important',
+    backgroundColor: '#090b10 !important',
   },
   '.cm-content': {
     color: '#FFFFFF',
@@ -17,7 +17,7 @@ const materialHighContrast = EditorView.theme({
     fontWeight: '500',
   },
   '.cm-gutters': {
-    backgroundColor: '#0F111A !important',
+    backgroundColor: '#090b10 !important',
     color: '#464B5D',
   },
 });
