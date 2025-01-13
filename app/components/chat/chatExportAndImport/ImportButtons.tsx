@@ -1,11 +1,11 @@
 import type { Message } from 'ai';
 import { toast } from 'react-toastify';
 import { ImportFolderButton } from '~/components/chat/ImportFolderButton';
-import { Upload } from 'lucide-react';
+import { Upload, FolderUp } from 'lucide-react';
 
 export function ImportButtons(importChat: ((description: string, messages: Message[]) => Promise<void>) | undefined) {
   return (
-    <div className="flex flex-col items-center justify-center w-auto">
+    <div className="flex gap-2">
       <input
         type="file"
         id="chat-import"
@@ -48,24 +48,26 @@ export function ImportButtons(importChat: ((description: string, messages: Messa
           }
         }}
       />
-      <div className="flex flex-col items-center gap-4 max-w-2xl text-center">
-        <div className="flex gap-2">
-          <button
-            onClick={() => {
-              const input = document.getElementById('chat-import');
-              input?.click();
-            }}
-            className="px-4 py-2 rounded-lg bg-[#1A1F2A]/60 backdrop-blur-sm border border-[#2A2F3A]/50 text-gray-300 hover:bg-[#2A2F3A]/80 hover:border-blue-500/30 transition-all flex items-center gap-2"
-          >
-            <Upload className="w-4 h-4 text-blue-500" />
-            Import Chat
-          </button>
-          <ImportFolderButton
-            importChat={importChat}
-            className="px-4 py-2 rounded-lg bg-[#1A1F2A]/60 backdrop-blur-sm border border-[#2A2F3A]/50 text-gray-300 hover:bg-[#2A2F3A]/80 hover:border-blue-500/30 transition-all flex items-center gap-2"
-          />
-        </div>
-      </div>
+      <button
+        onClick={() => {
+          const input = document.getElementById('chat-import');
+          input?.click();
+        }}
+        className="px-3 py-2 rounded-lg bg-[#1A1F2A]/60 backdrop-blur-sm border border-[#2A2F3A]/50 text-gray-300 hover:bg-[#2A2F3A]/80 hover:border-blue-500/30 transition-all flex items-center justify-center gap-2 text-sm"
+      >
+        <Upload className="w-4 h-4 text-blue-500" />
+        <span className="truncate">File</span>
+      </button>
+      <button
+        onClick={() => {
+          const input = document.getElementById('folder-import');
+          input?.click();
+        }}
+        className="px-3 py-2 rounded-lg bg-[#1A1F2A]/60 backdrop-blur-sm border border-[#2A2F3A]/50 text-gray-300 hover:bg-[#2A2F3A]/80 hover:border-blue-500/30 transition-all flex items-center justify-center gap-2 text-sm"
+      >
+        <FolderUp className="w-4 h-4 text-blue-500" />
+        <span className="truncate">Folder</span>
+      </button>
     </div>
   );
 }

@@ -11,6 +11,8 @@ import { logger } from '~/utils/logger';
 import { HistoryItem } from './HistoryItem';
 import { binDates } from './date-binning';
 import { useSearchFilter } from '~/lib/hooks/useSearchFilter';
+import { ImportButtons } from '~/components/chat/chatExportAndImport/ImportButtons';
+import GitCloneButton from '~/components/chat/GitCloneButton';
 
 const menuVariants = {
   closed: {
@@ -55,7 +57,7 @@ function CurrentDateTime() {
 }
 
 export const Menu = () => {
-  const { duplicateCurrentChat, exportChat } = useChatHistory();
+  const { duplicateCurrentChat, exportChat, importChat } = useChatHistory();
   const menuRef = useRef<HTMLDivElement>(null);
   const [list, setList] = useState<ChatHistoryItem[]>([]);
   const [open, setOpen] = useState(false);
@@ -146,85 +148,94 @@ export const Menu = () => {
       className="flex selection-accent flex-col side-menu fixed top-0 w-[350px] h-full bg-bolt-elements-background-depth-2 border-r rounded-r-3xl border-bolt-elements-borderColor z-sidebar shadow-xl shadow-bolt-elements-sidebar-dropdownShadow text-sm"
     >
       <div className="h-[60px]" /> {/* Spacer for top margin */}
-      <CurrentDateTime />
-      <div className="flex-1 flex flex-col h-full w-full overflow-hidden">
-        <div className="p-4 select-none">
+      <div className="flex flex-col">
+        <CurrentDateTime />
+        <div className="flex flex-col gap-3 p-4 border-b border-bolt-elements-borderColor">
           <a
             href="/"
-            className="flex gap-2 items-center bg-[#3B82F6] text-white hover:bg-[#3B82F6]/90 rounded-lg p-3 transition-all duration-200 mb-4 shadow-sm"
+            className="flex gap-2 items-center justify-center bg-[#1A1F2A]/60 backdrop-blur-sm border border-[#2A2F3A]/50 text-gray-300 hover:bg-[#2A2F3A]/80 hover:border-blue-500/30 transition-all p-2.5 rounded-lg"
           >
-            <span className="inline-block i-bolt:chat scale-110" />
-            Start new chat
+            <span className="inline-block i-bolt:chat scale-110 text-blue-500" />
+            <span className="font-medium">New Chat</span>
           </a>
-          <div className="relative w-full">
+          <div className="overflow-x-auto flex-nowrap whitespace-nowrap scrollbar-thin scrollbar-thumb-[#2A2F3A] scrollbar-track-transparent">
+            <div className="flex gap-2 pb-2">
+              <GitCloneButton importChat={importChat} />
+              {ImportButtons(importChat)}
+            </div>
+          </div>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <div className="h-4 w-4 i-ph:magnifying-glass-thin text-gray-400" />
+            </div>
             <input
-              className="w-full bg-white dark:bg-bolt-elements-background-depth-4 relative px-2 py-1.5 rounded-md focus:outline-none placeholder-bolt-elements-textTertiary text-bolt-elements-textPrimary dark:text-bolt-elements-textPrimary border border-bolt-elements-borderColor"
+              className="w-full pl-10 bg-[#1A1F2A]/60 backdrop-blur-sm hover:bg-[#2A2F3A]/50 focus:bg-[#2A2F3A]/50 relative px-4 py-2 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500/30 placeholder-gray-500 text-gray-300 border border-[#2A2F3A]/50 transition-all"
               type="search"
-              placeholder="Search"
+              placeholder="Search chats..."
               onChange={handleSearchChange}
               aria-label="Search chats"
             />
           </div>
         </div>
-        <div className="text-bolt-elements-textPrimary font-medium pl-6 pr-5 my-2">Your Chats</div>
-        <div className="flex-1 overflow-auto pl-4 pr-5 pb-5 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 dark:[&::-webkit-scrollbar-thumb]:bg-gray-700 hover:[&::-webkit-scrollbar-thumb]:bg-gray-400 dark:hover:[&::-webkit-scrollbar-thumb]:bg-gray-600">
-          {filteredList.length === 0 && (
-            <div className="pl-2 text-bolt-elements-textTertiary">
-              {list.length === 0 ? 'No previous conversations' : 'No matches found'}
-            </div>
-          )}
-          <DialogRoot open={dialogContent !== null}>
-            {binDates(filteredList).map(({ category, items }) => (
-              <div key={category} className="mt-4 first:mt-0 space-y-1">
-                <div className="text-bolt-elements-textTertiary sticky top-0 z-1 bg-bolt-elements-background-depth-2 pl-2 pt-2 pb-1">
-                  {category}
-                </div>
-                {items.map((item) => (
-                  <HistoryItem
-                    key={item.id}
-                    item={item}
-                    exportChat={exportChat}
-                    onDelete={(event) => handleDeleteClick(event, item)}
-                    onDuplicate={() => handleDuplicate(item.id)}
-                  />
-                ))}
+      </div>
+      <div className="text-bolt-elements-textPrimary font-medium pl-6 pr-5 my-2">Your Chats</div>
+      <div className="flex-1 overflow-auto pl-4 pr-5 pb-5 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 dark:[&::-webkit-scrollbar-thumb]:bg-gray-700 hover:[&::-webkit-scrollbar-thumb]:bg-gray-400 dark:hover:[&::-webkit-scrollbar-thumb]:bg-gray-600">
+        {filteredList.length === 0 && (
+          <div className="pl-2 text-bolt-elements-textTertiary">
+            {list.length === 0 ? 'No previous conversations' : 'No matches found'}
+          </div>
+        )}
+        <DialogRoot open={dialogContent !== null}>
+          {binDates(filteredList).map(({ category, items }) => (
+            <div key={category} className="mt-4 first:mt-0 space-y-1">
+              <div className="text-bolt-elements-textTertiary sticky top-0 z-1 bg-bolt-elements-background-depth-2 pl-2 pt-2 pb-1">
+                {category}
               </div>
-            ))}
-            <Dialog onBackdrop={closeDialog} onClose={closeDialog}>
-              {dialogContent?.type === 'delete' && (
-                <>
-                  <DialogTitle>Delete Chat?</DialogTitle>
-                  <DialogDescription asChild>
-                    <div>
-                      <p>
-                        You are about to delete <strong>{dialogContent.item.description}</strong>.
-                      </p>
-                      <p className="mt-1">Are you sure you want to delete this chat?</p>
-                    </div>
-                  </DialogDescription>
-                  <div className="px-5 pb-4 bg-bolt-elements-background-depth-2 flex gap-2 justify-end">
-                    <DialogButton type="secondary" onClick={closeDialog}>
-                      Cancel
-                    </DialogButton>
-                    <DialogButton
-                      type="danger"
-                      onClick={(event) => {
-                        deleteItem(event, dialogContent.item);
-                        closeDialog();
-                      }}
-                    >
-                      Delete
-                    </DialogButton>
+              {items.map((item) => (
+                <HistoryItem
+                  key={item.id}
+                  item={item}
+                  exportChat={exportChat}
+                  onDelete={(event) => handleDeleteClick(event, item)}
+                  onDuplicate={() => handleDuplicate(item.id)}
+                />
+              ))}
+            </div>
+          ))}
+          <Dialog onBackdrop={closeDialog} onClose={closeDialog}>
+            {dialogContent?.type === 'delete' && (
+              <>
+                <DialogTitle>Delete Chat?</DialogTitle>
+                <DialogDescription asChild>
+                  <div>
+                    <p>
+                      You are about to delete <strong>{dialogContent.item.description}</strong>.
+                    </p>
+                    <p className="mt-1">Are you sure you want to delete this chat?</p>
                   </div>
-                </>
-              )}
-            </Dialog>
-          </DialogRoot>
-        </div>
-        <div className="flex items-center justify-between border-t border-bolt-elements-borderColor p-4">
-          <SettingsButton onClick={() => setIsSettingsOpen(true)} />
-          <ThemeSwitch />
-        </div>
+                </DialogDescription>
+                <div className="px-5 pb-4 bg-bolt-elements-background-depth-2 flex gap-2 justify-end">
+                  <DialogButton type="secondary" onClick={closeDialog}>
+                    Cancel
+                  </DialogButton>
+                  <DialogButton
+                    type="danger"
+                    onClick={(event) => {
+                      deleteItem(event, dialogContent.item);
+                      closeDialog();
+                    }}
+                  >
+                    Delete
+                  </DialogButton>
+                </div>
+              </>
+            )}
+          </Dialog>
+        </DialogRoot>
+      </div>
+      <div className="flex items-center justify-between border-t border-bolt-elements-borderColor p-4">
+        <SettingsButton onClick={() => setIsSettingsOpen(true)} />
+        <ThemeSwitch />
       </div>
       <SettingsWindow open={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </motion.div>

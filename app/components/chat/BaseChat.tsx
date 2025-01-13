@@ -558,7 +558,7 @@ ${file.content}
                               const newImageList = [...imageDataList];
                               newImageList.splice(index, 1);
                               setImageDataList?.(newImageList);
-                              
+
                               const newFiles = [...uploadedFiles];
                               newFiles.splice(index, 1);
                               setUploadedFiles?.(newFiles);
@@ -740,25 +740,10 @@ ${file.content}
             </div>
             <div className="flex flex-col justify-center gap-5">
               {!chatStarted && (
-                <div className="flex justify-center gap-2">
-                  {ImportButtons(importChat)}
-                  <GitCloneButton importChat={importChat} />
-                </div>
-              )}
-              {!chatStarted && (
                 <>
                   <TemplateCards importChat={importChat} />
                 </>
               )}
-              {!chatStarted &&
-                ExamplePrompts((event, messageInput) => {
-                  if (isStreaming) {
-                    handleStop?.();
-                    return;
-                  }
-
-                  handleSendMessage?.(event, messageInput);
-                })}
               {!chatStarted && <StarterTemplates />}
             </div>
           </div>

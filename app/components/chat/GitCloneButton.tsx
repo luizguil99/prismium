@@ -115,10 +115,10 @@ ${file.content}
       <button
         onClick={onClick}
         title="Clone a Git Repo"
-        className="px-4 py-2 rounded-lg bg-[#1A1F2A]/60 backdrop-blur-sm border border-[#2A2F3A]/50 text-gray-300 hover:bg-[#2A2F3A]/80 hover:border-blue-500/30 transition-all flex items-center gap-2"
+        className="px-3 py-2 rounded-lg bg-[#1A1F2A]/60 backdrop-blur-sm border border-[#2A2F3A]/50 text-gray-300 hover:bg-[#2A2F3A]/80 hover:border-blue-500/30 transition-all flex items-center justify-center gap-2 text-sm"
       >
         <Github className="w-4 h-4 text-blue-500" />
-        Clone a Git Repo
+        <span className="truncate">Git</span>
       </button>
       {loading && <LoadingOverlay message="Please wait while we clone the repository..." />}
     </>

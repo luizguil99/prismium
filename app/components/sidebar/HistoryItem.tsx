@@ -35,11 +35,7 @@ export function HistoryItem({ item, onDelete, onDuplicate, exportChat }: History
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
       />
-      <button
-        type="submit"
-        className="i-ph:check scale-110 hover:text-[#548BE4]"
-        onMouseDown={handleSubmit}
-      />
+      <button type="submit" className="i-ph:check scale-110 hover:text-[#548BE4]" onMouseDown={handleSubmit} />
     </form>
   );
 
