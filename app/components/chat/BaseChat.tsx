@@ -46,7 +46,7 @@ import logoAstro from '~/lib/png/logo_astro.svg.png';
 import logoNextjs from '~/lib/png/logo_nextjs.svg.png';
 import logoReact from '~/lib/png/logo_react.svg.png';
 import logoVue from '~/lib/png/logo_vue.svg fill@2x.png';
-import { ChevronRight, ChevronLeft, Search, ArrowRight, Github } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Search, ArrowRight, Github, X } from 'lucide-react';
 import BackgroundRays from '../ui/BackgroundRays';
 
 const TEXTAREA_MIN_HEIGHT = 76;
@@ -544,6 +544,33 @@ ${file.content}
                     'relative shadow-xs border border-[#2A2F3A]/50 backdrop-blur rounded-lg bg-black',
                   )}
                 >
+                  {imageDataList.length > 0 && (
+                    <div className="flex flex-wrap gap-2 p-2 max-h-32 overflow-y-auto">
+                      {imageDataList.map((image, index) => (
+                        <div key={index} className="relative group">
+                          <img
+                            src={image}
+                            alt={`Preview ${index + 1}`}
+                            className="w-24 h-24 object-cover rounded-lg border border-zinc-700"
+                          />
+                          <button
+                            onClick={() => {
+                              const newImageList = [...imageDataList];
+                              newImageList.splice(index, 1);
+                              setImageDataList?.(newImageList);
+                              
+                              const newFiles = [...uploadedFiles];
+                              newFiles.splice(index, 1);
+                              setUploadedFiles?.(newFiles);
+                            }}
+                            className="absolute top-1 right-1 p-1 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X size={14} className="text-white" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <textarea
                     ref={textareaRef}
                     className={classNames(
