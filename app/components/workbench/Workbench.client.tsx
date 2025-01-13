@@ -11,6 +11,8 @@ import { IconButton } from '~/components/ui/IconButton';
 import { PanelHeaderButton } from '~/components/ui/PanelHeaderButton';
 import { Slider, type SliderOptions } from '~/components/ui/Slider';
 import { workbenchStore, type WorkbenchViewType } from '~/lib/stores/workbench';
+import { supabaseStore } from '~/lib/stores/supabase';
+import { SupabaseConfigModal } from '../supabase/SupabaseConfigModal';
 import { classNames } from '~/utils/classNames';
 import { cubicEasingFn } from '~/utils/easings';
 import { renderLogger } from '~/utils/logger';
@@ -58,6 +60,7 @@ export const Workbench = memo(({ chatStarted, isStreaming }: WorkspaceProps) => 
   renderLogger.trace('Workbench');
 
   const [isSyncing, setIsSyncing] = useState(false);
+  const [supabaseModalOpen, setSupabaseModalOpen] = useState(false);
 
   const hasPreview = useStore(computed(workbenchStore.previews, (previews) => previews.length > 0));
   const showWorkbench = useStore(workbenchStore.showWorkbench);
@@ -169,6 +172,15 @@ export const Workbench = memo(({ chatStarted, isStreaming }: WorkspaceProps) => 
                       Toggle Terminal
                     </PanelHeaderButton>
                     <PanelHeaderButton
+                      className={`mr-1 text-sm ${
+                        supabaseStore.isConnected.get() ? 'text-green-400' : ''
+                      }`}
+                      onClick={() => setSupabaseModalOpen(true)}
+                    >
+                      <div className="i-ph:database" />
+                      {supabaseStore.isConnected.get() ? 'Connected to Supabase' : 'Connect Supabase'}
+                    </PanelHeaderButton>
+                    <PanelHeaderButton
                       className="mr-1 text-sm"
                       onClick={() => {
                         const repoName = prompt(
@@ -241,10 +253,12 @@ export const Workbench = memo(({ chatStarted, isStreaming }: WorkspaceProps) => 
             </div>
           </div>
         </div>
+        <SupabaseConfigModal isOpen={supabaseModalOpen} onClose={() => setSupabaseModalOpen(false)} />
       </motion.div>
     )
   );
 });
+
 interface ViewProps extends HTMLMotionProps<'div'> {
   children: JSX.Element;
 }

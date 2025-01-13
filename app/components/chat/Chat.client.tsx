@@ -23,6 +23,7 @@ import type { ProviderInfo } from '~/types/model';
 import { useSearchParams } from '@remix-run/react';
 import { createSampler } from '~/utils/sampler';
 import { getTemplates, selectStarterTemplate } from '~/utils/selectStarterTemplate';
+import { supabaseStore } from '~/lib/stores/supabase';
 
 const toastAnimation = cssTransition({
   enter: 'animated fadeInRight',
@@ -254,12 +255,27 @@ export const ChatImpl = memo(
         return;
       }
 
+      // Adiciona o contexto do Supabase apenas na primeira mensagem após conectar
+      let finalPrompt = _input;
+      const isSupabaseConnected = supabaseStore.isConnected.get();
+      const isFirstMessage = !supabaseStore.firstMessageSent.get();
+
+      if (isSupabaseConnected && isFirstMessage) {
+        const supabaseContext = supabaseStore.getAIContext();
+        finalPrompt = `${_input}
+
+${supabaseContext}
+
+Por favor, use essas configurações do Supabase ao gerar o código da aplicação no webcontainer.`;
+        
+        // Marca que a primeira mensagem foi enviada
+        supabaseStore.firstMessageSent.set(true);
+      }
+
       /**
        * @note (delm) Usually saving files shouldn't take long but it may take longer if there
-       * many unsaved files. In that case we need to block user input and show an indicator
-       * of some kind so the user is aware that something is happening. But I consider the
-       * happy case to be no unsaved files and I would expect users to save their changes
-       * before they send another message.
+       * are a lot of files or if the files are large. We should show a loading indicator
+       * in that case.
        */
       await workbenchStore.saveAllFiles();
 
@@ -278,7 +294,7 @@ export const ChatImpl = memo(
             content: [
               {
                 type: 'text',
-                text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${_input}`,
+                text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${finalPrompt}`,
               },
               ...imageDataList.map((imageData) => ({
                 type: 'image',
@@ -343,7 +359,7 @@ export const ChatImpl = memo(
                 content: [
                   {
                     type: 'text',
-                    text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${_input}`,
+                    text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${finalPrompt}`,
                   },
                   ...imageDataList.map((imageData) => ({
                     type: 'image',
@@ -365,7 +381,7 @@ export const ChatImpl = memo(
               content: [
                 {
                   type: 'text',
-                  text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${_input}`,
+                  text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${finalPrompt}`,
                 },
                 ...imageDataList.map((imageData) => ({
                   type: 'image',
@@ -394,7 +410,7 @@ export const ChatImpl = memo(
           content: [
             {
               type: 'text',
-              text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${_input}`,
+              text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${finalPrompt}`,
             },
             ...imageDataList.map((imageData) => ({
               type: 'image',
@@ -414,7 +430,7 @@ export const ChatImpl = memo(
           content: [
             {
               type: 'text',
-              text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${_input}`,
+              text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${finalPrompt}`,
             },
             ...imageDataList.map((imageData) => ({
               type: 'image',

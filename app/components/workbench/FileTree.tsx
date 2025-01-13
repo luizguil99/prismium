@@ -128,53 +128,80 @@ export const FileTree = memo(
     };
 
     return (
-      <div className={classNames('text-sm', className, 'overflow-y-auto')}>
-        {filteredFileList.map((fileOrFolder) => {
-          switch (fileOrFolder.kind) {
-            case 'file': {
-              return (
-                <File
-                  key={fileOrFolder.id}
-                  selected={selectedFile === fileOrFolder.fullPath}
-                  file={fileOrFolder}
-                  unsavedChanges={unsavedFiles?.has(fileOrFolder.fullPath)}
-                  onCopyPath={() => {
-                    onCopyPath(fileOrFolder);
-                  }}
-                  onCopyRelativePath={() => {
-                    onCopyRelativePath(fileOrFolder);
-                  }}
-                  onClick={() => {
-                    onFileSelect?.(fileOrFolder.fullPath);
-                  }}
-                />
-              );
-            }
-            case 'folder': {
-              return (
-                <Folder
-                  key={fileOrFolder.id}
-                  folder={fileOrFolder}
-                  selected={allowFolderSelection && selectedFile === fileOrFolder.fullPath}
-                  collapsed={collapsedFolders.has(fileOrFolder.fullPath)}
-                  onCopyPath={() => {
-                    onCopyPath(fileOrFolder);
-                  }}
-                  onCopyRelativePath={() => {
-                    onCopyRelativePath(fileOrFolder);
-                  }}
-                  onClick={() => {
-                    toggleCollapseState(fileOrFolder.fullPath);
-                  }}
-                />
-              );
-            }
-            default: {
-              return undefined;
-            }
+      <>
+        <style>{`
+          .file-tree-scroll::-webkit-scrollbar {
+            width: 8px;
           }
-        })}
-      </div>
+          
+          .file-tree-scroll::-webkit-scrollbar-track {
+            background: transparent;
+          }
+          
+          .file-tree-scroll::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+          }
+          
+          .file-tree-scroll::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+          }
+          
+          .file-tree-scroll {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+          }
+        `}</style>
+        <div
+          className={classNames('text-sm', className, 'overflow-y-auto file-tree-scroll')}
+        >
+          {filteredFileList.map((fileOrFolder) => {
+            switch (fileOrFolder.kind) {
+              case 'file': {
+                return (
+                  <File
+                    key={fileOrFolder.id}
+                    selected={selectedFile === fileOrFolder.fullPath}
+                    file={fileOrFolder}
+                    unsavedChanges={unsavedFiles?.has(fileOrFolder.fullPath)}
+                    onCopyPath={() => {
+                      onCopyPath(fileOrFolder);
+                    }}
+                    onCopyRelativePath={() => {
+                      onCopyRelativePath(fileOrFolder);
+                    }}
+                    onClick={() => {
+                      onFileSelect?.(fileOrFolder.fullPath);
+                    }}
+                  />
+                );
+              }
+              case 'folder': {
+                return (
+                  <Folder
+                    key={fileOrFolder.id}
+                    folder={fileOrFolder}
+                    selected={allowFolderSelection && selectedFile === fileOrFolder.fullPath}
+                    collapsed={collapsedFolders.has(fileOrFolder.fullPath)}
+                    onCopyPath={() => {
+                      onCopyPath(fileOrFolder);
+                    }}
+                    onCopyRelativePath={() => {
+                      onCopyRelativePath(fileOrFolder);
+                    }}
+                    onClick={() => {
+                      toggleCollapseState(fileOrFolder.fullPath);
+                    }}
+                  />
+                );
+              }
+              default: {
+                return undefined;
+              }
+            }
+          })}
+        </div>
+      </>
     );
   },
 );
@@ -232,8 +259,7 @@ function Folder({ folder, collapsed, selected = false, onCopyPath, onCopyRelativ
     <FileContextMenu onCopyPath={onCopyPath} onCopyRelativePath={onCopyRelativePath}>
       <NodeButton
         className={classNames('group', {
-          'bg-transparent text-bolt-elements-item-contentDefault hover:text-[#548BE4] hover:bg-[#548BE4]/10':
-            !selected,
+          'bg-transparent text-bolt-elements-item-contentDefault hover:text-[#548BE4] hover:bg-[#548BE4]/10': !selected,
           'bg-[#548BE4]/10 text-[#548BE4]': selected,
         })}
         depth={folder.depth}
@@ -270,8 +296,7 @@ function File({
     <FileContextMenu onCopyPath={onCopyPath} onCopyRelativePath={onCopyRelativePath}>
       <NodeButton
         className={classNames('group', {
-          'bg-transparent hover:bg-[#548BE4]/10 text-bolt-elements-item-contentDefault':
-            !selected,
+          'bg-transparent hover:bg-[#548BE4]/10 text-bolt-elements-item-contentDefault': !selected,
           'bg-[#548BE4]/10 text-[#548BE4]': selected,
         })}
         depth={depth}

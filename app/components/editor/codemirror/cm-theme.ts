@@ -57,6 +57,21 @@ function getEditorTheme(settings: EditorSettings) {
     },
     '.cm-line': {
       padding: '0 0 0 4px',
+      '&[style*="background"]': {
+        '&::after': {
+          content: '""',
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          width: '100%',
+          height: '100%',
+          background: 'linear-gradient(90deg, rgba(28, 126, 214, 0.1), rgba(28, 126, 214, 0.15))',
+          boxShadow: '0 0 15px rgba(28, 126, 214, 0.1)',
+          animation: 'pulse 2s infinite',
+          pointerEvents: 'none',
+        }
+      },
+      fontWeight: '500',
     },
     '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground': {
       backgroundColor: 'var(--cm-selection-backgroundColorFocused) !important',
@@ -71,22 +86,6 @@ function getEditorTheme(settings: EditorSettings) {
     },
     '.cm-activeLine': {
       background: 'transparent',
-    },
-    '.cm-line': {
-      '&[style*="background"]': {
-        '&::after': {
-          content: '""',
-          position: 'absolute',
-          left: 0,
-          top: 0,
-          width: '100%',
-          height: '100%',
-          background: 'linear-gradient(90deg, rgba(28, 126, 214, 0.1), rgba(28, 126, 214, 0.15))',
-          boxShadow: '0 0 15px rgba(28, 126, 214, 0.1)',
-          animation: 'pulse 2s infinite',
-          pointerEvents: 'none',
-        }
-      }
     },
     '@keyframes pulse': {
       '0%': {
