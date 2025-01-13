@@ -738,6 +738,7 @@ ${file.content}
                 </div>
               </div>
             </div>
+            <ExamplePrompts sendMessage={sendMessage} />
             <div className="flex flex-col justify-center gap-5">
               {!chatStarted && (
                 <>

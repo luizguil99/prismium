@@ -2,7 +2,6 @@ import { motion, type Variants } from 'framer-motion';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { Dialog, DialogButton, DialogDescription, DialogRoot, DialogTitle } from '~/components/ui/Dialog';
-import { ThemeSwitch } from '~/components/ui/ThemeSwitch';
 import { SettingsWindow } from '~/components/settings/SettingsWindow';
 import { SettingsButton } from '~/components/ui/SettingsButton';
 import { db, deleteById, getAll, chatId, type ChatHistoryItem, useChatHistory } from '~/lib/persistence';
@@ -158,7 +157,7 @@ export const Menu = () => {
             <span className="inline-block i-bolt:chat scale-110 text-blue-500" />
             <span className="font-medium">New Chat</span>
           </a>
-          <div className="overflow-x-auto flex-nowrap whitespace-nowrap scrollbar-thin scrollbar-thumb-[#2A2F3A] scrollbar-track-transparent">
+          <div className="overflow-x-auto flex-nowrap whitespace-nowrap [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-700 hover:[&::-webkit-scrollbar-thumb]:bg-gray-600">
             <div className="flex gap-2 pb-2">
               <GitCloneButton importChat={importChat} />
               {ImportButtons(importChat)}
@@ -235,7 +234,6 @@ export const Menu = () => {
       </div>
       <div className="flex items-center justify-between border-t border-bolt-elements-borderColor p-4">
         <SettingsButton onClick={() => setIsSettingsOpen(true)} />
-        <ThemeSwitch />
       </div>
       <SettingsWindow open={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </motion.div>
