@@ -1,5 +1,6 @@
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
+import { SearchAddon } from '@xterm/addon-search';
 import { Terminal as XTerm } from '@xterm/xterm';
 import { forwardRef, memo, useEffect, useImperativeHandle, useRef } from 'react';
 import type { Theme } from '~/lib/stores/theme';
@@ -34,6 +35,7 @@ export const Terminal = memo(
 
         const fitAddon = new FitAddon();
         const webLinksAddon = new WebLinksAddon();
+        const searchAddon = new SearchAddon();
 
         const terminal = new XTerm({
           cursorBlink: true,
@@ -42,12 +44,15 @@ export const Terminal = memo(
           theme: getTerminalTheme(readonly ? { cursor: '#00000000' } : {}),
           fontSize: 12,
           fontFamily: 'Menlo, courier-new, courier, monospace',
+          allowTransparency: true,
+          rightClickSelectsWord: true,
         });
 
         terminalRef.current = terminal;
 
         terminal.loadAddon(fitAddon);
         terminal.loadAddon(webLinksAddon);
+        terminal.loadAddon(searchAddon);
         terminal.open(element);
 
         const resizeObserver = new ResizeObserver(() => {
@@ -56,6 +61,17 @@ export const Terminal = memo(
         });
 
         resizeObserver.observe(element);
+
+        element.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          
+          // Se houver texto selecionado, copiar para a área de transferência
+          if (terminal.hasSelection()) {
+            const selection = terminal.getSelection();
+            navigator.clipboard.writeText(selection);
+            terminal.clearSelection();
+          }
+        });
 
         logger.debug(`Attach [${id}]`);
 
