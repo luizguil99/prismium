@@ -1,33 +1,45 @@
+// Importações necessárias para o componente
 import { useStore } from '@nanostores/react';
 import { motion, type HTMLMotionProps, type Variants } from 'framer-motion';
 import { computed } from 'nanostores';
 import { memo, useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
+
+// Tipos para callbacks do editor
 import {
   type OnChangeCallback as OnEditorChange,
   type OnScrollCallback as OnEditorScroll,
 } from '~/components/editor/codemirror/CodeMirrorEditor';
+
+// Componentes UI
 import { IconButton } from '~/components/ui/IconButton';
 import { PanelHeaderButton } from '~/components/ui/PanelHeaderButton';
 import { Slider, type SliderOptions } from '~/components/ui/Slider';
+
+// Stores e utilitários
 import { workbenchStore, type WorkbenchViewType } from '~/lib/stores/workbench';
 import { supabaseStore } from '~/lib/stores/supabase';
 import { SupabaseConfigModal } from '../supabase/SupabaseConfigModal';
 import { classNames } from '~/utils/classNames';
 import { cubicEasingFn } from '~/utils/easings';
 import { renderLogger } from '~/utils/logger';
+
+// Componentes do Workbench
 import { EditorPanel } from './EditorPanel';
 import { Preview } from './Preview';
 import useViewport from '~/lib/hooks';
 import Cookies from 'js-cookie';
 
+// Interface de props do Workbench
 interface WorkspaceProps {
-  chatStarted?: boolean;
-  isStreaming?: boolean;
+  chatStarted?: boolean;  // Indica se o chat foi iniciado
+  isStreaming?: boolean;  // Indica se está streamando conteúdo
 }
 
+// Configuração da transição de visualização
 const viewTransition = { ease: cubicEasingFn };
 
+// Opções do slider para alternar entre código e preview
 const sliderOptions: SliderOptions<WorkbenchViewType> = {
   left: {
     value: 'code',
@@ -39,6 +51,7 @@ const sliderOptions: SliderOptions<WorkbenchViewType> = {
   },
 };
 
+// Variantes de animação para abrir/fechar o workbench
 const workbenchVariants = {
   closed: {
     width: 0,
@@ -56,12 +69,15 @@ const workbenchVariants = {
   },
 } satisfies Variants;
 
+// Componente principal do Workbench
 export const Workbench = memo(({ chatStarted, isStreaming }: WorkspaceProps) => {
-  renderLogger.trace('Workbench');
+  renderLogger.trace('Workbench');  // Log de renderização
 
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [supabaseModalOpen, setSupabaseModalOpen] = useState(false);
+  // Estados locais
+  const [isSyncing, setIsSyncing] = useState(false);  // Estado de sincronização
+  const [supabaseModalOpen, setSupabaseModalOpen] = useState(false);  // Estado do modal Supabase
 
+  // Estados do store
   const hasPreview = useStore(computed(workbenchStore.previews, (previews) => previews.length > 0));
   const showWorkbench = useStore(workbenchStore.showWorkbench);
   const selectedFile = useStore(workbenchStore.selectedFile);
@@ -70,22 +86,27 @@ export const Workbench = memo(({ chatStarted, isStreaming }: WorkspaceProps) => 
   const files = useStore(workbenchStore.files);
   const selectedView = useStore(workbenchStore.currentView);
 
+  // Hook para viewport responsivo
   const isSmallViewport = useViewport(1024);
 
+  // Função para alterar a visualização (code/preview)
   const setSelectedView = (view: WorkbenchViewType) => {
     workbenchStore.currentView.set(view);
   };
 
+  // Efeito para mostrar preview quando disponível
   useEffect(() => {
     if (hasPreview) {
       setSelectedView('preview');
     }
   }, [hasPreview]);
 
+  // Efeito para atualizar documentos quando os arquivos mudam
   useEffect(() => {
     workbenchStore.setDocuments(files);
   }, [files]);
 
+  // Callbacks para eventos do editor
   const onEditorChange = useCallback<OnEditorChange>((update) => {
     workbenchStore.setCurrentDocumentContent(update.content);
   }, []);
@@ -123,6 +144,7 @@ export const Workbench = memo(({ chatStarted, isStreaming }: WorkspaceProps) => 
     }
   }, []);
 
+  // Renderização do componente
   return (
     chatStarted && (
       <motion.div

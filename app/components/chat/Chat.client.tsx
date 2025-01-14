@@ -169,10 +169,20 @@ export const ChatImpl = memo(
     });
     useEffect(() => {
       const prompt = searchParams.get('prompt');
+      const pendingMessage = localStorage.getItem('pendingTemplateMessage');
 
-      // console.log(prompt, searchParams, model, provider);
-
-      if (prompt) {
+      if (pendingMessage) {
+        console.log('[ChatClient] Encontrada mensagem pendente do template:', pendingMessage);
+        // Remove a mensagem do localStorage
+        localStorage.removeItem('pendingTemplateMessage');
+        // Envia a mensagem após um pequeno delay para garantir que tudo está carregado
+        setTimeout(() => {
+          const syntheticEvent = {
+            preventDefault: () => {},
+          } as React.UIEvent;
+          sendMessage(syntheticEvent, pendingMessage);
+        }, 1000);
+      } else if (prompt) {
         setSearchParams({});
         runAnimation();
         append({
@@ -182,7 +192,7 @@ export const ChatImpl = memo(
               type: 'text',
               text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${prompt}`,
             },
-          ] as any, // Type assertion to bypass compiler check
+          ] as any,
         });
       }
     }, [model, provider, searchParams]);
@@ -248,45 +258,63 @@ export const ChatImpl = memo(
       setChatStarted(true);
     };
 
+    /**
+     * Função principal para envio de mensagens no chat
+     * @param _event - Evento do React que disparou o envio
+     * @param messageInput - Mensagem opcional que pode ser passada diretamente
+     */
     const sendMessage = async (_event: React.UIEvent, messageInput?: string) => {
+      console.log('[ChatClient] sendMessage chamado', { messageInput, input });
+
+      // Usa a mensagem passada como parâmetro ou o input atual do chat
       const _input = messageInput || input;
 
+      // Não permite enviar mensagem vazia ou durante carregamento
       if (_input.length === 0 || isLoading) {
+        console.log('[ChatClient] Input vazio ou carregando, retornando');
         return;
       }
 
-      // Adiciona o contexto do Supabase apenas na primeira mensagem após conectar
+      // Prepara o prompt inicial com a mensagem do usuário
       let finalPrompt = _input;
+
+      // Verifica se o Supabase está conectado e se é a primeira mensagem
       const isSupabaseConnected = supabaseStore.isConnected.get();
       const isFirstMessage = !supabaseStore.firstMessageSent.get();
 
+      // Adiciona o contexto do Supabase apenas na primeira mensagem após conectar
       if (isSupabaseConnected && isFirstMessage) {
+        console.log('[ChatClient] Adicionando contexto do Supabase');
         const supabaseContext = supabaseStore.getAIContext();
         finalPrompt = `${_input}
 
 ${supabaseContext}
 
 Por favor, use essas configurações do Supabase ao gerar o código da aplicação no webcontainer.`;
-        
+
         // Marca que a primeira mensagem foi enviada
         supabaseStore.firstMessageSent.set(true);
       }
 
-      /**
-       * @note (delm) Usually saving files shouldn't take long but it may take longer if there
-       * are a lot of files or if the files are large. We should show a loading indicator
-       * in that case.
-       */
+      // Salva todos os arquivos abertos no editor
       await workbenchStore.saveAllFiles();
 
+      // Obtém as modificações feitas nos arquivos
       const fileModifications = workbenchStore.getFileModifcations();
+      console.log('[ChatClient] Modificações de arquivo:', fileModifications);
 
+      // Reseta o estado de abortar chat
       chatStore.setKey('aborted', false);
 
+      // Inicia a animação de envio
       runAnimation();
 
+      // Lógica especial para primeira mensagem com seleção automática de template
       if (!chatStarted && messageInput && autoSelectTemplate) {
+        // Ativa loading para seleção de template
         setFakeLoading(true);
+
+        // Define a mensagem inicial do usuário
         setMessages([
           {
             id: `${new Date().getTime()}`,
@@ -296,43 +324,45 @@ Por favor, use essas configurações do Supabase ao gerar o código da aplicaç�
                 type: 'text',
                 text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${finalPrompt}`,
               },
+              // Adiciona imagens à mensagem se existirem
               ...imageDataList.map((imageData) => ({
                 type: 'image',
                 image: imageData,
               })),
-            ] as any, // Type assertion to bypass compiler check
+            ] as any,
           },
         ]);
 
-        // reload();
-
+        // Seleciona um template inicial baseado na mensagem
         const { template, title } = await selectStarterTemplate({
           message: messageInput,
           model,
           provider,
         });
 
+        // Se selecionou um template válido (não em branco)
         if (template !== 'blank') {
+          // Tenta obter o template
           const temResp = await getTemplates(template, title).catch((e) => {
+            // Trata erros de rate limit ou falha ao importar
             if (e.message.includes('rate limit')) {
               toast.warning('Rate limit exceeded. Skipping starter template\n Continuing with blank template');
             } else {
               toast.warning('Failed to import starter template\n Continuing with blank template');
             }
-
             return null;
           });
 
+          // Se conseguiu obter o template com sucesso
           if (temResp) {
             const { assistantMessage, userMessage } = temResp;
 
+            // Atualiza as mensagens com o contexto do template
             setMessages([
               {
                 id: `${new Date().getTime()}`,
                 role: 'user',
                 content: messageInput,
-
-                // annotations: ['hidden'],
               },
               {
                 id: `${new Date().getTime()}`,
@@ -347,6 +377,7 @@ Por favor, use essas configurações do Supabase ao gerar o código da aplicaç�
               },
             ]);
 
+            // Recarrega o chat e desativa loading
             reload();
             setFakeLoading(false);
 
@@ -365,7 +396,7 @@ Por favor, use essas configurações do Supabase ao gerar o código da aplicaç�
                     type: 'image',
                     image: imageData,
                   })),
-                ] as any, // Type assertion to bypass compiler check
+                ] as any,
               },
             ]);
             reload();
@@ -387,7 +418,7 @@ Por favor, use essas configurações do Supabase ao gerar o código da aplicaç�
                   type: 'image',
                   image: imageData,
                 })),
-              ] as any, // Type assertion to bypass compiler check
+              ] as any,
             },
           ]);
           reload();
@@ -397,14 +428,9 @@ Por favor, use essas configurações do Supabase ao gerar o código da aplicaç�
         }
       }
 
+      // Se houver modificações em arquivos, envia mensagem com essas modificações
       if (fileModifications !== undefined) {
-        /**
-         * If we have file modifications we append a new user message manually since we have to prefix
-         * the user input with the file modifications and we don't want the new user input to appear
-         * in the prompt. Using `append` is almost the same as `handleSubmit` except that we have to
-         * manually reset the input and we'd have to manually pass in file attachments. However, those
-         * aren't relevant here.
-         */
+        console.log('[ChatClient] Enviando mensagem com modificações de arquivo');
         append({
           role: 'user',
           content: [
@@ -416,7 +442,7 @@ Por favor, use essas configurações do Supabase ao gerar o código da aplicaç�
               type: 'image',
               image: imageData,
             })),
-          ] as any, // Type assertion to bypass compiler check
+          ] as any,
         });
 
         /**
@@ -425,6 +451,7 @@ Por favor, use essas configurações do Supabase ao gerar o código da aplicaç�
          */
         workbenchStore.resetAllFileModifications();
       } else {
+        console.log('[ChatClient] Enviando mensagem normal');
         append({
           role: 'user',
           content: [
@@ -436,7 +463,7 @@ Por favor, use essas configurações do Supabase ao gerar o código da aplicaç�
               type: 'image',
               image: imageData,
             })),
-          ] as any, // Type assertion to bypass compiler check
+          ] as any,
         });
       }
 
@@ -450,6 +477,7 @@ Por favor, use essas configurações do Supabase ao gerar o código da aplicaç�
       resetEnhancer();
 
       textareaRef.current?.blur();
+      console.log('[ChatClient] Mensagem enviada com sucesso');
     };
 
     /**

@@ -288,12 +288,15 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       }
 
       const input = messageInput || textareaRef.current.value;
+      console.log('[BaseChat] processMessage - Input:', input);
 
       // Verifica se é a primeira mensagem e se contém palavras-chave do template Shadcn
       if (messages?.length === 0 && input.toLowerCase().includes('shadcn')) {
+        console.log('[BaseChat] Detectado comando shadcn');
         const shadcnTemplate = templates.find((t) => t.id === 1); // Template Shadcn
         if (shadcnTemplate && importChat) {
           try {
+            console.log('[BaseChat] Iniciando importação do template');
             const { workdir, data } = await gitClone(shadcnTemplate.repo);
             const filePaths = Object.keys(data).filter((filePath) => !ig.ignores(filePath));
 
@@ -334,10 +337,21 @@ ${file.content}
               templateMessages.push(commandsMessage);
             }
 
+            console.log('[BaseChat] Chamando importChat');
+            // Salva a mensagem no localStorage antes do redirecionamento
+            localStorage.setItem('pendingTemplateMessage', input);
             await importChat(`Template: ${shadcnTemplate.title}`, templateMessages);
+            console.log('[BaseChat] Template importado com sucesso');
+
+            // Envia a mensagem original após importar o template
+            console.log('[BaseChat] Enviando mensagem após template');
+            if (sendMessage) {
+              sendMessage(event, input);
+            }
+
             return;
           } catch (error) {
-            console.error('Erro ao importar template:', error);
+            console.error('[BaseChat] Erro ao importar template:', error);
             toast.error('Falha ao importar template');
           }
         }
@@ -345,15 +359,18 @@ ${file.content}
 
       // Continua com o processamento normal da mensagem
       if (sendMessage) {
+        console.log('[BaseChat] Enviando mensagem via sendMessage');
         sendMessage(event, input);
       }
     };
 
     const handleSendMessage = (event: React.UIEvent, messageInput?: string) => {
+      console.log('[BaseChat] handleSendMessage chamado');
       if (sendMessage) {
         processMessage(event, messageInput);
 
         if (recognition) {
+          console.log('[BaseChat] Limpando reconhecimento de voz');
           recognition.abort(); // Stop current recognition
           setTranscript(''); // Clear transcript
           setIsListening(false);
