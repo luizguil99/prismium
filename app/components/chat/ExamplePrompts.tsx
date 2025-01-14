@@ -1,5 +1,6 @@
 import React from 'react';
 
+// Lista de exemplos de prompts para o usuário
 const EXAMPLE_PROMPTS = [
   { text: 'Build a todo app in React using Tailwind' },
   { text: 'Build a simple blog using Astro' },
@@ -9,12 +10,12 @@ const EXAMPLE_PROMPTS = [
 ];
 
 export interface ExamplePromptsProps {
-  sendMessage: (event: React.UIEvent, messageInput?: string) => void;
+  sendMessage?: (event: React.UIEvent, messageInput?: string) => void;
 }
 
 export function ExamplePrompts({ sendMessage }: ExamplePromptsProps) {
   return (
-    <div id="examples" className="relative flex flex-col gap-9 w-full max-w-3xl mx-auto flex justify-center mt-6">
+    <div id="examples" className="relative flex flex-col gap-4 w-full max-w-3xl mx-auto mt-6">
       <div
         className="flex flex-wrap justify-center gap-2"
         style={{
@@ -26,9 +27,9 @@ export function ExamplePrompts({ sendMessage }: ExamplePromptsProps) {
             <button
               key={index}
               onClick={(event) => {
-                sendMessage(event, examplePrompt.text);
+                sendMessage?.(event, examplePrompt.text);
               }}
-              className="border border-bolt-elements-borderColor rounded-full bg-gray-50 hover:bg-gray-100 dark:bg-gray-950 dark:hover:bg-gray-900 text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary px-3 py-1 text-xs transition-theme"
+              className="border border-white/10 rounded-full bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white px-3 py-1 text-xs transition-theme"
             >
               {examplePrompt.text}
             </button>

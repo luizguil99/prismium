@@ -741,7 +741,6 @@ ${file.content}
             <div className="flex flex-col justify-center gap-5">
               {!chatStarted && (
                 <>
-                  <TemplateCards importChat={importChat} />
                   <ExamplePrompts
                     sendMessage={(event, messageInput) => {
                       if (messageInput) {
@@ -749,6 +748,7 @@ ${file.content}
                       }
                     }}
                   />
+                  <TemplateCards importChat={importChat} />
                   <StarterTemplates />
                 </>
               )}
