@@ -1,6 +1,6 @@
 {
-  "name": "bolt",
-  "description": "An AI Agent",
+  "name": "prismium",
+  "description": "Prismium - Um WebContainer com IA",
   "private": true,
   "license": "MIT",
   "sideEffects": false,
