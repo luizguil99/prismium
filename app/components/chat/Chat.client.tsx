@@ -175,13 +175,13 @@ export const ChatImpl = memo(
         console.log('[ChatClient] Encontrada mensagem pendente do template:', pendingMessage);
         // Remove a mensagem do localStorage
         localStorage.removeItem('pendingTemplateMessage');
-        // Envia a mensagem após um pequeno delay para garantir que tudo está carregado
+        // Envia a mensagem após um delay maior para garantir que tudo está carregado
         setTimeout(() => {
           const syntheticEvent = {
             preventDefault: () => {},
           } as React.UIEvent;
           sendMessage(syntheticEvent, pendingMessage);
-        }, 1000);
+        }, 3000); // Aumentado para 2 segundos
       } else if (prompt) {
         setSearchParams({});
         runAnimation();
