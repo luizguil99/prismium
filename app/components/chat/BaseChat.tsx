@@ -738,14 +738,20 @@ ${file.content}
                 </div>
               </div>
             </div>
-            <ExamplePrompts sendMessage={sendMessage} />
             <div className="flex flex-col justify-center gap-5">
               {!chatStarted && (
                 <>
                   <TemplateCards importChat={importChat} />
+                  <ExamplePrompts
+                    sendMessage={(event, messageInput) => {
+                      if (messageInput) {
+                        sendMessage(event, messageInput);
+                      }
+                    }}
+                  />
+                  <StarterTemplates />
                 </>
               )}
-              {!chatStarted && <StarterTemplates />}
             </div>
           </div>
           <ClientOnly>{() => <Workbench chatStarted={chatStarted} isStreaming={isStreaming} />}</ClientOnly>

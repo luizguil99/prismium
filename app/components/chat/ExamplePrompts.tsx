@@ -8,7 +8,11 @@ const EXAMPLE_PROMPTS = [
   { text: 'Make a Tic Tac Toe game in html, css and js only' },
 ];
 
-export function ExamplePrompts(sendMessage?: { (event: React.UIEvent, messageInput?: string): void | undefined }) {
+export interface ExamplePromptsProps {
+  sendMessage: (event: React.UIEvent, messageInput?: string) => void;
+}
+
+export function ExamplePrompts({ sendMessage }: ExamplePromptsProps) {
   return (
     <div id="examples" className="relative flex flex-col gap-9 w-full max-w-3xl mx-auto flex justify-center mt-6">
       <div
@@ -22,7 +26,7 @@ export function ExamplePrompts(sendMessage?: { (event: React.UIEvent, messageInp
             <button
               key={index}
               onClick={(event) => {
-                sendMessage?.(event, examplePrompt.text);
+                sendMessage(event, examplePrompt.text);
               }}
               className="border border-bolt-elements-borderColor rounded-full bg-gray-50 hover:bg-gray-100 dark:bg-gray-950 dark:hover:bg-gray-900 text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary px-3 py-1 text-xs transition-theme"
             >
