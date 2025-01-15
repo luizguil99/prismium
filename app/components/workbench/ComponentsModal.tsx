@@ -29,9 +29,9 @@ export const ComponentsModal = memo(({ isOpen, onClose }: ComponentsModalProps) 
   // Garante que a categoria selecionada esteja expandida
   useEffect(() => {
     if (selectedCategory) {
-      setExpandedCategories(prev => ({
+      setExpandedCategories((prev) => ({
         ...prev,
-        [selectedCategory]: true
+        [selectedCategory]: true,
       }));
     }
   }, [selectedCategory]);
@@ -137,13 +137,13 @@ export const ComponentsModal = memo(({ isOpen, onClose }: ComponentsModalProps) 
             <div className="flex items-center gap-3">
               <span className="i-ph:puzzle-piece-duotone text-2xl text-[#548BE4]" />
               <div>
-                <h2 className="text-lg font-semibold text-bolt-elements-item-contentDefault">Componentes</h2>
+                <h2 className="text-lg font-semibold text-bolt-elements-item-contentDefault">Components</h2>
                 <p className="text-sm text-bolt-elements-item-contentDefault/60">
                   {selectedCategory
                     ? selectedSubcategory
                       ? `${categories[selectedCategory].subcategories[selectedSubcategory].name}`
                       : categories[selectedCategory].name
-                    : 'Selecione uma categoria'}
+                    : 'Select a category'}
                 </p>
               </div>
             </div>
@@ -154,15 +154,18 @@ export const ComponentsModal = memo(({ isOpen, onClose }: ComponentsModalProps) 
                 </span>
                 <input
                   type="text"
-                  placeholder="Buscar componentes..."
+                  placeholder="Search components..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  onFocus={(e) => e.target.placeholder = ''}
+                  onBlur={(e) => e.target.placeholder = 'Search components...'}
                   className={classNames(
                     'w-64 pl-10 pr-4 py-2 rounded-md text-sm',
                     'bg-[#1D1D1D] hover:bg-[#202020]',
                     'border border-bolt-elements-borderColor',
                     'focus:outline-none focus:ring-2 focus:ring-[#548BE4]/30',
                     'placeholder-bolt-elements-item-contentDefault/50',
+                    'text-white'
                   )}
                 />
               </div>
@@ -295,7 +298,7 @@ export const ComponentsModal = memo(({ isOpen, onClose }: ComponentsModalProps) 
                       <div className="p-3">
                         <div className="flex items-center justify-between mb-1">
                           <h3 className="font-medium text-bolt-elements-item-contentDefault">
-                            {component.name || 'Sem nome'}
+                            {component.name || 'No name'}
                           </h3>
                           {component.isNew && (
                             <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-[#86efac] text-[#052e16] font-medium">
@@ -304,7 +307,7 @@ export const ComponentsModal = memo(({ isOpen, onClose }: ComponentsModalProps) 
                           )}
                         </div>
                         <p className="text-sm text-bolt-elements-item-contentDefault/60">
-                          {component.description || 'Sem descrição'}
+                          {component.description || 'No description'}
                         </p>
                       </div>
                     </button>
@@ -319,11 +322,11 @@ export const ComponentsModal = memo(({ isOpen, onClose }: ComponentsModalProps) 
             <div className="text-sm text-bolt-elements-item-contentDefault/60">
               {selectedComponent ? (
                 <span>
-                  Componente selecionado:{' '}
+                  Selected component:{' '}
                   <strong className="text-bolt-elements-item-contentDefault">{selectedComponent.name}</strong>
                 </span>
               ) : (
-                'Clique em um componente para selecionar'
+                'Click on a component to select'
               )}
             </div>
 
@@ -337,12 +340,12 @@ export const ComponentsModal = memo(({ isOpen, onClose }: ComponentsModalProps) 
                   'transition-colors duration-200',
                 )}
               >
-                Cancelar
+                Cancel
               </button>
               <button
                 onClick={() => {
                   if (selectedComponent) {
-                    console.log(`Gerando componente: ${selectedComponent.name}`);
+                    console.log(`Generating component: ${selectedComponent.name}`);
                     onClose();
                   }
                 }}
@@ -355,7 +358,7 @@ export const ComponentsModal = memo(({ isOpen, onClose }: ComponentsModalProps) 
                 )}
                 disabled={!selectedComponent}
               >
-                Gerar Componente
+                Generate Component
               </button>
             </div>
           </div>
