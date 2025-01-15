@@ -50,7 +50,8 @@ export const ModelSelector = ({
     return (
       <div className="p-4 rounded-lg bg-[#0F1116] border border-[#2A2F3A]/50">
         <p className="text-center text-gray-400">
-          Nenhum provedor está habilitado. Por favor, habilite pelo menos um provedor nas configurações para começar a usar o chat.
+          Nenhum provedor está habilitado. Por favor, habilite pelo menos um provedor nas configurações para começar a
+          usar o chat.
         </p>
       </div>
     );
@@ -73,19 +74,28 @@ export const ModelSelector = ({
             }
           }}
         >
-          <SelectTrigger className="w-full bg-black border-zinc-800 text-zinc-100 hover:bg-zinc-900 focus:ring-zinc-700">
+          <SelectTrigger className="w-full bg-black border-zinc-800 text-zinc-100 hover:bg-zinc-900 focus:ring-zinc-700 cursor-pointer">
             <SelectValue placeholder="Selecione um provedor" />
           </SelectTrigger>
-          <SelectContent className="bg-black border-zinc-800">
-            {providerList.map((p) => (
-              <SelectItem 
-                key={p.name} 
-                value={p.name} 
-                className="text-zinc-100 hover:bg-zinc-900 focus:bg-zinc-900 focus:text-zinc-100"
-              >
-                {p.name}
-              </SelectItem>
-            ))}
+          <SelectContent className="bg-black border-zinc-800 h-[300px]">
+            <div 
+              className="max-h-[300px] overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-zinc-700 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-zinc-900"
+              data-mouse-down-at-position
+              onWheel={(e) => {
+                e.currentTarget.scrollTop += e.deltaY;
+                e.preventDefault();
+              }}
+            >
+              {providerList.map((p) => (
+                <SelectItem
+                  key={p.name}
+                  value={p.name}
+                  className="text-zinc-100 hover:bg-zinc-900 focus:bg-zinc-900 focus:text-zinc-100 cursor-pointer"
+                >
+                  {p.name}
+                </SelectItem>
+              ))}
+            </div>
           </SelectContent>
         </Select>
       </div>
@@ -98,28 +108,26 @@ export const ModelSelector = ({
           onValueChange={setModel}
           disabled={modelLoading === 'all' || modelLoading === provider?.name}
         >
-          <SelectTrigger className="w-full bg-black border-zinc-800 text-zinc-100 hover:bg-zinc-900 focus:ring-zinc-700">
-            <SelectValue 
+          <SelectTrigger className="w-full bg-black border-zinc-800 text-zinc-100 hover:bg-zinc-900 focus:ring-zinc-700 cursor-pointer">
+            <SelectValue
               placeholder={
-                modelLoading === 'all' || modelLoading === provider?.name
-                  ? 'Carregando...'
-                  : 'Selecione um modelo'
+                modelLoading === 'all' || modelLoading === provider?.name ? 'Carregando...' : 'Selecione um modelo'
               }
             />
           </SelectTrigger>
           <SelectContent className="bg-black border-zinc-800">
             {modelLoading === 'all' || modelLoading === provider?.name ? (
-              <SelectItem value="_loading" className="text-zinc-100">
+              <SelectItem value="_loading" className="text-zinc-100 cursor-pointer">
                 Carregando...
               </SelectItem>
             ) : (
               modelList
                 .filter((e) => e.provider === provider?.name && e.name)
                 .map((modelOption) => (
-                  <SelectItem 
-                    key={modelOption.name} 
+                  <SelectItem
+                    key={modelOption.name}
                     value={modelOption.name}
-                    className="text-zinc-100 hover:bg-zinc-900 focus:bg-zinc-900 focus:text-zinc-100"
+                    className="text-zinc-100 hover:bg-zinc-900 focus:bg-zinc-900 focus:text-zinc-100 cursor-pointer"
                   >
                     {modelOption.label || modelOption.name}
                   </SelectItem>

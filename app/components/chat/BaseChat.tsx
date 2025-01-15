@@ -49,7 +49,7 @@ import logoVue from '~/lib/png/logo_vue.svg fill@2x.png';
 import { ChevronRight, ChevronLeft, Search, ArrowRight, Github, X } from 'lucide-react';
 import BackgroundRays from '../ui/BackgroundRays';
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/ui/dialog';
 import { Button } from '@/components/ui/ui/button';
 
 const TEXTAREA_MIN_HEIGHT = 76;
@@ -299,6 +299,11 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
         const shadcnTemplate = templates.find((t) => t.id === 1); // Template Shadcn
         if (shadcnTemplate && importChat) {
           try {
+            // Envia a mensagem original modificada
+            if (sendMessage) {
+              sendMessage(event, 'Creating project...');
+            }
+
             console.log('[BaseChat] Iniciando importação do template');
             const { workdir, data } = await gitClone(shadcnTemplate.repo);
             const filePaths = Object.keys(data).filter((filePath) => !ig.ignores(filePath));
@@ -341,16 +346,9 @@ ${file.content}
             }
 
             console.log('[BaseChat] Chamando importChat');
-            // Salva a mensagem no localStorage antes do redirecionamento
             localStorage.setItem('pendingTemplateMessage', input);
             await importChat(`Template: ${shadcnTemplate.title}`, templateMessages);
             console.log('[BaseChat] Template importado com sucesso');
-
-            // Envia a mensagem original após importar o template
-            console.log('[BaseChat] Enviando mensagem após template');
-            if (sendMessage) {
-              sendMessage(event, input);
-            }
 
             return;
           } catch (error) {
@@ -448,11 +446,9 @@ ${file.content}
 
       return (
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DialogContent className="bg-black/95 border border-zinc-800 text-zinc-100 shadow-2xl">
+          <DialogContent className="bg-black/95 border border-zinc-800 text-zinc-100 shadow-2xl [&>button]:text-white [&>button]:bg-transparent [&>button]:border-0 [&>button]:hover:bg-zinc-900 [&>button]:transition-colors [&>button]:p-1.5">
             <DialogHeader className="border-b border-zinc-800 pb-4">
-              <DialogTitle className="text-lg font-semibold text-zinc-100">
-                Configurações do Modelo
-              </DialogTitle>
+              <DialogTitle className="text-lg font-semibold text-zinc-100">Configurações do Modelo</DialogTitle>
             </DialogHeader>
 
             <div className="p-6 space-y-6">
