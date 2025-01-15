@@ -49,6 +49,9 @@ import logoVue from '~/lib/png/logo_vue.svg fill@2x.png';
 import { ChevronRight, ChevronLeft, Search, ArrowRight, Github, X } from 'lucide-react';
 import BackgroundRays from '../ui/BackgroundRays';
 
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/ui/dialog';
+import { Button } from '@/components/ui/ui/button';
+
 const TEXTAREA_MIN_HEIGHT = 76;
 
 const IGNORE_PATTERNS = [
@@ -444,61 +447,52 @@ ${file.content}
       if (!isModalOpen) return null;
 
       return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-[#1A1F2A] border border-[#2A2F3A]/50 rounded-lg w-[500px] max-w-[90vw]">
-            {/* Header do Modal */}
-            <div className="flex justify-between items-center p-4 border-b border-[#2A2F3A]/50">
-              <h2 className="text-lg font-semibold text-gray-200">Configurações do Modelo</h2>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="p-2 rounded-lg hover:bg-[#2A2F3A]/30 text-gray-400 hover:text-gray-200 transition-all duration-200"
-              >
-                <div className="i-ph:x text-xl" />
-              </button>
-            </div>
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogContent className="bg-black/95 border border-zinc-800 text-zinc-100 shadow-2xl">
+            <DialogHeader className="border-b border-zinc-800 pb-4">
+              <DialogTitle className="text-lg font-semibold text-zinc-100">
+                Configurações do Modelo
+              </DialogTitle>
+            </DialogHeader>
 
-            {/* Conteúdo do Modal */}
             <div className="p-6 space-y-6">
-              {/* Seleção de Provedor */}
-              <div className="space-y-4">
-                <ModelSelector
-                  key={provider?.name + ':' + modelList.length}
-                  model={model}
-                  setModel={setModel}
-                  modelList={modelList}
-                  provider={provider}
-                  setProvider={setProvider}
-                  providerList={providerList || (PROVIDER_LIST as ProviderInfo[])}
-                  apiKeys={apiKeys}
-                  modelLoading={isModelLoading}
-                />
+              <ModelSelector
+                key={provider?.name + ':' + modelList.length}
+                model={model}
+                setModel={setModel}
+                modelList={modelList}
+                provider={provider}
+                setProvider={setProvider}
+                providerList={providerList || (PROVIDER_LIST as ProviderInfo[])}
+                apiKeys={apiKeys}
+                modelLoading={isModelLoading}
+              />
 
-                {/* Gerenciamento de API Key */}
-                {(providerList || []).length > 0 && provider && (
-                  <div className="mt-4">
-                    <APIKeyManager
-                      provider={provider}
-                      apiKey={apiKeys[provider.name] || ''}
-                      setApiKey={(key) => {
-                        onApiKeysChange(provider.name, key);
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
+              {/* Gerenciamento de API Key */}
+              {(providerList || []).length > 0 && provider && (
+                <div className="pt-6 mt-6 border-t border-zinc-800">
+                  <APIKeyManager
+                    provider={provider}
+                    apiKey={apiKeys[provider.name] || ''}
+                    setApiKey={(key) => {
+                      onApiKeysChange(provider.name, key);
+                    }}
+                  />
+                </div>
+              )}
             </div>
 
-            {/* Footer do Modal */}
-            <div className="flex justify-end gap-2 p-4 border-t border-[#2A2F3A]/50">
-              <button
+            <DialogFooter className="border-t border-zinc-800 pt-4">
+              <Button
+                variant="outline"
                 onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-all duration-200"
+                className="bg-black hover:bg-zinc-900 text-zinc-100 border-zinc-800"
               >
                 Fechar
-              </button>
-            </div>
-          </div>
-        </div>
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       );
     };
 

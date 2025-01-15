@@ -12,6 +12,7 @@ import globalStyles from './styles/index.scss?url';
 import xtermStyles from '@xterm/xterm/css/xterm.css?url';
 
 import 'virtual:uno.css';
+import '~/styles/shadcn.css';
 
 export const links: LinksFunction = () => [
   {

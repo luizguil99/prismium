@@ -1,7 +1,7 @@
 import { globSync } from 'fast-glob';
 import fs from 'node:fs/promises';
 import { basename } from 'node:path';
-import { defineConfig, presetIcons, presetUno, transformerDirectives } from 'unocss';
+import { defineConfig, presetIcons, presetUno, transformerDirectives, presetTypography } from 'unocss';
 
 const iconPaths = globSync('./icons/*.svg');
 
@@ -244,6 +244,7 @@ export default defineConfig({
       },
       unit: 'em',
     }),
+    presetTypography(),
   ],
 });
 

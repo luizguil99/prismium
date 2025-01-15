@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
-import { IconButton } from '~/components/ui/IconButton';
 import type { ProviderInfo } from '~/types/model';
+import { Input } from '@/components/ui/ui/input';
+import { Label } from '@/components/ui/ui/label';
+import { Button } from '@/components/ui/ui/button';
+import { Check, X, Key } from 'lucide-react';
 import Cookies from 'js-cookie';
 
 interface APIKeyManagerProps {
@@ -39,46 +42,69 @@ export const APIKeyManager: React.FC<APIKeyManagerProps> = ({ provider, apiKey, 
   };
 
   return (
-    <div className="flex items-start sm:items-center mt-2 mb-2 flex-col sm:flex-row">
-      <div>
-        <span className="text-sm text-bolt-elements-textSecondary">{provider?.name} API Key:</span>
-        {!isEditing && (
-          <div className="flex items-center mb-4">
-            <span className="flex-1 text-xs text-bolt-elements-textPrimary mr-2">
-              {apiKey ? '••••••••' : 'Not set (will still work if set in .env file)'}
-            </span>
-            <IconButton onClick={() => setIsEditing(true)} title="Edit API Key">
-              <div className="i-ph:pencil-simple" />
-            </IconButton>
-          </div>
-        )}
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <Label className="text-sm font-medium text-zinc-300">
+          {provider?.name} API Key
+        </Label>
       </div>
 
-      {isEditing ? (
-        <div className="flex items-center gap-3 mt-2">
-          <input
-            type="password"
-            value={tempKey}
-            placeholder="Your API Key"
-            onChange={(e) => setTempKey(e.target.value)}
-            className="flex-1 px-2 py-1 text-xs lg:text-sm rounded border border-bolt-elements-borderColor bg-bolt-elements-prompt-background text-bolt-elements-textPrimary focus:outline-none focus:ring-2 focus:ring-bolt-elements-focus"
-          />
-          <IconButton onClick={handleSave} title="Save API Key">
-            <div className="i-ph:check" />
-          </IconButton>
-          <IconButton onClick={() => setIsEditing(false)} title="Cancel">
-            <div className="i-ph:x" />
-          </IconButton>
+      {!isEditing ? (
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-zinc-400">
+            {apiKey ? '••••••••' : 'Não configurado (funcionará se definido no arquivo .env)'}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsEditing(true)}
+            className="bg-black hover:bg-zinc-900 text-zinc-100 border-zinc-800"
+          >
+            <Key className="h-4 w-4 mr-2" />
+            Editar
+          </Button>
         </div>
       ) : (
-        <>
-          {provider?.getApiKeyLink && (
-            <IconButton className="ml-auto" onClick={() => window.open(provider?.getApiKeyLink)} title="Edit API Key">
-              <span className="mr-2 text-xs lg:text-sm">{provider?.labelForGetApiKey || 'Get API Key'}</span>
-              <div className={provider?.icon || 'i-ph:key'} />
-            </IconButton>
-          )}
-        </>
+        <div className="flex items-center gap-2">
+          <Input
+            type="password"
+            value={tempKey}
+            placeholder="Digite sua API Key"
+            onChange={(e) => setTempKey(e.target.value)}
+            className="flex-1 bg-black border-zinc-800 text-zinc-100 focus:ring-zinc-700"
+          />
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleSave}
+            className="bg-black hover:bg-zinc-900 text-emerald-500 hover:text-emerald-400 border-zinc-800"
+          >
+            <Check className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => {
+              setTempKey(apiKey);
+              setIsEditing(false);
+            }}
+            className="bg-black hover:bg-zinc-900 text-red-500 hover:text-red-400 border-zinc-800"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
+      {provider?.getApiKeyLink && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => window.open(provider?.getApiKeyLink)}
+          className="bg-black hover:bg-zinc-900 text-zinc-100 border-zinc-800"
+        >
+          <Key className="h-4 w-4 mr-2" />
+          {provider?.labelForGetApiKey || 'Obter API Key'}
+        </Button>
       )}
     </div>
   );
