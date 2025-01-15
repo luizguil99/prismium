@@ -1,4 +1,6 @@
 .BaseChat {
+  padding-top: var(--header-height); // Adicionando padding-top para compensar o header fixo
+
   &[data-chat-visible='false'] {
     --workbench-inner-width: 100%;
     --workbench-left: 0;

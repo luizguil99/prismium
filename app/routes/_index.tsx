@@ -6,10 +6,7 @@ import { Header } from '~/components/header/Header';
 import BackgroundRays from '~/components/ui/BackgroundRays';
 
 export const meta: MetaFunction = () => {
-  return [
-    { title: 'Prismium' }, 
-    { name: 'description', content: 'Talk with Prismium, Your coding assistant' }
-  ];
+  return [{ title: 'Prismium' }, { name: 'description', content: 'Talk with Prismium, Your coding assistant' }];
 };
 
 export const loader = () => json({});

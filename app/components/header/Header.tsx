@@ -10,21 +10,21 @@ export function Header() {
   const chat = useStore(chatStore);
   const location = useLocation();
   const headerClasses = classNames(
-    'fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-2 '
+    'fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-2  supports-[backdrop-filter]:bg-background/60',
+    {
+      'border-b': chat.started,
+      'border-transparent': !chat.started,
+      'border-bolt-elements-borderColor': chat.started,
+    },
   );
 
   return (
-    <header
-      className={classNames(headerClasses, {
-        'border-transparent': !chat.started,
-        'border-bolt-elements-borderColor': chat.started,
-      })}
-    >
+    <header className={headerClasses}>
       <div className="flex items-center gap-2 z-logo text-bolt-elements-textPrimary cursor-pointer">
         <div className="i-ph:sidebar-simple-duotone text-xl" />
         <a href="/" className="text-2xl font-semibold text-accent flex items-center">
           {/* <span className="i-bolt:logo-text?mask w-[46px] inline-block" /> */}
-          
+
           <img src="/app/lib/png/Group3.png" alt="logo" className="w-[120px] inline-block hidden dark:block" />
         </a>
       </div>
