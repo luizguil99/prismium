@@ -27,13 +27,14 @@ import { renderLogger } from '~/utils/logger';
 // Componentes do Workbench
 import { EditorPanel } from './EditorPanel';
 import { Preview } from './Preview';
+import { ComponentsModal } from './ComponentsModal';
 import useViewport from '~/lib/hooks';
 import Cookies from 'js-cookie';
 
 // Interface de props do Workbench
 interface WorkspaceProps {
-  chatStarted?: boolean;  // Indica se o chat foi iniciado
-  isStreaming?: boolean;  // Indica se está streamando conteúdo
+  chatStarted?: boolean; // Indica se o chat foi iniciado
+  isStreaming?: boolean; // Indica se está streamando conteúdo
 }
 
 // Configuração da transição de visualização
@@ -71,11 +72,12 @@ const workbenchVariants = {
 
 // Componente principal do Workbench
 export const Workbench = memo(({ chatStarted, isStreaming }: WorkspaceProps) => {
-  renderLogger.trace('Workbench');  // Log de renderização
+  renderLogger.trace('Workbench'); // Log de renderização
 
   // Estados locais
-  const [isSyncing, setIsSyncing] = useState(false);  // Estado de sincronização
-  const [supabaseModalOpen, setSupabaseModalOpen] = useState(false);  // Estado do modal Supabase
+  const [isSyncing, setIsSyncing] = useState(false); // Estado de sincronização
+  const [supabaseModalOpen, setSupabaseModalOpen] = useState(false); // Estado do modal Supabase
+  const [componentsModalOpen, setComponentsModalOpen] = useState(false);
 
   // Estados do store
   const hasPreview = useStore(computed(workbenchStore.previews, (previews) => previews.length > 0));
@@ -173,6 +175,13 @@ export const Workbench = memo(({ chatStarted, isStreaming }: WorkspaceProps) => 
                   <div className="flex overflow-y-auto">
                     <PanelHeaderButton
                       className="mr-1 text-sm"
+                      onClick={() => setComponentsModalOpen(true)}
+                    >
+                      <div className="i-ph:puzzle-piece-duotone" />
+                      Components
+                    </PanelHeaderButton>
+                    <PanelHeaderButton
+                      className="mr-1 text-sm"
                       onClick={() => {
                         workbenchStore.downloadZip();
                       }}
@@ -194,9 +203,7 @@ export const Workbench = memo(({ chatStarted, isStreaming }: WorkspaceProps) => 
                       Toggle Terminal
                     </PanelHeaderButton>
                     <PanelHeaderButton
-                      className={`mr-1 text-sm ${
-                        supabaseStore.isConnected.get() ? 'text-green-400' : ''
-                      }`}
+                      className={`mr-1 text-sm ${supabaseStore.isConnected.get() ? 'text-green-400' : ''}`}
                       onClick={() => setSupabaseModalOpen(true)}
                     >
                       <div className="i-ph:database" />
@@ -276,6 +283,7 @@ export const Workbench = memo(({ chatStarted, isStreaming }: WorkspaceProps) => 
           </div>
         </div>
         <SupabaseConfigModal isOpen={supabaseModalOpen} onClose={() => setSupabaseModalOpen(false)} />
+        <ComponentsModal isOpen={componentsModalOpen} onClose={() => setComponentsModalOpen(false)} />
       </motion.div>
     )
   );
