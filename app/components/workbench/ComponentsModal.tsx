@@ -16,13 +16,21 @@ export const ComponentsModal = memo(({ isOpen, onClose }: ComponentsModalProps) 
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
 
   const toggleCategory = (category: string) => {
-    setSelectedCategory(category);
-    setExpandedCategories((prev) => ({
-      ...prev,
-      [category]: !prev[category],
-    }));
-    setSelectedSubcategory(null);
-    setSelectedComponent(null);
+    // Se está clicando na mesma categoria
+    if (category === selectedCategory) {
+      setExpandedCategories((prev) => ({
+        ...prev,
+        [category]: !prev[category],
+      }));
+    } else {
+      // Se está mudando de categoria, limpa tudo e expande a nova
+      setSelectedCategory(category);
+      setSelectedSubcategory(null);
+      setSelectedComponent(null);
+      setExpandedCategories({
+        [category]: true,
+      });
+    }
   };
 
   const selectSubcategory = (subcategory: string) => {
@@ -43,37 +51,58 @@ export const ComponentsModal = memo(({ isOpen, onClose }: ComponentsModalProps) 
 
   // Filtra os componentes baseado na categoria e subcategoria selecionadas
   const filteredComponents = (() => {
-    // Se não houver categoria selecionada, mostra todos os componentes
-    if (!selectedCategory) {
-      return Object.values(categories).flatMap((category) =>
-        Object.values(category.subcategories).flatMap((subcategory) =>
-          subcategory.components.filter(
-            (component) =>
-              component.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              component.description.toLowerCase().includes(searchTerm.toLowerCase()),
+    try {
+      // Se não houver categoria selecionada, mostra todos os componentes
+      if (!selectedCategory) {
+        return Object.values(categories).flatMap((category) =>
+          Object.values(category.subcategories || {}).flatMap((subcategory) =>
+            (subcategory?.components || []).filter(
+              (component) =>
+                component &&
+                typeof component === 'object' &&
+                ((component.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                  (component.description || '').toLowerCase().includes(searchTerm.toLowerCase())),
+            ),
           ),
-        ),
-      );
-    }
+        );
+      }
 
-    // Se houver categoria mas não subcategoria selecionada, mostra todos os componentes da categoria
-    if (!selectedSubcategory) {
-      return Object.values(categories[selectedCategory].subcategories).flatMap((subcategory) =>
-        subcategory.components.filter(
-          (component) =>
-            component.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            component.description.toLowerCase().includes(searchTerm.toLowerCase()),
-        ),
-      );
-    }
+      const categoryData = categories[selectedCategory];
+      if (!categoryData?.subcategories) return [];
 
-    // Se houver categoria e subcategoria, mostra apenas os componentes da subcategoria
-    return categories[selectedCategory].subcategories[selectedSubcategory].components.filter((component) => {
-      const matchesSearch =
-        component.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        component.description.toLowerCase().includes(searchTerm.toLowerCase());
-      return matchesSearch;
-    });
+      // Se houver categoria mas não subcategoria selecionada, mostra todos os componentes da categoria
+      if (!selectedSubcategory) {
+        return Object.values(categoryData.subcategories).flatMap((subcategory) =>
+          (subcategory?.components || []).filter(
+            (component) =>
+              component &&
+              typeof component === 'object' &&
+              ((component.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (component.description || '').toLowerCase().includes(searchTerm.toLowerCase())),
+          ),
+        );
+      }
+
+      // Se houver categoria e subcategoria, mostra apenas os componentes da subcategoria
+      const subcategory = categoryData.subcategories[selectedSubcategory];
+      if (!subcategory?.components) {
+        setSelectedSubcategory(null); // Reseta a subcategoria se ela não existir
+        return [];
+      }
+
+      return subcategory.components.filter((component) => {
+        if (!component || typeof component !== 'object') return false;
+
+        const matchesSearch =
+          (component.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (component.description || '').toLowerCase().includes(searchTerm.toLowerCase());
+        return matchesSearch;
+      });
+    } catch (error) {
+      console.error('Erro ao filtrar componentes:', error);
+      setSelectedSubcategory(null); // Reseta a subcategoria em caso de erro
+      return [];
+    }
   })();
 
   return (
@@ -207,45 +236,51 @@ export const ComponentsModal = memo(({ isOpen, onClose }: ComponentsModalProps) 
                 [&::-webkit-scrollbar-thumb]:bg-clip-padding
                 hover:[&::-webkit-scrollbar-thumb]:bg-[#444]"
               >
-                {filteredComponents.map((component) => (
-                  <button
-                    key={component.id}
-                    className={classNames(
-                      'group text-left rounded-lg overflow-hidden',
-                      'bg-bolt-elements-background-depth-1',
-                      'border transition-all duration-200',
-                      selectedComponent?.id === component.id
-                        ? 'border-[#548BE4] ring-2 ring-[#548BE4]/30'
-                        : 'border-bolt-elements-borderColor hover:border-[#548BE4]/30',
-                    )}
-                    onClick={() => setSelectedComponent(component)}
-                  >
-                    {/* Preview */}
-                    <div className="relative aspect-video w-full overflow-hidden bg-black/20">
-                      {component.preview && (
-                        <img
-                          src={component.preview}
-                          alt={component.name}
-                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        />
+                {filteredComponents.map((component) =>
+                  component && typeof component === 'object' ? (
+                    <button
+                      key={component.id || component.name}
+                      className={classNames(
+                        'group text-left rounded-lg overflow-hidden',
+                        'bg-bolt-elements-background-depth-1',
+                        'border transition-all duration-200',
+                        selectedComponent?.id === component.id
+                          ? 'border-[#548BE4] ring-2 ring-[#548BE4]/30'
+                          : 'border-bolt-elements-borderColor hover:border-[#548BE4]/30',
                       )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                    </div>
-
-                    {/* Info */}
-                    <div className="p-3">
-                      <div className="flex items-center justify-between mb-1">
-                        <h3 className="font-medium text-bolt-elements-item-contentDefault">{component.name}</h3>
-                        {component.isNew && (
-                          <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-[#86efac] text-[#052e16] font-medium">
-                            New
-                          </span>
+                      onClick={() => setSelectedComponent(component)}
+                    >
+                      {/* Preview */}
+                      <div className="relative aspect-video w-full overflow-hidden bg-black/20">
+                        {component.preview && (
+                          <img
+                            src={component.preview}
+                            alt={component.name || ''}
+                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
                         )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                       </div>
-                      <p className="text-sm text-bolt-elements-item-contentDefault/60">{component.description}</p>
-                    </div>
-                  </button>
-                ))}
+
+                      {/* Info */}
+                      <div className="p-3">
+                        <div className="flex items-center justify-between mb-1">
+                          <h3 className="font-medium text-bolt-elements-item-contentDefault">
+                            {component.name || 'Sem nome'}
+                          </h3>
+                          {component.isNew && (
+                            <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-[#86efac] text-[#052e16] font-medium">
+                              New
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-bolt-elements-item-contentDefault/60">
+                          {component.description || 'Sem descrição'}
+                        </p>
+                      </div>
+                    </button>
+                  ) : null,
+                )}
               </div>
             </div>
           </div>
