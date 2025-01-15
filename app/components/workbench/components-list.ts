@@ -34,8 +34,131 @@ export const categories: Record<string, Category> = {
             name: 'Hero with Right Image',
             description: 'Hero section with prominent image on the right and CTA',
             preview: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe',
-            prompt:
-              'Create a modern hero section with:\n- Impactful title and subtitle\n- Image or illustration on the right\n- Primary CTA button\n- Secondary link\n- Gradient background\n- Fully responsive\n- Entry animations\n- Use Tailwind CSS for styling',
+            prompt: `Complete Prompt:
+
+Objective: Create a Hero component with a black background and white dots, featuring styled text and buttons that match the dark theme.
+
+Steps:
+
+Create the Hero Component:
+
+The background should be black (bg-black) with a white dot pattern using a radial gradient (bg-[radial-gradient(#ffffff33_1px,#000000_1px)]).
+
+The main text should be white (text-white), and the secondary text should have reduced opacity (text-white/70).
+
+Buttons should have styles that match the dark theme:
+
+Primary button: white background with black text (bg-white text-black).
+
+Secondary button: transparent background with a white border (bg-transparent border-white/20).
+
+Component Structure:
+
+A large centered title (text-5xl md:text-7xl).
+
+A descriptive paragraph below the title (text-lg md:text-xl).
+
+Two main buttons: one for the primary action and another for the secondary action.
+
+Colors and Styles:
+
+Background: bg-black bg-[radial-gradient(#ffffff33_1px,#000000_1px)] bg-[size:20px_20px].
+
+Main text: text-white.
+
+Secondary text: text-white/70.
+
+Primary button: bg-white text-black hover:bg-white/90.
+
+Secondary button: bg-transparent border-white/20 hover:bg-white/10 text-white.
+
+Dependencies:
+
+Use the Button component from Shadcn UI.
+
+Use icons from lucide-react for the buttons.
+
+Rendering:
+
+Render the component in App.tsx.
+
+Complete Code:
+
+// src/components/ui/hero-with-text-and-two-button.tsx
+import { MoveRight, PhoneCall } from "lucide-react";
+import { Button } from "@/components/ui/button"
+
+function Hero1() {
+  return (
+    <div className="w-full bg-black bg-[radial-gradient(#ffffff33_1px,#000000_1px)] bg-[size:20px_20px]">
+      <div className="container mx-auto">
+        <div className="flex gap-8 py-20 lg:py-40 items-center justify-center flex-col">
+          <div>
+            <Button variant="secondary" size="sm" className="gap-4 bg-white/10 hover:bg-white/20 text-white">
+              Read our launch article <MoveRight className="w-4 h-4" />
+            </Button>
+          </div>
+          <div className="flex gap-4 flex-col">
+            <h1 className="text-5xl md:text-7xl max-w-2xl tracking-tighter text-center font-regular text-white">
+              This is the start of something new
+            </h1>
+            <p className="text-lg md:text-xl leading-relaxed tracking-tight text-white/70 max-w-2xl text-center">
+              Managing a small business today is already tough. Avoid further
+              complications by ditching outdated, tedious trade methods. Our goal
+              is to streamline SMB trade, making it easier and faster than ever.
+            </p>
+          </div>
+          <div className="flex flex-row gap-3">
+            <Button size="lg" className="gap-4 bg-transparent border-white/20 hover:bg-white/10 text-white" variant="outline">
+              Jump on a call <PhoneCall className="w-4 h-4" />
+            </Button>
+            <Button size="lg" className="gap-4 bg-white text-black hover:bg-white/90">
+              Sign up here <MoveRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export { Hero1 };
+
+
+// src/App.tsx
+import React from "react";
+import { Hero1 } from "@/components/ui/hero-with-text-and-two-button";
+
+function App() {
+  return (
+    <div>
+      <Hero1 />
+    </div>
+  );
+}
+
+export default App;
+
+
+Execution Instructions:
+
+Create the above files in your project.
+
+Ensure the dependencies (lucide-react, @radix-ui/react-slot, class-variance-authority) are installed.
+
+Run npm run dev to view the component.
+
+Expected Result:
+
+A black background with white dots.
+
+White text with adjusted opacity.
+
+Buttons styled to match the dark theme.
+
+Icons in the buttons to improve usability.
+
+Now you have a modern and styled Hero component! 🚀`,
             isNew: true,
           },
           {

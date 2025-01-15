@@ -35,6 +35,7 @@ import Cookies from 'js-cookie';
 interface WorkspaceProps {
   chatStarted?: boolean; // Indica se o chat foi iniciado
   isStreaming?: boolean; // Indica se está streamando conteúdo
+  onSendMessage?: (event: React.UIEvent, message: string) => void; // Callback para enviar mensagem
 }
 
 // Configuração da transição de visualização
@@ -71,7 +72,7 @@ const workbenchVariants = {
 } satisfies Variants;
 
 // Componente principal do Workbench
-export const Workbench = memo(({ chatStarted, isStreaming }: WorkspaceProps) => {
+export const Workbench = memo(({ chatStarted, isStreaming, onSendMessage }: WorkspaceProps) => {
   renderLogger.trace('Workbench'); // Log de renderização
 
   // Estados locais
@@ -173,10 +174,7 @@ export const Workbench = memo(({ chatStarted, isStreaming }: WorkspaceProps) => 
                 <div className="ml-auto" />
                 {selectedView === 'code' && (
                   <div className="flex overflow-y-auto">
-                    <PanelHeaderButton
-                      className="mr-1 text-sm"
-                      onClick={() => setComponentsModalOpen(true)}
-                    >
+                    <PanelHeaderButton className="mr-1 text-sm" onClick={() => setComponentsModalOpen(true)}>
                       <div className="i-ph:puzzle-piece-duotone" />
                       Components
                     </PanelHeaderButton>
@@ -283,7 +281,11 @@ export const Workbench = memo(({ chatStarted, isStreaming }: WorkspaceProps) => 
           </div>
         </div>
         <SupabaseConfigModal isOpen={supabaseModalOpen} onClose={() => setSupabaseModalOpen(false)} />
-        <ComponentsModal isOpen={componentsModalOpen} onClose={() => setComponentsModalOpen(false)} />
+        <ComponentsModal
+          isOpen={componentsModalOpen}
+          onClose={() => setComponentsModalOpen(false)}
+          onSendMessage={onSendMessage}
+        />
       </motion.div>
     )
   );

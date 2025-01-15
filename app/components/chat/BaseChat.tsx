@@ -300,9 +300,9 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
         if (shadcnTemplate && importChat) {
           try {
             // Envia a mensagem original modificada
-            if (sendMessage) {
-              sendMessage(event, 'Creating project...');
-            }
+            // if (sendMessage) {
+            //   sendMessage(event, 'Creating project...');
+            // }
 
             console.log('[BaseChat] Iniciando importação do template');
             const { workdir, data } = await gitClone(shadcnTemplate.repo);
@@ -761,7 +761,15 @@ ${file.content}
               )}
             </div>
           </div>
-          <ClientOnly>{() => <Workbench chatStarted={chatStarted} isStreaming={isStreaming} />}</ClientOnly>
+          <ClientOnly>
+            {() => (
+              <Workbench
+                chatStarted={chatStarted}
+                isStreaming={isStreaming}
+                onSendMessage={sendMessage}
+              />
+            )}
+          </ClientOnly>
         </div>
       </div>
     );

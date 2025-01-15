@@ -2,13 +2,15 @@ import { memo, useState, useEffect } from 'react';
 import { classNames } from '~/utils/classNames';
 import { Search, ChevronDown, LayoutTemplate, Component as ComponentIcon } from 'lucide-react';
 import { categories, type Component } from './components-list';
+import { useChat } from 'ai/react';
 
 interface ComponentsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSendMessage?: (event: React.UIEvent, message: string) => void;
 }
 
-export const ComponentsModal = memo(({ isOpen, onClose }: ComponentsModalProps) => {
+export const ComponentsModal = memo(({ isOpen, onClose, onSendMessage }: ComponentsModalProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedComponent, setSelectedComponent] = useState<Component | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -157,15 +159,15 @@ export const ComponentsModal = memo(({ isOpen, onClose }: ComponentsModalProps) 
                   placeholder="Search components..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  onFocus={(e) => e.target.placeholder = ''}
-                  onBlur={(e) => e.target.placeholder = 'Search components...'}
+                  onFocus={(e) => (e.target.placeholder = '')}
+                  onBlur={(e) => (e.target.placeholder = 'Search components...')}
                   className={classNames(
                     'w-64 pl-10 pr-4 py-2 rounded-md text-sm',
                     'bg-[#1D1D1D] hover:bg-[#202020]',
                     'border border-bolt-elements-borderColor',
                     'focus:outline-none focus:ring-2 focus:ring-[#548BE4]/30',
                     'placeholder-bolt-elements-item-contentDefault/50',
-                    'text-white'
+                    'text-white',
                   )}
                 />
               </div>
@@ -346,6 +348,15 @@ export const ComponentsModal = memo(({ isOpen, onClose }: ComponentsModalProps) 
                 onClick={() => {
                   if (selectedComponent) {
                     console.log(`Generating component: ${selectedComponent.name}`);
+                    console.log('Prompt do componente:', selectedComponent.prompt);
+                    
+                    // Envia o prompt usando o callback
+                    if (selectedComponent.prompt && onSendMessage) {
+                      const event = new Event('submit') as React.UIEvent;
+                      event.preventDefault = () => {};
+                      onSendMessage(event, selectedComponent.prompt);
+                    }
+                    
                     onClose();
                   }
                 }}

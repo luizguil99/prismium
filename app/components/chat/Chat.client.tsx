@@ -266,6 +266,9 @@ export const ChatImpl = memo(
     const sendMessage = async (_event: React.UIEvent, messageInput?: string) => {
       console.log('[ChatClient] sendMessage chamado', { messageInput, input });
 
+      // Log para registrar mensagem enviada
+      console.log('Mensagem enviada:', messageInput || input);
+
       // Usa a mensagem passada como parâmetro ou o input atual do chat
       const _input = messageInput || input;
 
