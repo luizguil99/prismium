@@ -1,6 +1,6 @@
 import { memo, useState, useEffect } from 'react';
 import { classNames } from '~/utils/classNames';
-import { Search, ChevronDown } from 'lucide-react';
+import { Search, ChevronDown, LayoutTemplate, Component as ComponentIcon } from 'lucide-react';
 import { categories, type Component } from './components-list';
 
 interface ComponentsModalProps {
@@ -45,23 +45,25 @@ export const ComponentsModal = memo(({ isOpen, onClose }: ComponentsModalProps) 
   const filteredComponents = (() => {
     // Se não houver categoria selecionada, mostra todos os componentes
     if (!selectedCategory) {
-      return Object.values(categories).flatMap(category => 
-        Object.values(category.subcategories).flatMap(subcategory => 
-          subcategory.components.filter(component => 
-            component.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            component.description.toLowerCase().includes(searchTerm.toLowerCase())
-          )
-        )
+      return Object.values(categories).flatMap((category) =>
+        Object.values(category.subcategories).flatMap((subcategory) =>
+          subcategory.components.filter(
+            (component) =>
+              component.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              component.description.toLowerCase().includes(searchTerm.toLowerCase()),
+          ),
+        ),
       );
     }
-    
+
     // Se houver categoria mas não subcategoria selecionada, mostra todos os componentes da categoria
     if (!selectedSubcategory) {
-      return Object.values(categories[selectedCategory].subcategories).flatMap(subcategory => 
-        subcategory.components.filter(component => 
-          component.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          component.description.toLowerCase().includes(searchTerm.toLowerCase())
-        )
+      return Object.values(categories[selectedCategory].subcategories).flatMap((subcategory) =>
+        subcategory.components.filter(
+          (component) =>
+            component.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            component.description.toLowerCase().includes(searchTerm.toLowerCase()),
+        ),
       );
     }
 
@@ -152,7 +154,11 @@ export const ComponentsModal = memo(({ isOpen, onClose }: ComponentsModalProps) 
                       )}
                     >
                       <div className="flex items-center gap-2">
-                        <span className={classNames(category.icon, 'text-[#548BE4]')} />
+                        {categoryKey === 'landingPages' ? (
+                          <LayoutTemplate className="w-5 h-5 text-[#548BE4]" />
+                        ) : (
+                          <ComponentIcon className="w-5 h-5 text-[#548BE4]" />
+                        )}
                         <span className="font-medium">{category.name}</span>
                       </div>
                       <ChevronDown
@@ -203,12 +209,12 @@ export const ComponentsModal = memo(({ isOpen, onClose }: ComponentsModalProps) 
               >
                 {filteredComponents.map((component) => (
                   <button
-                    key={component.name}
+                    key={component.id}
                     className={classNames(
                       'group text-left rounded-lg overflow-hidden',
                       'bg-bolt-elements-background-depth-1',
                       'border transition-all duration-200',
-                      selectedComponent?.name === component.name
+                      selectedComponent?.id === component.id
                         ? 'border-[#548BE4] ring-2 ring-[#548BE4]/30'
                         : 'border-bolt-elements-borderColor hover:border-[#548BE4]/30',
                     )}
