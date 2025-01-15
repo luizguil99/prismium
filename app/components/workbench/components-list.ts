@@ -31,9 +31,9 @@ export const categories: Record<string, Category> = {
         components: [
           {
             id: 'hero-right-image',
-            name: 'Hero with Right Image',
-            description: 'Hero section with prominent image on the right and CTA',
-            preview: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe',
+            name: 'Hero with text and two button',
+            description: 'Hero section with black dots',
+            preview: '/Hero-with-text-2-button.png',
             prompt: `Complete Prompt:
 
 Objective: Create a Hero component with a black background and white dots, featuring styled text and buttons that match the dark theme.
