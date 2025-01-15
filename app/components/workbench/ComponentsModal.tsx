@@ -15,6 +15,27 @@ export const ComponentsModal = memo(({ isOpen, onClose }: ComponentsModalProps) 
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
 
+  // Reseta o estado quando o modal fecha
+  useEffect(() => {
+    if (!isOpen) {
+      setSearchTerm('');
+      setSelectedComponent(null);
+      setSelectedCategory(null);
+      setSelectedSubcategory(null);
+      setExpandedCategories({});
+    }
+  }, [isOpen]);
+
+  // Garante que a categoria selecionada esteja expandida
+  useEffect(() => {
+    if (selectedCategory) {
+      setExpandedCategories(prev => ({
+        ...prev,
+        [selectedCategory]: true
+      }));
+    }
+  }, [selectedCategory]);
+
   const toggleCategory = (category: string) => {
     // Se está clicando na mesma categoria
     if (category === selectedCategory) {
@@ -22,6 +43,9 @@ export const ComponentsModal = memo(({ isOpen, onClose }: ComponentsModalProps) 
         ...prev,
         [category]: !prev[category],
       }));
+      if (prev[category]) {
+        setSelectedSubcategory(null);
+      }
     } else {
       // Se está mudando de categoria, limpa tudo e expande a nova
       setSelectedCategory(category);
@@ -34,18 +58,13 @@ export const ComponentsModal = memo(({ isOpen, onClose }: ComponentsModalProps) 
   };
 
   const selectSubcategory = (subcategory: string) => {
-    setSelectedSubcategory(subcategory);
+    if (subcategory === selectedSubcategory) {
+      setSelectedSubcategory(null);
+    } else {
+      setSelectedSubcategory(subcategory);
+    }
     setSelectedComponent(null);
   };
-
-  useEffect(() => {
-    if (!isOpen) {
-      setSearchTerm('');
-      setSelectedComponent(null);
-      setSelectedCategory(null);
-      setSelectedSubcategory(null);
-    }
-  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -161,14 +180,18 @@ export const ComponentsModal = memo(({ isOpen, onClose }: ComponentsModalProps) 
             <div className="w-64 flex flex-col bg-transparent border-r border-bolt-elements-borderColor/50">
               <div
                 className="flex-1 p-2 space-y-1 overflow-y-auto h-full 
+                overflow-x-hidden
+                scroll-smooth
+                [scrollbar-gutter:stable]
                 [&::-webkit-scrollbar]:w-2 
                 [&::-webkit-scrollbar-track]:bg-transparent 
-                [&::-webkit-scrollbar-thumb]:bg-[#333] 
+                [&::-webkit-scrollbar-thumb]:bg-[#333]/50
                 [&::-webkit-scrollbar-thumb]:rounded-full 
                 [&::-webkit-scrollbar-thumb]:border-2
                 [&::-webkit-scrollbar-thumb]:border-transparent
                 [&::-webkit-scrollbar-thumb]:bg-clip-padding
-                hover:[&::-webkit-scrollbar-thumb]:bg-[#444]"
+                hover:[&::-webkit-scrollbar-thumb]:bg-[#444]
+                [@media(hover:none)]:scrollbar-none"
               >
                 {Object.entries(categories).map(([categoryKey, category]) => (
                   <div key={categoryKey} className="space-y-1">
@@ -178,28 +201,28 @@ export const ComponentsModal = memo(({ isOpen, onClose }: ComponentsModalProps) 
                         'w-full flex items-center justify-between px-3 py-2 rounded-md text-sm',
                         'text-bolt-elements-item-contentDefault group',
                         'bg-transparent hover:bg-[#1D1D1D]',
-                        'transition-colors duration-200',
+                        'transition-all duration-150 ease-in-out will-change-transform',
                         selectedCategory === categoryKey && 'bg-[#1D1D1D]/50',
                       )}
                     >
                       <div className="flex items-center gap-2">
                         {categoryKey === 'landingPages' ? (
-                          <LayoutTemplate className="w-5 h-5 text-[#548BE4]" />
+                          <LayoutTemplate className="w-5 h-5 text-[#548BE4] transition-transform duration-150 ease-in-out group-hover:scale-110" />
                         ) : (
-                          <ComponentIcon className="w-5 h-5 text-[#548BE4]" />
+                          <ComponentIcon className="w-5 h-5 text-[#548BE4] transition-transform duration-150 ease-in-out group-hover:scale-110" />
                         )}
                         <span className="font-medium">{category.name}</span>
                       </div>
                       <ChevronDown
                         className={classNames(
-                          'w-4 h-4 transition-transform text-bolt-elements-item-contentDefault/50',
-                          expandedCategories[categoryKey] ? 'transform rotate-180' : '',
+                          'w-4 h-4 transition-transform duration-200 ease-in-out will-change-transform',
+                          expandedCategories[categoryKey] ? 'rotate-180' : '',
                         )}
                       />
                     </button>
 
                     {expandedCategories[categoryKey] && (
-                      <div className="ml-2 space-y-0.5 animate-slideDown">
+                      <div className="ml-2 space-y-0.5">
                         {Object.entries(category.subcategories).map(([subcategoryKey, subcategory]) => (
                           <button
                             key={subcategoryKey}
@@ -208,7 +231,7 @@ export const ComponentsModal = memo(({ isOpen, onClose }: ComponentsModalProps) 
                               'w-full flex items-center justify-between px-3 py-1.5 rounded-md text-sm',
                               'text-bolt-elements-item-contentDefault/60 hover:text-bolt-elements-item-contentDefault',
                               'bg-transparent hover:bg-[#1D1D1D]',
-                              'transition-colors duration-200',
+                              'transition-all duration-150 ease-in-out will-change-transform',
                               selectedSubcategory === subcategoryKey &&
                                 'bg-[#1D1D1D] text-bolt-elements-item-contentDefault',
                             )}
@@ -227,14 +250,18 @@ export const ComponentsModal = memo(({ isOpen, onClose }: ComponentsModalProps) 
             <div className="flex-1 p-4">
               <div
                 className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto max-h-[460px] pr-4
+                overflow-x-hidden
+                scroll-smooth
+                [scrollbar-gutter:stable]
                 [&::-webkit-scrollbar]:w-2 
                 [&::-webkit-scrollbar-track]:bg-transparent 
-                [&::-webkit-scrollbar-thumb]:bg-[#333] 
+                [&::-webkit-scrollbar-thumb]:bg-[#333]/50
                 [&::-webkit-scrollbar-thumb]:rounded-full 
                 [&::-webkit-scrollbar-thumb]:border-2
                 [&::-webkit-scrollbar-thumb]:border-transparent
                 [&::-webkit-scrollbar-thumb]:bg-clip-padding
-                hover:[&::-webkit-scrollbar-thumb]:bg-[#444]"
+                hover:[&::-webkit-scrollbar-thumb]:bg-[#444]
+                [@media(hover:none)]:scrollbar-none"
               >
                 {filteredComponents.map((component) =>
                   component && typeof component === 'object' ? (
@@ -243,7 +270,8 @@ export const ComponentsModal = memo(({ isOpen, onClose }: ComponentsModalProps) 
                       className={classNames(
                         'group text-left rounded-lg overflow-hidden',
                         'bg-bolt-elements-background-depth-1',
-                        'border transition-all duration-200',
+                        'border transition-all duration-150 ease-in-out will-change-transform',
+                        'hover:translate-y-[-2px] hover:shadow-lg',
                         selectedComponent?.id === component.id
                           ? 'border-[#548BE4] ring-2 ring-[#548BE4]/30'
                           : 'border-bolt-elements-borderColor hover:border-[#548BE4]/30',
@@ -256,7 +284,8 @@ export const ComponentsModal = memo(({ isOpen, onClose }: ComponentsModalProps) 
                           <img
                             src={component.preview}
                             alt={component.name || ''}
-                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            loading="lazy"
+                            className="w-full h-full object-cover transition-transform duration-300 ease-in-out will-change-transform group-hover:scale-105"
                           />
                         )}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
