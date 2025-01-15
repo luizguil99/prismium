@@ -55,6 +55,17 @@ export const Terminal = memo(
         terminal.loadAddon(searchAddon);
         terminal.open(element);
 
+        // Adiciona suporte para colagem
+        terminal.attachCustomKeyEventHandler((event: KeyboardEvent) => {
+          if (event.type === 'keydown' && event.ctrlKey && event.key === 'v') {
+            navigator.clipboard.readText().then(text => {
+              terminal.write(text);
+            });
+            return false;
+          }
+          return true;
+        });
+
         const resizeObserver = new ResizeObserver(() => {
           fitAddon.fit();
           onTerminalResize?.(terminal.cols, terminal.rows);

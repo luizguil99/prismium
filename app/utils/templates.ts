@@ -3,7 +3,7 @@ export const templates = [
   {
     id: 1,
     title: 'React',
-    description: 'React App with TypeScript + Vite',
+    description: 'React App with Javascript + Vite',
     repo: 'https://github.com/luizguil99/shadcn-js',
     tags: ['React', 'TypeScript', 'Vite'],
     keywords: ['react', 'typescript', 'vite'],
@@ -35,5 +35,14 @@ export const templates = [
     tags: ['Angular', 'TypeScript'],
     keywords: ['angular', 'typescript'],
     image: '/app/lib/png/logo_angular.svg.png',
+  },
+  {
+    id: 5,
+    title: 'Typescript',
+    description: 'React App with TypeScript',
+    repo: 'https://github.com/luizguil99/template-ts',
+    tags: ['Angular', 'TypeScript'],
+    keywords: ['angular', 'typescript'],
+    image: '/app/lib/png/logo_react.svg.png',
   },
 ];
