@@ -308,6 +308,7 @@ npm run dev
       - Ícones: lucide-react
       
       SEMPRE verifique se estas dependências estão instaladas antes de usar seus componentes!
+      17.Importante: Caso eu mande um longo prompt em typescript, verifique se o projeto está em typescript!, se não estiver, adapte o código para a linguagem correta, exemplo: se eu mandar um prompt que tenha instruções em .tsx adapte para .jsx
   </artifact_instructions>
 </artifact_info>
 
