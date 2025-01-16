@@ -53,6 +53,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import { Button } from '@/components/ui/ui/button';
 
 import { FigmaViewer } from '~/figma';
+import { FigmaUrlViewer } from '~/figma/components/FigmaUrlViewer';
 
 const TEXTAREA_MIN_HEIGHT = 76;
 
@@ -154,6 +155,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     const [transcript, setTranscript] = useState('');
     const [isModelLoading, setIsModelLoading] = useState<string | undefined>('all');
     const [figmaFile, setFigmaFile] = useState<File | null>(null);
+    const [figmaInputType, setFigmaInputType] = useState<'file' | 'url' | null>(null);
 
     const getProviderSettings = useCallback(() => {
       let providerSettings: Record<string, IProviderSetting> | undefined = undefined;
@@ -703,16 +705,53 @@ ${file.content}
                         title="Upload arquivo Figma"
                         className="p-2 rounded-lg bg-black border border-[#2A2F3A]/50 text-gray-400 hover:text-[#A259FF] hover:border-[#A259FF]/30 transition-all duration-200"
                         onClick={() => {
-                          const input = document.createElement('input');
-                          input.type = 'file';
-                          input.accept = '.fig';
-                          input.onchange = async (e) => {
-                            const file = (e.target as HTMLInputElement).files?.[0];
-                            if (file && file.name.endsWith('.fig')) {
-                              setFigmaFile(file);
+                          // Abre o modal de seleção
+                          const modal = document.createElement('div');
+                          modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm';
+                          modal.innerHTML = `
+                            <div class="relative w-full max-w-md rounded-lg bg-black/95 border border-zinc-800 p-6">
+                              <h2 class="mb-4 text-xl font-semibold text-zinc-100">Importar do Figma</h2>
+                              <div class="flex flex-col gap-4">
+                                <button id="uploadBtn" class="w-full px-4 py-2 bg-black hover:bg-zinc-900 text-zinc-100 border border-zinc-800 rounded-lg">
+                                  Importar arquivo .fig
+                                </button>
+                                <button id="urlBtn" class="w-full px-4 py-2 bg-black hover:bg-zinc-900 text-zinc-100 border border-zinc-800 rounded-lg">
+                                  Importar via URL
+                                </button>
+                              </div>
+                            </div>
+                          `;
+                          document.body.appendChild(modal);
+
+                          // Adiciona os event listeners
+                          const uploadBtn = modal.querySelector('#uploadBtn');
+                          const urlBtn = modal.querySelector('#urlBtn');
+
+                          uploadBtn?.addEventListener('click', () => {
+                            const input = document.createElement('input');
+                            input.type = 'file';
+                            input.accept = '.fig';
+                            input.onchange = async (e) => {
+                              const file = (e.target as HTMLInputElement).files?.[0];
+                              if (file && file.name.endsWith('.fig')) {
+                                setFigmaFile(file);
+                              }
+                            };
+                            input.click();
+                            document.body.removeChild(modal);
+                          });
+
+                          urlBtn?.addEventListener('click', () => {
+                            setFigmaInputType('url');
+                            document.body.removeChild(modal);
+                          });
+
+                          // Fecha o modal ao clicar fora
+                          modal.addEventListener('click', (e) => {
+                            if (e.target === modal) {
+                              document.body.removeChild(modal);
                             }
-                          };
-                          input.click();
+                          });
                         }}
                       >
                         <Figma className="h-5 w-5" />
@@ -819,6 +858,13 @@ ${file.content}
               <FigmaViewer file={figmaFile} onClose={() => setFigmaFile(null)} onConvert={handleFigmaConvert} />
             </div>
           </div>
+        )}
+
+        {figmaInputType === 'url' && (
+          <FigmaUrlViewer
+            onClose={() => setFigmaInputType(null)}
+            onConvert={handleFigmaConvert}
+          />
         )}
         {baseChat}
       </Tooltip.Provider>
