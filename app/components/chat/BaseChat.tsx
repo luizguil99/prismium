@@ -46,11 +46,13 @@ import logoAstro from '~/lib/png/logo_astro.svg.png';
 import logoNextjs from '~/lib/png/logo_nextjs.svg.png';
 import logoReact from '~/lib/png/logo_react.svg.png';
 import logoVue from '~/lib/png/logo_vue.svg fill@2x.png';
-import { ChevronRight, ChevronLeft, Search, ArrowRight, Github, X } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Search, ArrowRight, Github, X, Figma } from 'lucide-react';
 import BackgroundRays from '../ui/BackgroundRays';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/ui/dialog';
 import { Button } from '@/components/ui/ui/button';
+
+import { FigmaViewer } from '~/figma';
 
 const TEXTAREA_MIN_HEIGHT = 76;
 
@@ -151,6 +153,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
     const [transcript, setTranscript] = useState('');
     const [isModelLoading, setIsModelLoading] = useState<string | undefined>('all');
+    const [figmaFile, setFigmaFile] = useState<File | null>(null);
 
     const getProviderSettings = useCallback(() => {
       let providerSettings: Record<string, IProviderSetting> | undefined = undefined;
@@ -390,20 +393,24 @@ ${file.content}
     const handleFileUpload = () => {
       const input = document.createElement('input');
       input.type = 'file';
-      input.accept = 'image/*';
+      input.accept = 'image/*,.fig'; // Adicionado suporte para .fig
 
       input.onchange = async (e) => {
         const file = (e.target as HTMLInputElement).files?.[0];
 
         if (file) {
-          const reader = new FileReader();
+          if (file.name.endsWith('.fig')) {
+            setFigmaFile(file);
+          } else {
+            const reader = new FileReader();
 
-          reader.onload = (e) => {
-            const base64Image = e.target?.result as string;
-            setUploadedFiles?.([...uploadedFiles, file]);
-            setImageDataList?.([...imageDataList, base64Image]);
-          };
-          reader.readAsDataURL(file);
+            reader.onload = (e) => {
+              const base64Image = e.target?.result as string;
+              setUploadedFiles?.([...uploadedFiles, file]);
+              setImageDataList?.([...imageDataList, base64Image]);
+            };
+            reader.readAsDataURL(file);
+          }
         }
       };
 
@@ -437,6 +444,21 @@ ${file.content}
           break;
         }
       }
+    };
+
+    const handleFigmaConvert = (textContent: string) => {
+      if (textareaRef?.current) {
+        const currentText = textareaRef.current.value;
+        const newText = currentText + (currentText ? '\n\n' : '') + textContent;
+
+        if (handleInputChange) {
+          const syntheticEvent = {
+            target: { value: newText },
+          } as React.ChangeEvent<HTMLTextAreaElement>;
+          handleInputChange(syntheticEvent);
+        }
+      }
+      setFigmaFile(null);
     };
 
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -676,6 +698,26 @@ ${file.content}
                       >
                         <div className="i-ph:paperclip text-xl"></div>
                       </IconButton>
+
+                      <IconButton
+                        title="Upload arquivo Figma"
+                        className="p-2 rounded-lg bg-black border border-[#2A2F3A]/50 text-gray-400 hover:text-[#A259FF] hover:border-[#A259FF]/30 transition-all duration-200"
+                        onClick={() => {
+                          const input = document.createElement('input');
+                          input.type = 'file';
+                          input.accept = '.fig';
+                          input.onchange = async (e) => {
+                            const file = (e.target as HTMLInputElement).files?.[0];
+                            if (file && file.name.endsWith('.fig')) {
+                              setFigmaFile(file);
+                            }
+                          };
+                          input.click();
+                        }}
+                      >
+                        <Figma className="h-5 w-5" />
+                      </IconButton>
+
                       <IconButton
                         title="Enhance prompt"
                         disabled={input.length === 0 || enhancingPrompt}
@@ -762,13 +804,7 @@ ${file.content}
             </div>
           </div>
           <ClientOnly>
-            {() => (
-              <Workbench
-                chatStarted={chatStarted}
-                isStreaming={isStreaming}
-                onSendMessage={sendMessage}
-              />
-            )}
+            {() => <Workbench chatStarted={chatStarted} isStreaming={isStreaming} onSendMessage={sendMessage} />}
           </ClientOnly>
         </div>
       </div>
@@ -777,6 +813,13 @@ ${file.content}
     return (
       <Tooltip.Provider delayDuration={200}>
         <SettingsModal />
+        {figmaFile && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="w-full max-w-2xl mx-4">
+              <FigmaViewer file={figmaFile} onClose={() => setFigmaFile(null)} onConvert={handleFigmaConvert} />
+            </div>
+          </div>
+        )}
         {baseChat}
       </Tooltip.Provider>
     );
