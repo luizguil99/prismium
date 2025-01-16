@@ -393,10 +393,10 @@ Form state management and submission handling
 This code will create the exact form as in the project. Copy and paste it into your App.tsx or a new component, and it will work seamlessly! Don't forget to add the necessary files in case they don't exist`,
           },
           {
-            id: 'login-page-with-social',
-            name: 'Login Page with Social Media',
+            id: 'Login with phrase',
+            name: 'Login Page with Phrase',
             description: 'Login page with social media login options',
-            preview: 'https://images.unsplash.com/photo-1557821552-17105176677c',
+            preview: '/login-2.png',
             prompt:
               `import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
