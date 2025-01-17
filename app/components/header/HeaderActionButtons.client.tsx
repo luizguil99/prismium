@@ -3,6 +3,8 @@ import useViewport from '~/lib/hooks';
 import { chatStore } from '~/lib/stores/chat';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { classNames } from '~/utils/classNames';
+import { MessageSquare, Code } from 'lucide-react';
+import { useState } from 'react';
 
 interface HeaderActionButtonsProps {}
 
@@ -11,22 +13,21 @@ export function HeaderActionButtons({}: HeaderActionButtonsProps) {
   const { showChat } = useStore(chatStore);
 
   const isSmallViewport = useViewport(1024);
-
   const canHideChat = showWorkbench || !showChat;
 
   return (
-    <div className="flex">
-      <div className="flex border border-bolt-elements-borderColor rounded-md overflow-hidden">
+    <div className="flex items-center">
+      <div className="flex items-center border border-bolt-elements-borderColor rounded-md overflow-hidden">
         <Button
           active={showChat}
-          disabled={!canHideChat || isSmallViewport} // expand button is disabled on mobile as it's not needed
+          disabled={!canHideChat || isSmallViewport}
           onClick={() => {
             if (canHideChat) {
               chatStore.setKey('showChat', !showChat);
             }
           }}
         >
-          <div className="i-bolt:chat text-sm" />
+          <MessageSquare className="w-[14px] h-[14px]" />
         </Button>
         <div className="w-[1px] bg-bolt-elements-borderColor" />
         <Button
@@ -35,11 +36,10 @@ export function HeaderActionButtons({}: HeaderActionButtonsProps) {
             if (showWorkbench && !showChat) {
               chatStore.setKey('showChat', true);
             }
-
             workbenchStore.showWorkbench.set(!showWorkbench);
           }}
         >
-          <div className="i-ph:code-bold" />
+          <Code className="w-[14px] h-[14px]" />
         </Button>
       </div>
     </div>
@@ -56,14 +56,17 @@ interface ButtonProps {
 function Button({ active = false, disabled = false, children, onClick }: ButtonProps) {
   return (
     <button
-      className={classNames('flex items-center p-1.5', {
-        'bg-bolt-elements-item-backgroundDefault hover:bg-bolt-elements-item-backgroundActive text-bolt-elements-textTertiary hover:text-bolt-elements-textPrimary':
-          !active,
-        'bg-bolt-elements-item-backgroundAccent text-[#548BE4]': active && !disabled,
-        'bg-bolt-elements-item-backgroundDefault text-alpha-gray-20 dark:text-alpha-white-20 cursor-not-allowed':
-          disabled,
-      })}
+      className={classNames(
+        'flex items-center p-1.5 bg-bolt-elements-item-backgroundDefault',
+        {
+          'text-bolt-elements-textTertiary hover:text-bolt-elements-textPrimary hover:bg-bolt-elements-item-backgroundActive':
+            !active && !disabled,
+          'bg-[#0F0F10] text-bolt-elements-textPrimary': active && !disabled,
+          'text-alpha-gray-20 dark:text-alpha-white-20 cursor-not-allowed': disabled,
+        },
+      )}
       onClick={onClick}
+      disabled={disabled}
     >
       {children}
     </button>
