@@ -409,6 +409,7 @@ function newEditorState(
         },
       }),
       trackLastModifiedLine,
+      EditorView.lineWrapping,
       ...extensions,
     ],
   });
