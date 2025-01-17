@@ -53,9 +53,7 @@ function CurrentDateTime() {
         <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-[#1A1F2A]/60">
           <div className="h-4 w-4 i-ph:calendar-check-thin text-gray-300" />
         </div>
-        <span className="text-[13px] font-medium text-gray-300">
-          {dateTime.toLocaleDateString()}
-        </span>
+        <span className="text-[13px] font-medium text-gray-300">{dateTime.toLocaleDateString()}</span>
       </div>
       <div className="flex items-center gap-2">
         <div className="h-4 w-4 i-ph:clock-thin text-gray-300" />
@@ -63,7 +61,7 @@ function CurrentDateTime() {
           {dateTime.toLocaleTimeString(undefined, {
             hour: '2-digit',
             minute: '2-digit',
-            hour12: false
+            hour12: false,
           })}
         </span>
       </div>
