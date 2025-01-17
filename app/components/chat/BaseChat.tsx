@@ -286,23 +286,20 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     const { handlePromptAndClone, loadingId } = useTemplateManager();
 
     const processMessage = async (event: React.UIEvent, messageInput?: string) => {
-      if (!messageInput && !textareaRef?.current?.value) {
-        return;
-      }
+      event.preventDefault();
 
-      const input = messageInput || textareaRef.current.value;
-      console.log('[BaseChat] processMessage - Input:', input);
+      const message = messageInput || input;
 
       // Verifica se é a primeira mensagem e se contém palavras-chave do template Shadcn
-      if (messages?.length === 0 && input.toLowerCase().includes('shadcn')) {
+      if (messages?.length === 0 && message.toLowerCase().includes('shadcn')) {
         console.log('[BaseChat] Detectado comando shadcn');
         const shadcnTemplate = templates.find((t) => t.id === 1); // Template Shadcn
         if (shadcnTemplate && importChat) {
           try {
-            // Envia a mensagem original modificada
-            // if (sendMessage) {
-            //   sendMessage(event, 'Creating project...');
-            // }
+            // Envia a mensagem de loading apenas para template
+            if (sendMessage) {
+              sendMessage(event, 'Creating project...');
+            }
 
             console.log('[BaseChat] Iniciando importação do template');
             const { workdir, data } = await gitClone(shadcnTemplate.repo);
@@ -346,7 +343,7 @@ ${file.content}
             }
 
             console.log('[BaseChat] Chamando importChat');
-            localStorage.setItem('pendingTemplateMessage', input);
+            localStorage.setItem('pendingTemplateMessage', message);
             await importChat(`Template: ${shadcnTemplate.title}`, templateMessages);
             console.log('[BaseChat] Template importado com sucesso');
 
@@ -356,12 +353,12 @@ ${file.content}
             toast.error('Falha ao importar template');
           }
         }
-      }
-
-      // Continua com o processamento normal da mensagem
-      if (sendMessage) {
-        console.log('[BaseChat] Enviando mensagem via sendMessage');
-        sendMessage(event, input);
+      } else {
+        // Para mensagens normais, envia direto sem animação de loading
+        if (sendMessage) {
+          console.log('[BaseChat] Enviando mensagem via sendMessage');
+          sendMessage(event, message);
+        }
       }
     };
 

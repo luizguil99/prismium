@@ -169,22 +169,20 @@ export const ChatImpl = memo(
     });
     useEffect(() => {
       const prompt = searchParams.get('prompt');
-      const pendingMessage = localStorage.getItem('pendingTemplateMessage');
+      const pendingTemplate = localStorage.getItem('pendingTemplateMessage');
 
-      if (pendingMessage) {
-        console.log('[ChatClient] Encontrada mensagem pendente do template:', pendingMessage);
-        // Remove a mensagem do localStorage
+      if (pendingTemplate) {
         localStorage.removeItem('pendingTemplateMessage');
-        // Envia a mensagem após um delay maior para garantir que tudo está carregado
+        // Para template, mantém o delay e a animação
         setTimeout(() => {
           const syntheticEvent = {
             preventDefault: () => {},
           } as React.UIEvent;
-          sendMessage(syntheticEvent, pendingMessage);
-        }, 3000); // Aumentado para 2 segundos
+          runAnimation();
+          sendMessage(syntheticEvent, pendingTemplate);
+        }, 3000);
       } else if (prompt) {
         setSearchParams({});
-        runAnimation();
         append({
           role: 'user',
           content: [
