@@ -505,10 +505,10 @@ ${file.content}
             {!chatStarted && (
               <div id="intro" className="mt-[16vh] max-w-chat mx-auto text-center px-4 lg:px-0">
                 <h1 className="text-3xl lg:text-6xl font-bold text-bolt-elements-textPrimary mb-4 animate-fade-in">
-                  Where ideas begin
+                  Transforming Ideas into Code
                 </h1>
                 <p className="text-md lg:text-xl mb-8 text-bolt-elements-textSecondary animate-fade-in animation-delay-200">
-                  Bring ideas to life in seconds or get help on existing projects.
+                Build intelligent, future-ready software in record time.
                 </p>
               </div>
             )}
@@ -745,7 +745,7 @@ ${file.content}
                 </div>
               </div>
             </div>
-            <div className="flex flex-col justify-center gap-5">
+            <div className="flex flex-col justify-center gap-8 pb-10">
               {!chatStarted && (
                 <>
                   <ExamplePrompts
@@ -754,9 +754,11 @@ ${file.content}
                         sendMessage(event, messageInput);
                       }
                     }}
+                    className="mb-8"
                   />
-                  <TemplateCards importChat={importChat} />
-                  <StarterTemplates />
+                  <div className="px-4 py-6 rounded-lg bg-black/20 ">
+                    <TemplateCards importChat={importChat} />
+                  </div>
                 </>
               )}
             </div>
