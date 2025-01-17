@@ -146,10 +146,9 @@ export const Menu = () => {
       variants={menuVariants}
       className="flex selection-accent flex-col side-menu fixed top-0 w-[350px] h-full bg-bolt-elements-background-depth-2 border-r rounded-r-3xl border-bolt-elements-borderColor z-sidebar shadow-xl shadow-bolt-elements-sidebar-dropdownShadow text-sm"
     >
-      <div className="h-[60px]" /> {/* Spacer for top margin */}
       <div className="flex flex-col">
         <CurrentDateTime />
-        <div className="flex flex-col gap-3 p-4 border-b border-bolt-elements-borderColor">
+        <div className="flex flex-col gap-2 p-4 border-b border-bolt-elements-borderColor">
           <a
             href="/"
             className="flex gap-2 items-center justify-center bg-[#1A1F2A]/60 backdrop-blur-sm border border-[#2A2F3A]/50 text-gray-300 hover:bg-[#2A2F3A]/80 hover:border-blue-500/30 transition-all p-2.5 rounded-lg"
@@ -157,12 +156,12 @@ export const Menu = () => {
             <span className="inline-block i-bolt:chat scale-110 text-blue-500" />
             <span className="font-medium">New Chat</span>
           </a>
-          <div className="overflow-x-auto flex-nowrap whitespace-nowrap [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-700 hover:[&::-webkit-scrollbar-thumb]:bg-gray-600">
-            <div className="flex gap-2 pb-2">
-              <GitCloneButton importChat={importChat} />
-              {ImportButtons(importChat)}
-            </div>
+
+          <div className="flex flex-col gap-2">
+            <GitCloneButton importChat={importChat} />
+            {ImportButtons(importChat)}
           </div>
+
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <div className="h-4 w-4 i-ph:magnifying-glass-thin text-gray-400" />
