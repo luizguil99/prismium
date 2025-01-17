@@ -1,5 +1,33 @@
 .BaseChat {
   padding-top: var(--header-height); // Adicionando padding-top para compensar o header fixo
+  position: relative;
+
+  // Estilização da scrollbar
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.7);
+  }
+
+  :global(.Menu) {
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+  }
 
   &[data-chat-visible='false'] {
     --workbench-inner-width: 100%;

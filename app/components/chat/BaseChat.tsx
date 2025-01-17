@@ -503,7 +503,7 @@ ${file.content}
         <div ref={scrollRef} className="flex flex-col lg:flex-row overflow-y-auto w-full h-full ">
           <div className={classNames(styles.Chat, 'flex flex-col flex-grow lg:min-w-[var(--chat-min-width)] h-full')}>
             {!chatStarted && (
-              <div id="intro" className="mt-[16vh] max-w-chat mx-auto text-center px-4 lg:px-0">
+              <div id="intro" className="mt-[10vh] max-w-chat mx-auto text-center px-4 lg:px-0">
                 <h1 className="text-3xl lg:text-6xl font-bold text-bolt-elements-textPrimary mb-4 animate-fade-in">
                   Transforming Ideas into Code
                 </h1>
@@ -530,7 +530,7 @@ ${file.content}
                 }}
               </ClientOnly>
               <div
-                className={classNames('flex flex-col gap-4 w-full max-w-chat mx-auto z-prompt mb-6', {
+                className={classNames('flex flex-col gap-4 w-full max-w-chat mx-auto z-prompt mb-4', {
                   'sticky bottom-2': chatStarted,
                 })}
               >
@@ -548,7 +548,8 @@ ${file.content}
                 </div>
                 <div
                   className={classNames(
-                    'relative shadow-xs border border-[#2A2F3A]/50 backdrop-blur rounded-lg bg-black',
+                    'relative shadow-lg border border-[#2A2F3A]/60 backdrop-blur-lg rounded-xl bg-black/60',
+                    'transition-all duration-300 hover:border-blue-500/30 hover:shadow-blue-500/5',
                   )}
                 >
                   {imageDataList.length > 0 && (
@@ -581,9 +582,9 @@ ${file.content}
                   <textarea
                     ref={textareaRef}
                     className={classNames(
-                      'w-full pl-4 pt-4 pr-16 outline-none resize-none text-gray-300 placeholder-gray-500 bg-transparent text-sm',
+                      'w-full pl-6 pt-4 pr-16 outline-none resize-none text-gray-300 placeholder-gray-500 bg-transparent text-sm',
                       'transition-all duration-200',
-                      'focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50',
+                      'focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/30',
                     )}
                     onDragEnter={(e) => {
                       e.preventDefault();
@@ -668,10 +669,10 @@ ${file.content}
                     )}
                   </ClientOnly>
                   <div className="flex justify-between items-center text-sm p-4 pt-2">
-                    <div className="flex gap-1 items-center">
+                    <div className="flex gap-2 items-center">
                       <IconButton
                         title="Upload file"
-                        className="p-2 rounded-lg bg-black border border-[#2A2F3A]/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200"
+                        className="p-2 rounded-lg bg-black/50 border border-[#2A2F3A]/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200"
                         onClick={() => handleFileUpload()}
                       >
                         <div className="i-ph:paperclip text-xl"></div>
@@ -680,7 +681,7 @@ ${file.content}
                         title="Enhance prompt"
                         disabled={input.length === 0 || enhancingPrompt}
                         className={classNames(
-                          'p-2 rounded-lg bg-black border border-[#2A2F3A]/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
+                          'p-2 rounded-lg bg-black/50 border border-[#2A2F3A]/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
                           enhancingPrompt ? 'opacity-100' : '',
                         )}
                         onClick={() => {
@@ -703,29 +704,26 @@ ${file.content}
                       />
                       {chatStarted && <ClientOnly>{() => <ExportChatButton exportChat={exportChat} />}</ClientOnly>}
 
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-2">
                         <IconButton
                           title="Model Settings"
                           className={classNames(
-                            'p-2 rounded-lg bg-black border border-[#2A2F3A]/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
+                            'p-2 rounded-lg bg-black/50 border border-[#2A2F3A]/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
                             {
-                              'bg-bolt-elements-item-backgroundAccent text-bolt-elements-item-contentAccent':
-                                isModelSettingsCollapsed,
-                              'bg-bolt-elements-item-backgroundDefault text-bolt-elements-item-contentDefault':
-                                !isModelSettingsCollapsed,
+                              'bg-blue-500/10 text-blue-400 border-blue-500/30': isModelSettingsCollapsed,
                             },
                           )}
                           onClick={() => setIsModelSettingsCollapsed(!isModelSettingsCollapsed)}
                           disabled={!providerList || providerList.length === 0}
                         >
                           <div className={`i-ph:caret-${isModelSettingsCollapsed ? 'right' : 'down'} text-lg`} />
-                          {isModelSettingsCollapsed ? <span className="text-xs">{model}</span> : <span />}
+                          {isModelSettingsCollapsed ? <span className="text-xs ml-1">{model}</span> : <span />}
                         </IconButton>
 
                         <IconButton
                           title="Configure API"
                           className={classNames(
-                            'p-2 rounded-lg bg-black border border-[#2A2F3A]/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
+                            'p-2 rounded-lg bg-black/50 border border-[#2A2F3A]/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
                           )}
                           onClick={() => setIsModalOpen(true)}
                           disabled={!providerList || providerList.length === 0}
@@ -735,9 +733,9 @@ ${file.content}
                       </div>
                     </div>
                     {input.length > 3 ? (
-                      <div className="text-xs text-bolt-elements-textTertiary">
-                        Use <kbd className="kdb px-1.5 py-0.5 rounded bg-bolt-elements-background-depth-2">Shift</kbd> +{' '}
-                        <kbd className="kdb px-1.5 py-0.5 rounded bg-bolt-elements-background-depth-2">Return</kbd> a
+                      <div className="text-xs text-gray-500">
+                        Use <kbd className="px-1.5 py-0.5 rounded bg-black/50 border border-[#2A2F3A]/50">Shift</kbd> +{' '}
+                        <kbd className="px-1.5 py-0.5 rounded bg-black/50 border border-[#2A2F3A]/50">Return</kbd> for
                         new line
                       </div>
                     ) : null}
