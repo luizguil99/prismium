@@ -151,23 +151,21 @@ export const Menu = () => {
         <div className="flex flex-col gap-2 p-4 border-b border-bolt-elements-borderColor">
           <a
             href="/"
-            className="flex gap-2 items-center justify-center bg-[#1A1F2A]/60 backdrop-blur-sm border border-[#2A2F3A]/50 text-gray-300 hover:bg-[#2A2F3A]/80 hover:border-blue-500/30 transition-all p-2.5 rounded-lg"
+            className="flex items-center gap-2 px-3 py-2 text-gray-300 hover:text-white hover:bg-[#2A2F3A]/20 rounded-lg transition-all"
           >
-            <span className="inline-block i-bolt:chat scale-110 text-blue-500" />
-            <span className="font-medium">New Chat</span>
+            <span className="inline-block i-bolt:chat text-blue-500" />
+            <span>New Chat</span>
           </a>
 
-          <div className="flex flex-col gap-2">
-            <GitCloneButton importChat={importChat} />
-            {ImportButtons(importChat)}
-          </div>
+          <GitCloneButton importChat={importChat} />
+          <div className="text-blue-500">{ImportButtons(importChat)}</div>
 
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <div className="h-4 w-4 i-ph:magnifying-glass-thin text-gray-400" />
             </div>
             <input
-              className="w-full pl-10 bg-[#1A1F2A]/60 backdrop-blur-sm hover:bg-[#2A2F3A]/50 focus:bg-[#2A2F3A]/50 relative px-4 py-2 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500/30 placeholder-gray-500 text-gray-300 border border-[#2A2F3A]/50 transition-all"
+              className="w-full pl-10 bg-[#000000]/60 backdrop-blur-sm hover:bg-[#2A2F3A]/50 focus:bg-[#2A2F3A]/50 relative px-4 py-2 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500/30 placeholder-gray-500 text-gray-300 border border-[#2A2F3A]/50 transition-all"
               type="search"
               placeholder="Search chats..."
               onChange={handleSearchChange}

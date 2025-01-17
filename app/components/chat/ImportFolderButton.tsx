@@ -107,7 +107,7 @@ export const ImportFolderButton: React.FC<ImportFolderButtonProps> = ({ classNam
       <input
         type="file"
         id="folder-input"
-        className="hidden"
+        className="hidden "
         webkitdirectory=""
         directory=""
         onChange={handleFileChange}

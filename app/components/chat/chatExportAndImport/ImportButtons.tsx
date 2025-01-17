@@ -5,7 +5,7 @@ import { Upload, FolderUp } from 'lucide-react';
 
 export function ImportButtons(importChat: ((description: string, messages: Message[]) => Promise<void>) | undefined) {
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-col gap-2">
       <input
         type="file"
         id="chat-import"
@@ -53,14 +53,14 @@ export function ImportButtons(importChat: ((description: string, messages: Messa
           const input = document.getElementById('chat-import');
           input?.click();
         }}
-        className="px-3 py-2 rounded-lg bg-[#1A1F2A]/60 backdrop-blur-sm border border-[#2A2F3A]/50 text-gray-300 hover:bg-[#2A2F3A]/80 hover:border-blue-500/30 transition-all flex items-center justify-center gap-2 text-sm whitespace-nowrap"
+        className="flex items-center gap-2 px-3 py-2 text-gray-300 hover:bg-[#2A2F3A]/20 rounded-lg transition-all bg-[#2A2F3A]/10"
       >
         <Upload className="w-4 h-4 text-blue-500" />
         <span>Import Chat</span>
       </button>
       <ImportFolderButton
         importChat={importChat}
-        className="px-3 py-2 rounded-lg bg-[#1A1F2A]/60 backdrop-blur-sm border border-[#2A2F3A]/50 text-gray-300 hover:bg-[#2A2F3A]/80 hover:border-blue-500/30 transition-all flex items-center justify-center gap-2 text-sm whitespace-nowrap"
+        className="flex items-center gap-2 px-3 py-2 text-gray-300 hover:bg-[#2A2F3A]/20 rounded-lg transition-all bg-[#2A2F3A]/10"
       >
         <FolderUp className="w-4 h-4 text-blue-500" />
         <span>Import Folder</span>
