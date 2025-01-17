@@ -508,7 +508,7 @@ ${file.content}
                   Transforming Ideas into Code
                 </h1>
                 <p className="text-md lg:text-xl mb-8 text-bolt-elements-textSecondary animate-fade-in animation-delay-200">
-                Build intelligent, future-ready software in record time.
+                  Build intelligent, future-ready software in record time.
                 </p>
               </div>
             )}
@@ -764,13 +764,7 @@ ${file.content}
             </div>
           </div>
           <ClientOnly>
-            {() => (
-              <Workbench
-                chatStarted={chatStarted}
-                isStreaming={isStreaming}
-                onSendMessage={sendMessage}
-              />
-            )}
+            {() => <Workbench chatStarted={chatStarted} isStreaming={isStreaming} onSendMessage={sendMessage} />}
           </ClientOnly>
         </div>
       </div>
