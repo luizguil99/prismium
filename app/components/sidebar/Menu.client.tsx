@@ -48,9 +48,27 @@ function CurrentDateTime() {
   }, []);
 
   return (
-    <div className="flex items-center gap-2 px-4 py-3 font-bold text-gray-700 dark:text-gray-300 border-b border-bolt-elements-borderColor">
-      <div className="h-4 w-4 i-ph:clock-thin" />
-      {dateTime.toLocaleDateString()} {dateTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+    <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#2A2F3A]/50 font-semibold">
+      <div className="flex items-center gap-2">
+        <div className="h-4 w-4 i-ph:calendar-thin text-gray-300 opacity-75" />
+        <span className="text-sm text-gray-300">
+          {dateTime.toLocaleDateString(undefined, {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+          })}
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="h-4 w-4 i-ph:clock-thin text-gray-300 opacity-75" />
+        <span className="text-sm text-gray-300">
+          {dateTime.toLocaleTimeString(undefined, {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+          })}
+        </span>
+      </div>
     </div>
   );
 }
