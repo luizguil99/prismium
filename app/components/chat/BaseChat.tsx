@@ -322,7 +322,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
 
             const filesMessage: Message = {
               role: 'assistant',
-              content: `Iniciando projeto com template ${shadcnTemplate.title}
+              content: `Starting project with ${shadcnTemplate.title}
 <boltArtifact id="imported-files" title="Template Files" type="bundled">
 ${fileContents
   .map(
