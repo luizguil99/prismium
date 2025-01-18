@@ -298,7 +298,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
           try {
             // Envia a mensagem de loading apenas para template
             if (sendMessage) {
-              sendMessage(event, 'Creating project...');
+              sendMessage(event, { isStatus: true, text: 'Creating project...' });
             }
 
             console.log('[BaseChat] Iniciando importação do template');

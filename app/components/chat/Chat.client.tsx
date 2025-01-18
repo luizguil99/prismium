@@ -261,7 +261,7 @@ export const ChatImpl = memo(
      * @param _event - Evento do React que disparou o envio
      * @param messageInput - Mensagem opcional que pode ser passada diretamente
      */
-    const sendMessage = async (_event: React.UIEvent, messageInput?: string) => {
+    const sendMessage = async (_event: React.UIEvent, messageInput?: string | { isStatus: boolean; text: string }) => {
       console.log('[ChatClient] sendMessage chamado', { messageInput, input });
 
       // Log para registrar mensagem enviada
@@ -273,6 +273,19 @@ export const ChatImpl = memo(
       // Não permite enviar mensagem vazia ou durante carregamento
       if (_input.length === 0 || isLoading) {
         console.log('[ChatClient] Input vazio ou carregando, retornando');
+        return;
+      }
+
+      // Inicia a animação de envio
+      runAnimation();
+
+      // Se for uma mensagem de status (como "Creating project..."), apenas mostra ela no chat
+      if (messageInput && typeof messageInput === 'object' && messageInput.isStatus) {
+        setMessages((messages) => [...messages, {
+          id: String(Date.now()),
+          role: 'assistant',
+          content: messageInput.text
+        }]);
         return;
       }
 
@@ -306,9 +319,6 @@ Por favor, use essas configurações do Supabase ao gerar o código da aplicaç�
 
       // Reseta o estado de abortar chat
       chatStore.setKey('aborted', false);
-
-      // Inicia a animação de envio
-      runAnimation();
 
       // Lógica especial para primeira mensagem com seleção automática de template
       if (!chatStarted && messageInput && autoSelectTemplate) {
