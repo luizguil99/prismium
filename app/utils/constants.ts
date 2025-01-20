@@ -21,10 +21,14 @@ let MODEL_LIST = llmManager.getModelList();
 
 const providerBaseUrlEnvKeys: Record<string, { baseUrlKey?: string; apiTokenKey?: string }> = {};
 PROVIDER_LIST.forEach((provider) => {
-  providerBaseUrlEnvKeys[provider.name] = {
-    baseUrlKey: provider.config.baseUrlKey,
-    apiTokenKey: provider.config.apiTokenKey,
-  };
+  if (provider.config) {
+    providerBaseUrlEnvKeys[provider.name] = {
+      baseUrlKey: provider.config.baseUrlKey,
+      apiTokenKey: provider.config.apiTokenKey,
+    };
+  } else {
+    providerBaseUrlEnvKeys[provider.name] = {};
+  }
 });
 
 // Export the getModelList function using the manager
