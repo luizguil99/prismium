@@ -507,18 +507,23 @@ Por favor, use essas configurações do Supabase ao gerar o código da aplicaç�
         if (!difyResponse.ok) {
           const errorText = await difyResponse.text();
           console.error('❌ Dify - Erro:', errorText);
+          stop();
         } else {
           const reader = difyResponse.body?.getReader();
-          if (!reader) throw new Error('Response body is null');
+          if (!reader) {
+            throw new Error('Response body is null');
+          }
 
           let accumulatedResponse = '';
           let buffer = '';
+          let messageCreated = false;
 
           while (true) {
             const { done, value } = await reader.read();
             
             if (done) {
               console.log('✅ Dify - Stream finalizado. Resposta completa:', accumulatedResponse);
+              stop();
               break;
             }
 
@@ -541,28 +546,29 @@ Por favor, use essas configurações do Supabase ao gerar o código da aplicaç�
                     
                     // Adiciona ou atualiza a mensagem do Dify no chat
                     setMessages((prev) => {
-                      const lastMessage = prev[prev.length - 1];
-                      
-                      // Se a última mensagem já é do Dify, atualiza ela
-                      if (lastMessage && lastMessage.role === 'assistant' && lastMessage.content.includes('Dify:')) {
+                      // Se ainda não criamos a mensagem, cria uma nova
+                      if (!messageCreated) {
+                        messageCreated = true;
                         return [
-                          ...prev.slice(0, -1),
+                          ...prev,
                           {
-                            ...lastMessage,
-                            content: `Dify: ${accumulatedResponse}`,
+                            id: String(Date.now()),
+                            role: 'assistant',
+                            content: accumulatedResponse,
                           },
                         ];
                       }
                       
-                      // Se não, adiciona uma nova mensagem
-                      return [
-                        ...prev,
-                        {
-                          id: String(Date.now()),
-                          role: 'assistant',
-                          content: `Dify: ${accumulatedResponse}`,
-                        },
-                      ];
+                      // Se já existe, atualiza o conteúdo
+                      return prev.map((msg, index) => {
+                        if (index === prev.length - 1) {
+                          return {
+                            ...msg,
+                            content: accumulatedResponse,
+                          };
+                        }
+                        return msg;
+                      });
                     });
                   }
                 } catch (e) {
@@ -574,6 +580,7 @@ Por favor, use essas configurações do Supabase ao gerar o código da aplicaç�
         }
       } catch (error) {
         console.error('❌ Dify - Erro:', error);
+        stop();
       }
       // Fim da integração com Dify
 
