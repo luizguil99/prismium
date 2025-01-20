@@ -15,11 +15,13 @@ import TogetherProvider from './providers/together';
 import XAIProvider from './providers/xai';
 import HyperbolicProvider from './providers/hyperbolic';
 import AmazonBedrockProvider from './providers/amazon-bedrock';
+import DifyProvider from './providers/dify';
 
 export {
   AnthropicProvider,
   CohereProvider,
   DeepseekProvider,
+  DifyProvider,
   GoogleProvider,
   GroqProvider,
   HuggingFaceProvider,
