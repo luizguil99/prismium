@@ -281,11 +281,14 @@ export const ChatImpl = memo(
 
       // Se for uma mensagem de status (como "Creating project..."), apenas mostra ela no chat
       if (messageInput && typeof messageInput === 'object' && messageInput.isStatus) {
-        setMessages((messages) => [...messages, {
-          id: String(Date.now()),
-          role: 'assistant',
-          content: messageInput.text
-        }]);
+        setMessages((messages) => [
+          ...messages,
+          {
+            id: String(Date.now()),
+            role: 'assistant',
+            content: messageInput.text,
+          },
+        ]);
         return;
       }
 
@@ -477,6 +480,102 @@ Por favor, use essas configurações do Supabase ao gerar o código da aplicaç�
           ] as any,
         });
       }
+
+      // Início da integração com Dify - Em paralelo com o fluxo existente
+      try {
+        console.log('[ChatClient] Iniciando comunicação com Dify');
+        const difyResponse = await fetch('https://api.dify.ai/v1/chat-messages', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKeys.Dify || 'app-4BBwXRVvg652KwZjXRoJibOS'}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            inputs: {},
+            query: typeof finalPrompt === 'string' ? finalPrompt : finalPrompt.text,
+            response_mode: 'streaming',
+            user: `user-${Date.now()}`,
+          }),
+        });
+
+        console.log('🌐 Dify - Resposta recebida:', {
+          status: difyResponse.status,
+          statusText: difyResponse.statusText,
+          headers: Object.fromEntries(difyResponse.headers.entries())
+        });
+
+        if (!difyResponse.ok) {
+          const errorText = await difyResponse.text();
+          console.error('❌ Dify - Erro:', errorText);
+        } else {
+          const reader = difyResponse.body?.getReader();
+          if (!reader) throw new Error('Response body is null');
+
+          let accumulatedResponse = '';
+          let buffer = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            
+            if (done) {
+              console.log('✅ Dify - Stream finalizado. Resposta completa:', accumulatedResponse);
+              break;
+            }
+
+            const chunk = new TextDecoder().decode(value);
+            console.log('📨 Dify - Chunk recebido:', chunk);
+            
+            buffer += chunk;
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const jsonStr = line.slice(6).trim();
+                  const data = JSON.parse(jsonStr);
+                  
+                  if (data.answer) {
+                    accumulatedResponse += data.answer;
+                    console.log('📨 Dify - Chunk processado:', data.answer);
+                    
+                    // Adiciona ou atualiza a mensagem do Dify no chat
+                    setMessages((prev) => {
+                      const lastMessage = prev[prev.length - 1];
+                      
+                      // Se a última mensagem já é do Dify, atualiza ela
+                      if (lastMessage && lastMessage.role === 'assistant' && lastMessage.content.includes('Dify:')) {
+                        return [
+                          ...prev.slice(0, -1),
+                          {
+                            ...lastMessage,
+                            content: `Dify: ${accumulatedResponse}`,
+                          },
+                        ];
+                      }
+                      
+                      // Se não, adiciona uma nova mensagem
+                      return [
+                        ...prev,
+                        {
+                          id: String(Date.now()),
+                          role: 'assistant',
+                          content: `Dify: ${accumulatedResponse}`,
+                        },
+                      ];
+                    });
+                  }
+                } catch (e) {
+                  console.error('❌ Dify - Erro ao processar chunk:', e);
+                }
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('❌ Dify - Erro:', error);
+      }
+      // Fim da integração com Dify
 
       setInput('');
       Cookies.remove(PROMPT_COOKIE_KEY);
