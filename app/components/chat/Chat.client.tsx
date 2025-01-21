@@ -24,7 +24,6 @@ import { useSearchParams } from '@remix-run/react';
 import { createSampler } from '~/utils/sampler';
 import { getTemplates, selectStarterTemplate } from '~/utils/selectStarterTemplate';
 import { supabaseStore } from '~/lib/stores/supabase';
-import { DifyClient } from '~/lib/modules/llm/providers/dify-client';
 
 const toastAnimation = cssTransition({
   enter: 'animated fadeInRight',
@@ -487,35 +486,114 @@ Por favor, use essas configurações do Supabase ao gerar o código da aplicaç�
       // Início da integração com Dify
       if (provider.name === 'Dify') {
         try {
-          const difyClient = new DifyClient(apiKeys.Dify);
-          
-          await difyClient.sendMessage(
-            typeof finalPrompt === 'string' ? finalPrompt : finalPrompt.text,
-            (content) => {
-              setMessages((prev) => {
-                const newMessage = {
-                  id: String(Date.now()),
-                  role: 'assistant',
-                  content: content,
-                };
+          console.log('[ChatClient] Iniciando comunicação com Dify');
+          const difyResponse = await fetch('https://api.dify.ai/v1/chat-messages', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${apiKeys.Dify || 'app-4BBwXRVvg652KwZjXRoJibOS'}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              inputs: {},
+              query: typeof finalPrompt === 'string' ? finalPrompt : finalPrompt.text,
+              response_mode: 'streaming',
+              user: `user-${Date.now()}`,
+            }),
+          });
 
-                // Se for a primeira mensagem do assistente, adiciona
-                const lastMessage = prev[prev.length - 1];
-                if (lastMessage.role !== 'assistant') {
-                  return [...prev, newMessage];
+          console.log('🌐 Dify - Resposta recebida:', {
+            status: difyResponse.status,
+            statusText: difyResponse.statusText,
+            headers: Object.fromEntries(difyResponse.headers.entries())
+          });
+
+          if (!difyResponse.ok) {
+            const errorText = await difyResponse.text();
+            console.error('❌ Dify - Erro:', errorText);
+            stop();
+          } else {
+            const reader = difyResponse.body?.getReader();
+            if (!reader) {
+              throw new Error('Response body is null');
+            }
+
+            let accumulatedResponse = '';
+            let buffer = '';
+            let messageCreated = false;
+
+            while (true) {
+              const { done, value } = await reader.read();
+
+              if (done) {
+                console.log('✅ Dify - Stream finalizado. Resposta completa:', accumulatedResponse);
+
+                // Processa blocos de código ao finalizar
+                const codeBlocks = await processCodeBlocks(accumulatedResponse);
+                if (codeBlocks.length > 0) {
+                  console.log('✅ Blocos de código processados:', codeBlocks);
                 }
                 
-                // Se já existe uma mensagem do assistente, atualiza
-                return prev.map((msg, index) => {
-                  if (index === prev.length - 1) {
-                    return newMessage;
+                stop();
+                break;
+              }
+
+              const chunk = new TextDecoder().decode(value);
+              console.log('📨 Dify - Chunk recebido:', chunk);
+
+              buffer += chunk;
+              const lines = buffer.split('\n');
+              buffer = lines.pop() || '';
+
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  try {
+                    const jsonStr = line.slice(6).trim();
+                    const data = JSON.parse(jsonStr);
+
+                    if (data.answer) {
+                      accumulatedResponse += data.answer;
+                      console.log('📨 Dify - Chunk processado:', data.answer);
+
+                      // Processa blocos de código para cada chunk
+                      const codeBlocks = await processCodeBlocks(data.answer);
+                      if (codeBlocks.length > 0) {
+                        console.log('✅ Blocos de código processados:', codeBlocks);
+                      }
+
+                      // Adiciona ou atualiza a mensagem do Dify no chat
+                      setMessages((prev) => {
+                        // Se ainda não criamos a mensagem, cria uma nova
+                        if (!messageCreated) {
+                          messageCreated = true;
+                          return [
+                            ...prev,
+                            {
+                              id: String(Date.now()),
+                              role: 'assistant',
+                              content: accumulatedResponse,
+                            },
+                          ];
+                        }
+
+                        // Se já existe, atualiza o conteúdo
+                        return prev.map((msg, index) => {
+                          if (index === prev.length - 1) {
+                            return {
+                              ...msg,
+                              content: accumulatedResponse,
+                            };
+                          }
+                          return msg;
+                        });
+                      });
+                    }
+                  } catch (e) {
+                    console.error('❌ Dify - Erro ao processar chunk:', e)
                   }
-                  return msg;
-                });
-              });
+                }
+              }
             }
-          );
-          
+          }
           stop();
         } catch (error) {
           console.error('❌ Dify - Erro:', error);
