@@ -2,6 +2,7 @@ import { workbenchStore } from '~/lib/stores/workbench';
 
 interface DifyResponse {
   answer: string;
+  conversation_id?: string;
   [key: string]: any;
 }
 
@@ -12,6 +13,7 @@ interface DifyResponse {
 export class DifyClient {
   private apiKey: string;
   private baseUrl: string = 'https://api.dify.ai/v1';
+  private conversationId: string | null = null;
 
   constructor(apiKey: string = 'app-4BBwXRVvg652KwZjXRoJibOS') {
     this.apiKey = apiKey;
@@ -63,7 +65,8 @@ export class DifyClient {
           inputs: {},
           query: prompt,
           response_mode: 'streaming',
-          user: `user-${Date.now()}`,
+          user: 'luiz',
+          conversation_id: this.conversationId || undefined,
         }),
       });
 
@@ -104,6 +107,12 @@ export class DifyClient {
               if (data.answer) {
                 accumulatedResponse += data.answer;
                 console.log('📨 Dify - Chunk processado:', data.answer);
+                
+                // Armazena o conversation_id da primeira resposta
+                if (data.conversation_id && !this.conversationId) {
+                  this.conversationId = data.conversation_id;
+                  console.log('💬 Dify - Nova conversa iniciada:', this.conversationId);
+                }
                 
                 // Atualiza o conteúdo da mensagem no chat
                 onMessageUpdate(accumulatedResponse);
