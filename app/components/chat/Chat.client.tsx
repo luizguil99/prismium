@@ -25,6 +25,7 @@ import { createSampler } from '~/utils/sampler';
 import { getTemplates, selectStarterTemplate } from '~/utils/selectStarterTemplate';
 import { supabaseStore } from '~/lib/stores/supabase';
 
+
 const toastAnimation = cssTransition({
   enter: 'animated fadeInRight',
   exit: 'animated fadeOutRight',
@@ -119,6 +120,9 @@ export const ChatImpl = memo(
     const [imageDataList, setImageDataList] = useState<string[]>([]); // Move here
     const [searchParams, setSearchParams] = useSearchParams();
     const [fakeLoading, setFakeLoading] = useState(false);
+    const [conversationId, setConversationId] = useState<string>(
+      localStorage.getItem('dify_conversation_id') || ''
+    );
     const files = useStore(workbenchStore.files);
     const actionAlert = useStore(workbenchStore.alert);
     const { activeProviders, promptId, autoSelectTemplate, contextOptimizationEnabled } = useSettings();
@@ -497,7 +501,8 @@ Por favor, use essas configurações do Supabase ao gerar o código da aplicaç�
               inputs: {},
               query: typeof finalPrompt === 'string' ? finalPrompt : finalPrompt.text,
               response_mode: 'streaming',
-              user: `user-${Date.now()}`,
+              user: 'luiz',
+              conversation_id: conversationId || undefined
             }),
           });
 
@@ -550,9 +555,15 @@ Por favor, use essas configurações do Supabase ao gerar o código da aplicaç�
                     const jsonStr = line.slice(6).trim();
                     const data = JSON.parse(jsonStr);
 
-                    if (data.answer) {
-                      accumulatedResponse += data.answer;
-                      console.log('📨 Dify - Chunk processado:', data.answer);
+              if (data.answer) {
+                accumulatedResponse += data.answer;
+                console.log('📨 Dify - Chunk processado:', data.answer);
+                
+                // Persiste o conversation_id se existir
+                if (data.conversation_id) {
+                  setConversationId(data.conversation_id);
+                  localStorage.setItem('dify_conversation_id', data.conversation_id);
+                }
 
                       // Processa blocos de código para cada chunk
                       const codeBlocks = await processCodeBlocks(data.answer);

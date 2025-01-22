@@ -65,7 +65,7 @@ export class DifyClient {
           inputs: {},
           query: prompt,
           response_mode: 'streaming',
-          user: 'luiz',
+          user: 'luizz',
           conversation_id: this.conversationId || undefined,
         }),
       });
