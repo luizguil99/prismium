@@ -20,6 +20,7 @@ export default function DifyChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [conversationId, setConversationId] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -42,6 +43,10 @@ export default function DifyChat() {
 
       // Retorna apenas se for uma mensagem do agente e tiver uma resposta
       if (data.event === 'agent_message' && data.answer) {
+        // Armazena o conversation_id se existir
+        if (data.conversation_id) {
+          setConversationId(data.conversation_id);
+        }
         return data.answer;
       }
     } catch (error) {
@@ -67,12 +72,13 @@ export default function DifyChat() {
           Authorization: 'Bearer app-4BBwXRVvg652KwZjXRoJibOS',
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          inputs: {},
-          query: input,
-          response_mode: 'streaming',
-          user: `user-${Date.now()}`,
-        }),
+          body: JSON.stringify({
+            inputs: {},
+            query: input,
+            response_mode: 'streaming',
+            user: 'luiz',
+            conversation_id: conversationId || undefined
+          }),
       });
 
       if (!response.ok) throw new Error('Erro na requisição: ' + response.statusText);
