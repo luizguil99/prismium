@@ -2,6 +2,9 @@ import type { ModelInfo } from '~/lib/modules/llm/types';
 import type { IProviderSetting } from '~/types/model';
 import type { LanguageModelV1, LanguageModelV1CallOptions, LanguageModelV1StreamPart } from 'ai';
 import { BaseProvider } from '~/lib/modules/llm/base-provider';
+import { createScopedLogger } from '~/utils/logger';
+
+const logger = createScopedLogger('DifyProvider');
 
 /**
  * Provider do Dify para integração com o sistema de LLM
@@ -45,6 +48,8 @@ export default class DifyProvider extends BaseProvider {
       throw new Error('API key not found for Dify');
     }
 
+    logger.info('Inicializando Dify provider');
+
     return {
       specificationVersion: 'v1',
       provider: 'dify',
@@ -55,6 +60,8 @@ export default class DifyProvider extends BaseProvider {
       },
       doStream: async (options: LanguageModelV1CallOptions) => {
         const prompt = options.prompt || '';
+        logger.info('Enviando requisição para Dify:', { prompt });
+
         const response = await fetch(`${baseUrl}/chat-messages`, {
           method: 'POST',
           headers: {
@@ -71,6 +78,8 @@ export default class DifyProvider extends BaseProvider {
         });
 
         if (!response.ok || !response.body) {
+          const errorText = await response.text();
+          logger.error('Erro na API do Dify:', errorText);
           throw new Error(`Dify API error: ${response.statusText}`);
         }
 
@@ -80,10 +89,14 @@ export default class DifyProvider extends BaseProvider {
           async start(controller) {
             let buffer = '';
             let completionTokens = 0;
+            let accumulatedAnswer = '';
             
             while (true) {
               const { done, value } = await reader.read();
-              if (done) break;
+              if (done) {
+                logger.info('Stream finalizado. Resposta completa:', accumulatedAnswer);
+                break;
+              }
 
               buffer += decoder.decode(value, { stream: true });
               const lines = buffer.split('\n');
@@ -93,13 +106,19 @@ export default class DifyProvider extends BaseProvider {
                 if (line.trim() === '') continue;
                 if (!line.startsWith('data: ')) continue;
 
-                const data = JSON.parse(line.slice(6));
-                if (data.event === 'message') {
-                  completionTokens += 1;
-                  controller.enqueue({
-                    type: 'text-delta',
-                    textDelta: data.answer
-                  });
+                try {
+                  const data = JSON.parse(line.slice(6));
+                  if (data.event === 'agent_message' && data.answer) {
+                    completionTokens += 1;
+                    accumulatedAnswer += data.answer;
+                    console.log('🤖 Dify Answer:', data.answer);
+                    controller.enqueue({
+                      type: 'text-delta',
+                      textDelta: data.answer
+                    });
+                  }
+                } catch (e) {
+                  logger.error('Erro ao processar chunk:', e);
                 }
               }
             }
