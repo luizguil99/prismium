@@ -92,7 +92,7 @@ export default class DifyProvider extends BaseProvider {
               query: prompt,
               response_mode: 'streaming',
               conversation_id: self.conversationId,
-              user: 'user'
+              user: 'luiz'
             })
           });
 
