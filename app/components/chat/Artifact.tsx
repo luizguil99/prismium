@@ -8,6 +8,7 @@ import { workbenchStore } from '~/lib/stores/workbench';
 import { classNames } from '~/utils/classNames';
 import { cubicEasingFn } from '~/utils/easings';
 import { WORK_DIR } from '~/utils/constants';
+import { Package, Loader, CheckCircle2, XCircle, Folder } from 'lucide-react';
 
 const highlighterOptions = {
   langs: ['shell'],
@@ -132,7 +133,7 @@ interface ShellCodeBlockProps {
 function ShellCodeBlock({ classsName, code }: ShellCodeBlockProps) {
   return (
     <div
-      className={classNames('text-xs', classsName)}
+      className={classNames('text-xs leading-none', classsName)}
       dangerouslySetInnerHTML={{
         __html: shellHighlighter.codeToHtml(code, {
           lang: 'shell',
@@ -163,85 +164,78 @@ function openArtifactInWorkbench(filePath: any) {
 const ActionList = memo(({ actions }: ActionListProps) => {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
-      <ul className="list-none space-y-2.5">
-        {actions.map((action, index) => {
-          const { status, type, content } = action;
-          const isLast = index === actions.length - 1;
+      <div className="bg-black p-4 rounded-lg">
+        <ul className="list-none space-y-2.5">
+          {actions.map((action, index) => {
+            const { status, type, content } = action;
+            const isLast = index === actions.length - 1;
 
-          return (
-            <motion.li
-              key={index}
-              variants={actionVariants}
-              initial="hidden"
-              animate="visible"
-              transition={{
-                duration: 0.2,
-                ease: cubicEasingFn,
-              }}
-            >
-              <div className="flex items-center gap-1.5 text-sm">
-                <div className={classNames('text-lg', getIconColor(action.status))}>
-                  {status === 'running' ? (
-                    <>
-                      {type !== 'start' ? (
-                        <div className="i-svg-spinners:90-ring-with-bg"></div>
-                      ) : (
-                        <div className="i-ph:terminal-window-duotone text-[#548BE4]"></div>
-                      )}
-                    </>
-                  ) : status === 'pending' ? (
-                    <div className="i-ph:circle-duotone"></div>
-                  ) : status === 'complete' ? (
-                    <div className="i-ph:check"></div>
-                  ) : status === 'failed' || status === 'aborted' ? (
-                    <div className="i-ph:x"></div>
-                  ) : null}
-                </div>
-                {type === 'file' ? (
-                  <div>
-                    Create{' '}
-                    <code
-                      className="bg-bolt-elements-artifacts-inlineCode-background text-bolt-elements-artifacts-inlineCode-text px-1.5 py-1 rounded-md text-[#548BE4] hover:underline cursor-pointer"
-                      onClick={() => openArtifactInWorkbench(action.filePath)}
+            return (
+              <motion.li
+                key={index}
+                variants={actionVariants}
+                initial="hidden"
+                animate="visible"
+                transition={{
+                  duration: 0.2,
+                  ease: cubicEasingFn,
+                }}
+              >
+                <div className="flex items-center justify-between gap-1.5 text-sm">
+                  {type === 'file' ? (
+                    <div className="flex items-center gap-2">
+                      <Folder className="w-4 h-4 text-yellow-500" />
+                      <code
+                        onClick={() => openArtifactInWorkbench(action.filePath)}
+                        className="text-sm cursor-pointer hover:underline"
+                      >
+                        {action.filePath.includes('/') ? (
+                          <>
+                            <span className="text-gray-400">src/</span>
+                            <span>{action.filePath.split('/').pop()}</span>
+                          </>
+                        ) : (
+                          action.filePath
+                        )}
+                      </code>
+                    </div>
+                  ) : type === 'shell' ? (
+                    <div className="flex items-center w-full min-h-[28px]">
+                      <Package className="w-4 h-4 text-green-500 mr-2" />
+                      <span className="flex-1 text-white">Run command</span>
+                    </div>
+                  ) : type === 'start' ? (
+                    <a
+                      onClick={(e) => {
+                        e.preventDefault();
+                        workbenchStore.currentView.set('preview');
+                      }}
+                      className="flex items-center w-full min-h-[28px]"
                     >
-                      {action.filePath.includes('/') ? (
-                        <>
-                          <span className="text-gray-400">src/</span>
-                          <span className="text-[#548BE4]">{action.filePath.split('/').pop()}</span>
-                        </>
-                      ) : (
-                        <span className="text-[#548BE4]">{action.filePath}</span>
-                      )}
-                    </code>
+                      <Package className="w-4 h-4 text-green-500 mr-2" />
+                      <span className="flex-1 text-white">Start Application</span>
+                    </a>
+                  ) : null}
+                  <div className={classNames('text-lg', getIconColor(action.status))}>
+                    {status === 'running' ? (
+                      <Loader className="w-4 h-4 animate-spin text-gray-500" />
+                    ) : status === 'complete' ? (
+                      <CheckCircle2 className="w-4 h-4 text-green-500" />
+                    ) : status === 'failed' || status === 'aborted' ? (
+                      <XCircle className="w-4 h-4 text-red-500" />
+                    ) : null}
                   </div>
-                ) : type === 'shell' ? (
-                  <div className="flex items-center w-full min-h-[28px]">
-                    <span className="flex-1 text-white">Run command</span>
+                </div>
+                {(type === 'shell' || type === 'start') && (
+                  <div className="mt-1 pl-6">
+                    <ShellCodeBlock code={content} />
                   </div>
-                ) : type === 'start' ? (
-                  <a
-                    onClick={(e) => {
-                      e.preventDefault();
-                      workbenchStore.currentView.set('preview');
-                    }}
-                    className="flex items-center w-full min-h-[28px]"
-                  >
-                    <span className="flex-1 text-white">Start Application</span>
-                  </a>
-                ) : null}
-              </div>
-              {(type === 'shell' || type === 'start') && (
-                <ShellCodeBlock
-                  classsName={classNames('mt-1', {
-                    'mb-3.5': !isLast,
-                  })}
-                  code={content}
-                />
-              )}
-            </motion.li>
-          );
-        })}
-      </ul>
+                )}
+              </motion.li>
+            );
+          })}
+        </ul>
+      </div>
     </motion.div>
   );
 });
