@@ -138,6 +138,13 @@ function ShellCodeBlock({ classsName, code }: ShellCodeBlockProps) {
         __html: shellHighlighter.codeToHtml(code, {
           lang: 'shell',
           theme: 'dark-plus',
+          transformers: [
+            {
+              pre(node) {
+                node.properties.style = 'background:transparent;color:#D4D4D4;padding:0;margin:0';
+              },
+            },
+          ],
         }),
       }}
     ></div>
@@ -165,7 +172,7 @@ const ActionList = memo(({ actions }: ActionListProps) => {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
       <div className="bg-black p-4 rounded-lg">
-        <ul className="list-none space-y-2.5">
+        <ul className="list-none space-y-4">
           {actions.map((action, index) => {
             const { status, type, content } = action;
             const isLast = index === actions.length - 1;
@@ -200,42 +207,36 @@ const ActionList = memo(({ actions }: ActionListProps) => {
                       </code>
                     </div>
                   ) : type === 'shell' ? (
-                    <div className="flex items-center w-full min-h-[28px]">
-                      <Package className="w-4 h-4 text-green-500 mr-2" />
-                      <span className="flex-1 text-white">Run command</span>
+                    <div className="flex items-center gap-2">
+                      <Package className="w-4 h-4 text-green-500" />
+                      <ShellCodeBlock code={content} />
                     </div>
                   ) : type === 'start' ? (
-                    <a
-                      onClick={(e) => {
-                        e.preventDefault();
-                        workbenchStore.currentView.set('preview');
-                      }}
-                      className="flex items-center w-full min-h-[28px]"
-                    >
-                      <Package className="w-4 h-4 text-green-500 mr-2" />
-                      <span className="flex-1 text-white">Start Application</span>
-                    </a>
+                    <div className="flex items-center gap-2">
+                      <Package className="w-4 h-4 text-green-500" />
+                      <span className="text-white">Start Application</span>
+                    </div>
                   ) : null}
                   <div className={classNames('text-lg', getIconColor(action.status))}>
                     {status === 'running' ? (
                       <Loader className="w-4 h-4 animate-spin text-gray-500" />
                     ) : status === 'complete' ? (
-                      <CheckCircle2 className="w-4 h-4 text-green-500" />
+                      <CheckCircle2 className="w-4 h-4 text-green-500 " />
                     ) : status === 'failed' || status === 'aborted' ? (
                       <XCircle className="w-4 h-4 text-red-500" />
                     ) : null}
                   </div>
                 </div>
-                {(type === 'shell' || type === 'start') && (
-                  <div className="mt-1 pl-6">
-                    <ShellCodeBlock code={content} />
+                {type === 'start' && (
+                  <div className="mt-4 pl-6 ">
+                    <ShellCodeBlock  code={content} />
                   </div>
                 )}
               </motion.li>
             );
           })}
         </ul>
-      </div>
+      </div >
     </motion.div>
   );
 });
