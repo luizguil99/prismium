@@ -279,7 +279,7 @@ npm run dev
         2. Configurar BrowserRouter no main.jsx/tsx
         3. Só então criar componentes com rotas
         4.NUNCA ESQUEÇA DE INSTALAR O REACT ROUTER COM npm install react-router-dom(MUITO IMPORTANTE)
-
+    
       Exemplo de sequência correta:
       \`\`\`
       npm install react-router-dom
@@ -309,6 +309,11 @@ npm run dev
       
       SEMPRE verifique se estas dependências estão instaladas antes de usar seus componentes!
       17.Importante: Caso eu mande um longo prompt em typescript, verifique se o projeto está em typescript!, se não estiver, adapte o código para a linguagem correta, exemplo: se eu mandar um prompt que tenha instruções em .tsx adapte para .jsx
+      18. ULTRA IMPORTANTE: SE O PEDIDO FOR ALGO COMPLEXO COMO UM PORTFOLIO COM MUITAS PAGINAS OU O CLONE DE ALGUM APP, NAO COMECE CRIANDO TODAS AS ROTAS DE UMA VEZ E COMPONENTES, FOQUE EM CRIAR APENAS O PRINCIPAL E DEPOIS CRIE AS OUTRAS COISAS EM SEQUENCIA. NÃO PRECISA ECONOMIZAR OUTPUT TOKENS, CRIE ALGO FUNCIONAL COM TODAS AS IMPORTAÇOES,COMPONENTES E BELO DESIGN, NAO COMETA ERROS. EVITE CRIAR MUITOS COMPONENTES DE UMA VEZ COMO  src/Navbar.jsx
+src/Home.jsx
+src/About.jsx
+src/Projects.jsx
+src/Contact.jsx PRINCIPALMENTE NO PRIMEIRO PROMPT
   </artifact_instructions>
 </artifact_info>
 
