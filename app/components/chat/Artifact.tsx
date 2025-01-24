@@ -132,22 +132,24 @@ interface ShellCodeBlockProps {
 
 function ShellCodeBlock({ classsName, code }: ShellCodeBlockProps) {
   return (
-    <div
-      className={classNames('text-xs leading-none', classsName)}
-      dangerouslySetInnerHTML={{
-        __html: shellHighlighter.codeToHtml(code, {
-          lang: 'shell',
-          theme: 'dark-plus',
-          transformers: [
-            {
-              pre(node) {
-                node.properties.style = 'background:transparent;color:#D4D4D4;padding:0;margin:0';
+    <div className="flex items-center gap-2">
+      <div
+        className={classNames('text-xs leading-none flex-1', classsName)}
+        dangerouslySetInnerHTML={{
+          __html: shellHighlighter.codeToHtml(code, {
+            lang: 'shell',
+            theme: 'dark-plus',
+            transformers: [
+              {
+                pre(node) {
+                  node.properties.style = 'background:transparent;color:#D4D4D4;padding:0;margin:0;white-space:pre-wrap';
+                },
               },
-            },
-          ],
-        }),
-      }}
-    ></div>
+            ],
+          }),
+        }}
+      ></div>
+    </div>
   );
 }
 
