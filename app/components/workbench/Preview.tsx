@@ -325,56 +325,92 @@ export const Preview = memo(() => {
           />
         )}
 
-        {/* Device mode toggle button */}
-        <IconButton
-          icon="i-ph:devices"
-          onClick={toggleDeviceMode}
-          title={isDeviceModeOn ? 'Switch to Responsive Mode' : 'Switch to Device Mode'}
-        />
+        {/* Grupo de botões de preview */}
+        <div className="flex items-center gap-1">
+          {/* Device mode toggle button */}
+          <IconButton
+            icon="i-ph:devices"
+            onClick={toggleDeviceMode}
+            className={`text-white ${isDeviceModeOn ? 'bg-bolt-elements-background-depth-3' : ''}`}
+            title={isDeviceModeOn ? 'Switch to Responsive Mode' : 'Switch to Device Mode'}
+          />
 
-        {/* Fullscreen toggle button */}
-        <IconButton
-          icon="i-ph:layout-light"
-          onClick={() => setIsPreviewOnly(!isPreviewOnly)}
-          title={isPreviewOnly ? 'Show Full Interface' : 'Show Preview Only'}
-        />
-        <IconButton
-          icon={isFullscreen ? 'i-ph:arrows-in' : 'i-ph:arrows-out'}
-          onClick={toggleFullscreen}
-          title={isFullscreen ? 'Exit Full Screen' : 'Full Screen'}
-        />
-        <div className="relative">
+          {/* Preview only toggle button */}
           <IconButton
-            icon="i-ph:arrow-square-out"
-            onClick={() => openInNewWindow(selectedWindowSize)}
-            title={`Open Preview in ${selectedWindowSize.name} Window`}
+            icon="i-ph:layout-light"
+            onClick={() => setIsPreviewOnly(!isPreviewOnly)}
+            className={`text-white ${isPreviewOnly ? 'bg-bolt-elements-background-depth-3' : ''}`}
+            title={isPreviewOnly ? 'Show Full Interface' : 'Show Preview Only'}
           />
+
+          {/* Fullscreen toggle button */}
           <IconButton
-            icon="i-ph:caret-down"
-            onClick={() => setIsWindowSizeDropdownOpen(!isWindowSizeDropdownOpen)}
-            className="ml-1"
-            title="Select Window Size"
+            icon={isFullscreen ? 'i-ph:arrows-in' : 'i-ph:arrows-out'}
+            onClick={toggleFullscreen}
+            className="text-white"
+            title={isFullscreen ? 'Exit Full Screen' : 'Full Screen'}
           />
-          {isWindowSizeDropdownOpen && (
-            <>
-              <div className="fixed inset-0 z-50" onClick={() => setIsWindowSizeDropdownOpen(false)} />
-              <div className="absolute right-0 top-full mt-1 z-50 bg-bolt-elements-background-depth-2 rounded-lg shadow-lg border border-bolt-elements-borderColor overflow-hidden">
-                {WINDOW_SIZES.map((size) => (
-                  <button
-                    key={size.name}
-                    className="w-full px-4 py-2 text-left hover:bg-bolt-elements-background-depth-3 text-sm whitespace-nowrap"
-                    onClick={() => {
-                      setSelectedWindowSize(size);
-                      setIsWindowSizeDropdownOpen(false);
-                      openInNewWindow(size);
-                    }}
-                  >
-                    {size.name}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
+
+          {/* Botão de preview em nova janela com dropdown */}
+          <div className="relative">
+            <div className="flex">
+              <button
+                className={`flex items-center gap-1.5 px-2 py-1 text-white hover:bg-bolt-elements-background-depth-3 transition-colors rounded-l border border-r-0 border-bolt-elements-borderColor ${
+                  isWindowSizeDropdownOpen ? 'bg-bolt-elements-background-depth-3' : 'bg-bolt-elements-background-depth-2'
+                }`}
+                onClick={() => openInNewWindow(selectedWindowSize)}
+                title={`Open Preview in ${selectedWindowSize.name} Window`}
+              >
+                <div className="i-ph:arrow-square-out text-lg" />
+                <span className="text-sm font-medium">{selectedWindowSize.name.split(' ')[0]}</span>
+              </button>
+              <button
+                className={`px-1.5 py-1 text-white hover:bg-bolt-elements-background-depth-3 transition-colors rounded-r border border-l-0 border-bolt-elements-borderColor ${
+                  isWindowSizeDropdownOpen ? 'bg-bolt-elements-background-depth-3' : 'bg-bolt-elements-background-depth-2'
+                }`}
+                onClick={() => setIsWindowSizeDropdownOpen(!isWindowSizeDropdownOpen)}
+                title="Select Window Size"
+              >
+                <div className="i-ph:caret-down text-sm" />
+              </button>
+            </div>
+
+            {isWindowSizeDropdownOpen && (
+              <>
+                <div className="fixed inset-0 z-50" onClick={() => setIsWindowSizeDropdownOpen(false)} />
+                <div className="absolute right-0 top-full mt-1 z-50 bg-[#1e1e1e] rounded-lg shadow-lg border border-[#333] overflow-hidden min-w-[180px]">
+                  {WINDOW_SIZES.map((size) => (
+                    <button
+                      key={size.name}
+                      className={`w-full px-3 py-2 text-left text-white hover:bg-[#2a2a2a] transition-colors flex items-center justify-between gap-2 ${
+                        selectedWindowSize.name === size.name 
+                          ? 'bg-[#2a2a2a]' 
+                          : 'bg-[#000000]'
+                      }`}
+                      onClick={() => {
+                        setSelectedWindowSize(size);
+                        setIsWindowSizeDropdownOpen(false);
+                        openInNewWindow(size);
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className={`i-ph:${
+                          size.name.toLowerCase().includes('mobile') ? 'device-mobile' :
+                          size.name.toLowerCase().includes('tablet') ? 'device-tablet' :
+                          size.name.toLowerCase().includes('laptop') ? 'laptop' :
+                          'monitor'
+                        } text-lg text-white`} />
+                        <span className="text-sm font-medium text-white">{size.name.split(' ')[0]}</span>
+                      </div>
+                      <span className="text-xs text-gray-400 font-mono">
+                        {size.width}×{size.height}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
