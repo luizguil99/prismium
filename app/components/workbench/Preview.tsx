@@ -6,6 +6,17 @@ import { PortDropdown } from './PortDropdown';
 import { ScreenshotSelector } from './ScreenshotSelector';
 
 type ResizeSide = 'left' | 'right' | null;
+interface WindowSize {
+  name: string;
+  width: number;
+  height: number;
+}
+const WINDOW_SIZES: WindowSize[] = [
+  { name: 'Mobile (375x667)', width: 375, height: 667 },
+  { name: 'Tablet (768x1024)', width: 768, height: 1024 },
+  { name: 'Laptop (1366x768)', width: 1366, height: 768 },
+  { name: 'Desktop (1920x1080)', width: 1920, height: 1080 },
+];
 
 export const Preview = memo(() => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -15,6 +26,7 @@ export const Preview = memo(() => {
   const [activePreviewIndex, setActivePreviewIndex] = useState(0);
   const [isPortDropdownOpen, setIsPortDropdownOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isPreviewOnly, setIsPreviewOnly] = useState(false);
   const hasSelectedPreview = useRef(false);
   const previews = useStore(workbenchStore.previews);
   const activePreview = previews[activePreviewIndex];
@@ -38,7 +50,10 @@ export const Preview = memo(() => {
   });
 
   // Define the scaling factor
-  const SCALING_FACTOR = 2; // Adjust this value to increase/decrease sensitivity
+  // Adjust this value to increase/decrease sensitivity
+  const SCALING_FACTOR = 2;
+  const [isWindowSizeDropdownOpen, setIsWindowSizeDropdownOpen] = useState(false);
+  const [selectedWindowSize, setSelectedWindowSize] = useState<WindowSize>(WINDOW_SIZES[0]);
 
   useEffect(() => {
     if (!activePreview) {
@@ -212,9 +227,61 @@ export const Preview = memo(() => {
       </div>
     </div>
   );
+  const openInNewWindow = (size: WindowSize) => {
+    if (activePreview?.baseUrl) {
+      try {
+        // Novo regex que aceita o formato completo da URL do WebContainer
+        const match = activePreview.baseUrl.match(/^https?:\/\/([^.]+(?:-+\d+)?(?:-+[a-z0-9]+)*?)\.(?:local-corp\.)?webcontainer-api\.io/);
+        if (match) {
+          const previewId = match[1];
+          // Usar URL absoluta para garantir que o preview abra corretamente
+          const previewUrl = `${window.location.origin}/webcontainer/preview/${previewId}`;
+          
+          // Adicionar margem para a barra de título da janela
+          const windowHeight = size.height + 60;
+          
+          // Centralizar a janela na tela
+          const screenLeft = (window.screen.width - size.width) / 2;
+          const screenTop = (window.screen.height - windowHeight) / 2;
+          
+          const windowFeatures = [
+            `width=${size.width}`,
+            `height=${windowHeight}`,
+            `left=${screenLeft}`,
+            `top=${screenTop}`,
+            'menubar=no',
+            'toolbar=no',
+            'location=no',
+            'status=no',
+            'resizable=yes',
+            'scrollbars=yes'
+          ].join(',');
+
+          console.log('[Preview] Abrindo preview com ID:', previewId);
+          const newWindow = window.open(previewUrl, '_blank', windowFeatures);
+          
+          if (newWindow) {
+            newWindow.focus();
+            console.log('[Preview] Nova janela aberta:', previewUrl);
+          } else {
+            console.warn('[Preview] Não foi possível abrir a janela. Verifique se o bloqueador de pop-ups está ativado.');
+          }
+        } else {
+          console.warn('[Preview] URL do WebContainer inválida:', activePreview.baseUrl);
+        }
+      } catch (error) {
+        console.error('[Preview] Erro ao abrir preview:', error);
+      }
+    } else {
+      console.warn('[Preview] Nenhum preview ativo disponível');
+    }
+  };
 
   return (
-    <div ref={containerRef} className="w-full h-full flex flex-col relative">
+    <div
+      ref={containerRef}
+      className={`w-full h-full flex flex-col relative ${isPreviewOnly ? 'fixed inset-0 z-50 bg-white' : ''}`}
+    >
       {isPortDropdownOpen && (
         <div className="z-iframe-overlay w-full h-full absolute" onClick={() => setIsPortDropdownOpen(false)} />
       )}
@@ -225,10 +292,7 @@ export const Preview = memo(() => {
           onClick={() => setIsSelectionMode(!isSelectionMode)}
           className={isSelectionMode ? 'bg-bolt-elements-background-depth-3' : ''}
         />
-        <div
-          className="flex items-center gap-1 flex-grow bg-bolt-elements-preview-addressBar-background border border-bolt-elements-borderColor text-bolt-elements-preview-addressBar-text rounded-full px-3 py-1 text-sm hover:bg-bolt-elements-preview-addressBar-backgroundHover hover:focus-within:bg-bolt-elements-preview-addressBar-backgroundActive focus-within:bg-bolt-elements-preview-addressBar-backgroundActive
-        focus-within-border-bolt-elements-borderColorActive focus-within:text-bolt-elements-preview-addressBar-textActive"
-        >
+        <div className="flex items-center gap-1 flex-grow bg-bolt-elements-preview-addressBar-background border border-bolt-elements-borderColor text-bolt-elements-preview-addressBar-text rounded-full px-3 py-1 text-sm hover:bg-bolt-elements-preview-addressBar-backgroundHover hover:focus-within:bg-bolt-elements-preview-addressBar-backgroundActive focus-within:bg-bolt-elements-preview-addressBar-backgroundActive focus-within-border-bolt-elements-borderColorActive focus-within:text-bolt-elements-preview-addressBar-textActive">
           <input
             title="URL"
             ref={inputRef}
@@ -270,10 +334,48 @@ export const Preview = memo(() => {
 
         {/* Fullscreen toggle button */}
         <IconButton
+          icon="i-ph:layout-light"
+          onClick={() => setIsPreviewOnly(!isPreviewOnly)}
+          title={isPreviewOnly ? 'Show Full Interface' : 'Show Preview Only'}
+        />
+        <IconButton
           icon={isFullscreen ? 'i-ph:arrows-in' : 'i-ph:arrows-out'}
           onClick={toggleFullscreen}
           title={isFullscreen ? 'Exit Full Screen' : 'Full Screen'}
         />
+        <div className="relative">
+          <IconButton
+            icon="i-ph:arrow-square-out"
+            onClick={() => openInNewWindow(selectedWindowSize)}
+            title={`Open Preview in ${selectedWindowSize.name} Window`}
+          />
+          <IconButton
+            icon="i-ph:caret-down"
+            onClick={() => setIsWindowSizeDropdownOpen(!isWindowSizeDropdownOpen)}
+            className="ml-1"
+            title="Select Window Size"
+          />
+          {isWindowSizeDropdownOpen && (
+            <>
+              <div className="fixed inset-0 z-50" onClick={() => setIsWindowSizeDropdownOpen(false)} />
+              <div className="absolute right-0 top-full mt-1 z-50 bg-bolt-elements-background-depth-2 rounded-lg shadow-lg border border-bolt-elements-borderColor overflow-hidden">
+                {WINDOW_SIZES.map((size) => (
+                  <button
+                    key={size.name}
+                    className="w-full px-4 py-2 text-left hover:bg-bolt-elements-background-depth-3 text-sm whitespace-nowrap"
+                    onClick={() => {
+                      setSelectedWindowSize(size);
+                      setIsWindowSizeDropdownOpen(false);
+                      openInNewWindow(size);
+                    }}
+                  >
+                    {size.name}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 border-t border-bolt-elements-borderColor flex justify-center items-center overflow-auto">
@@ -294,7 +396,8 @@ export const Preview = memo(() => {
                 title="preview"
                 className="border-none w-full h-full bg-white"
                 src={iframeUrl}
-                allowFullScreen
+                sandbox="allow-scripts allow-forms allow-popups allow-modals allow-storage-access-by-user-activation allow-same-origin"
+                allow="cross-origin-isolated"
               />
               <ScreenshotSelector
                 isSelectionMode={isSelectionMode}

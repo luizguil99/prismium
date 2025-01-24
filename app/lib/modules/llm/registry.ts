@@ -16,12 +16,14 @@ import XAIProvider from './providers/xai';
 import HyperbolicProvider from './providers/hyperbolic';
 import AmazonBedrockProvider from './providers/amazon-bedrock';
 import DifyProvider from './providers/dify';
+import GithubProvider from './providers/github';
 
 export {
   AnthropicProvider,
   CohereProvider,
   DeepseekProvider,
   DifyProvider,
+  GithubProvider,
   GoogleProvider,
   GroqProvider,
   HuggingFaceProvider,
