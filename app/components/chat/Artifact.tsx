@@ -210,7 +210,16 @@ const ActionList = memo(({ actions }: ActionListProps) => {
                     </div>
                   ) : type === 'shell' ? (
                     <div className="flex items-center gap-2">
-                      <Package className="w-4 h-4 text-green-500" />
+                      {status === 'running' ? (
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                        >
+                          <Package className="w-4 h-4 text-green-500" />
+                        </motion.div>
+                      ) : (
+                        <Package className="w-4 h-4 text-green-500" />
+                      )}
                       <ShellCodeBlock code={content} />
                     </div>
                   ) : type === 'start' ? (
