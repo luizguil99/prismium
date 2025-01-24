@@ -177,26 +177,21 @@ export const ScreenshotSelector = memo(
 
         reader.onload = (e) => {
           const base64Image = e.target?.result as string;
+          const file = new File([blob], 'screenshot.png', { type: 'image/png' });
 
-          // Find the textarea element
-          const textarea = document.querySelector('textarea');
+          // Get the setters from the BaseChat component
+          const setUploadedFiles = (window as any).__BOLT_SET_UPLOADED_FILES__;
+          const setImageDataList = (window as any).__BOLT_SET_IMAGE_DATA_LIST__;
+          const uploadedFiles = (window as any).__BOLT_UPLOADED_FILES__ || [];
+          const imageDataList = (window as any).__BOLT_IMAGE_DATA_LIST__ || [];
 
-          if (textarea) {
-            // Get the setters from the BaseChat component
-            const setUploadedFiles = (window as any).__BOLT_SET_UPLOADED_FILES__;
-            const setImageDataList = (window as any).__BOLT_SET_IMAGE_DATA_LIST__;
-            const uploadedFiles = (window as any).__BOLT_UPLOADED_FILES__ || [];
-            const imageDataList = (window as any).__BOLT_IMAGE_DATA_LIST__ || [];
-
-            if (setUploadedFiles && setImageDataList) {
-              // Update the files and image data
-              const file = new File([blob], 'screenshot.png', { type: 'image/png' });
-              setUploadedFiles([...uploadedFiles, file]);
-              setImageDataList([...imageDataList, base64Image]);
-              toast.success('Screenshot captured and added to chat');
-            } else {
-              toast.error('Could not add screenshot to chat');
-            }
+          if (setUploadedFiles && setImageDataList) {
+            // Update the files and image data
+            setUploadedFiles([...uploadedFiles, file]);
+            setImageDataList([...imageDataList, base64Image]);
+            toast.success('Screenshot captured and added to chat');
+          } else {
+            toast.error('Could not add screenshot to chat');
           }
         };
         reader.readAsDataURL(blob);

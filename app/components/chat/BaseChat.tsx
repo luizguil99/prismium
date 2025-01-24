@@ -768,6 +768,12 @@ ${file.content}
     return (
       <Tooltip.Provider delayDuration={200}>
         <SettingsModal />
+        <ScreenshotStateManager 
+          setUploadedFiles={setUploadedFiles}
+          setImageDataList={setImageDataList}
+          uploadedFiles={uploadedFiles}
+          imageDataList={imageDataList}
+        />
         {baseChat}
       </Tooltip.Provider>
     );
