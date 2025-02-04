@@ -347,7 +347,7 @@ Por favor, use essas configurações do Supabase ao gerar o código da aplicaç�
       chatStore.setKey('aborted', false);
 
       // Lógica especial para primeira mensagem com seleção automática de template
-      if (!chatStarted && messageInput && autoSelectTemplate) {
+      if (!chatStarted && _input && autoSelectTemplate) {
         // Ativa loading para seleção de template
         setFakeLoading(true);
 
@@ -372,7 +372,7 @@ Por favor, use essas configurações do Supabase ao gerar o código da aplicaç�
 
         // Seleciona um template inicial baseado na mensagem
         const { template, title } = await selectStarterTemplate({
-          message: messageInput,
+          message: _input,
           model,
           provider,
         });
@@ -399,7 +399,7 @@ Por favor, use essas configurações do Supabase ao gerar o código da aplicaç�
               {
                 id: `${new Date().getTime()}`,
                 role: 'user',
-                content: messageInput,
+                content: _input,
               },
               {
                 id: `${new Date().getTime()}`,
