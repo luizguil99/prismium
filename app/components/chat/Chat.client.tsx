@@ -142,7 +142,20 @@ export const ChatImpl = memo(
 
     const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
 
-    const { messages, isLoading, input, handleInputChange, setInput, stop, append, setMessages, reload } = useChat({
+     const {
+      messages,
+      isLoading,
+      input,
+      handleInputChange,
+      setInput,
+      stop,
+      append,
+      setMessages,
+      reload,
+      error,
+      data: chatData,
+      setData,
+    } = useChat({
       api: '/api/chat',
       body: {
         apiKeys,
@@ -622,6 +635,7 @@ Por favor, use essas configurações do Supabase ao gerar o código da aplicaç�
         setImageDataList={setImageDataList}
         actionAlert={actionAlert}
         clearAlert={() => workbenchStore.clearAlert()}
+        data={chatData}
       />
     );
   },

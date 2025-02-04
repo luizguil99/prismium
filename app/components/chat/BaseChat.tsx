@@ -2,7 +2,7 @@
  * @ts-nocheck
  * Preventing TS checks with files presented in the video for a better presentation.
  */
-import type { Message } from 'ai';
+import type { JSONValue, Message } from 'ai';
 import React, { type RefCallback, useCallback, useEffect, useState } from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
 import { Menu } from '~/components/sidebar/Menu.client';
@@ -40,6 +40,8 @@ import StarterTemplates from './StarterTemplates';
 import type { ActionAlert } from '~/types/actions';
 import ChatAlert from './ChatAlert';
 import { LLMManager } from '~/lib/modules/llm/manager';
+import ProgressCompilation from './ProgressCompilation';
+import type { ProgressAnnotation } from '~/types/context';
 
 import logoAngular from '~/lib/png/logo_angular.svg.png';
 import logoAstro from '~/lib/png/logo_astro.svg.png';
@@ -108,6 +110,7 @@ interface BaseChatProps {
   setImageDataList?: (dataList: string[]) => void;
   actionAlert?: ActionAlert;
   clearAlert?: () => void;
+  data?: JSONValue[] | undefined;
 }
 
 export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
@@ -139,6 +142,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       messages,
       actionAlert,
       clearAlert,
+      data,
     }: BaseChatProps,
     ref,
   ) => {
@@ -151,6 +155,15 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
     const [transcript, setTranscript] = useState('');
     const [isModelLoading, setIsModelLoading] = useState<string | undefined>('all');
+    const [progressAnnotations, setProgressAnnotations] = useState<ProgressAnnotation[]>([]);
+    useEffect(() => {
+      if (data) {
+        const progressList = data.filter(
+          (x) => typeof x === 'object' && (x as any).type === 'progress',
+        ) as ProgressAnnotation[];
+        setProgressAnnotations(progressList);
+      }
+    }, [data]);
 
     const getProviderSettings = useCallback(() => {
       let providerSettings: Record<string, IProviderSetting> | undefined = undefined;
@@ -512,7 +525,7 @@ ${file.content}
             <div
               className={classNames('pt-6 px-2 sm:px-6', {
                 'h-full flex flex-col': chatStarted,
-              })}
+              })} ref={scrollRef}
             >
               <ClientOnly>
                 {() => {
@@ -543,6 +556,7 @@ ${file.content}
                     />
                   )}
                 </div>
+                {progressAnnotations && <ProgressCompilation data={progressAnnotations} />}
                 <div
                   className={classNames(
                     'relative shadow-lg border border-[#2A2F3A]/60 backdrop-blur-lg rounded-xl bg-black/60',
