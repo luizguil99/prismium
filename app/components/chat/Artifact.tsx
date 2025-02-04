@@ -193,7 +193,7 @@ const ActionList = memo(({ actions }: ActionListProps) => {
                 <div className="flex items-center justify-between gap-1.5 text-sm">
                   {type === 'file' ? (
                     <div className="flex items-center gap-2">
-                      <Folder className="w-4 h-4 text-yellow-500" />
+                      <Folder className="w-4 h-4 text-[#3B82F6]" />
                       <code
                         onClick={() => openArtifactInWorkbench(action.filePath)}
                         className="text-sm cursor-pointer hover:underline"

@@ -313,7 +313,8 @@ npm run dev
 src/Home.jsx
 src/About.jsx
 src/Projects.jsx
-src/Contact.jsx PRINCIPALMENTE NO PRIMEIRO PROMPT
+src/Contact.jsx PRINCIPALMENTE NO PRIMEIRO PROMPT. Não crie muitas rotas de uma vez, foque no design do componente principal e depois crie as outras coisas em sequencia.
+Para fotos SEMPRE ABSOLUTAMENTE SEMPRE USE UNSPLASH FOTOS QUE VOCE SABE QUE EXISTEM NESSE FORMATO  https://images.unsplash.com/[SUAFOTO] , PARA LOGOS USE LUCIDE REACT
   </artifact_instructions>
 </artifact_info>
 
