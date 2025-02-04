@@ -170,7 +170,7 @@ export async function selectContext(props: {
         `,
     model: provider.getModelInstance({
       model: currentModel,
-      serverEnv,
+      serverEnv: serverEnv || {} as Env,
       apiKeys,
       providerSettings,
     }),

@@ -303,75 +303,10 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
 
       const message = messageInput || input;
 
-      // Verifica se é a primeira mensagem e se contém palavras-chave do template Shadcn
-      if (messages?.length === 0 && message.toLowerCase().includes('shadcn')) {
-        console.log('[BaseChat] Detectado comando shadcn');
-        const shadcnTemplate = templates.find((t) => t.id === 1); // Template Shadcn
-        if (shadcnTemplate && importChat) {
-          try {
-            // Envia a mensagem de loading apenas para template
-            if (sendMessage) {
-              sendMessage(event, { isStatus: true, text: 'Creating project...' });
-            }
-
-            console.log('[BaseChat] Iniciando importação do template');
-            const { workdir, data } = await gitClone(shadcnTemplate.repo);
-            const filePaths = Object.keys(data).filter((filePath) => !ig.ignores(filePath));
-
-            const textDecoder = new TextDecoder('utf-8');
-            const fileContents = filePaths
-              .map((filePath) => {
-                const { data: content, encoding } = data[filePath];
-                return {
-                  path: filePath,
-                  content:
-                    encoding === 'utf8' ? content : content instanceof Uint8Array ? textDecoder.decode(content) : '',
-                };
-              })
-              .filter((f) => f.content);
-
-            const commands = await detectProjectCommands(fileContents);
-            const commandsMessage = createCommandsMessage(commands);
-
-            const filesMessage: Message = {
-              role: 'assistant',
-              content: `Starting project with ${shadcnTemplate.title}
-<boltArtifact id="imported-files" title="Template Files" type="bundled">
-${fileContents
-  .map(
-    (file) =>
-      `<boltAction type="file" filePath="${file.path}">
-${file.content}
-</boltAction>`,
-  )
-  .join('\n')}
-</boltArtifact>`,
-              id: generateId(),
-              createdAt: new Date(),
-            };
-
-            const templateMessages = [filesMessage];
-            if (commandsMessage) {
-              templateMessages.push(commandsMessage);
-            }
-
-            console.log('[BaseChat] Chamando importChat');
-            localStorage.setItem('pendingTemplateMessage', message);
-            await importChat(`Template: ${shadcnTemplate.title}`, templateMessages);
-            console.log('[BaseChat] Template importado com sucesso');
-
-            return;
-          } catch (error) {
-            console.error('[BaseChat] Erro ao importar template:', error);
-            toast.error('Falha ao importar template');
-          }
-        }
-      } else {
-        // Para mensagens normais, envia direto sem animação de loading
-        if (sendMessage) {
-          console.log('[BaseChat] Enviando mensagem via sendMessage');
-          sendMessage(event, message);
-        }
+      // Para mensagens normais, envia direto sem animação de loading
+      if (sendMessage) {
+        console.log('[BaseChat] Enviando mensagem via sendMessage');
+        sendMessage(event, message);
       }
     };
 
@@ -500,6 +435,12 @@ ${file.content}
           </DialogContent>
         </Dialog>
       );
+    };
+
+    const handleExamplePromptClick = (event: React.UIEvent, message?: string) => {
+      if (message) {
+        handleSendMessage(event, message);
+      }
     };
 
     const baseChat = (
@@ -757,15 +698,10 @@ ${file.content}
             <div className="flex flex-col justify-center gap-8 pb-10">
               {!chatStarted && (
                 <>
-                  <ExamplePrompts
-                    sendMessage={(event, messageInput) => {
-                      if (messageInput) {
-                        sendMessage(event, messageInput);
-                      }
-                    }}
-                    className="mb-8"
-                  />
-                  <div className="px-4 py-6 rounded-lg bg-black/20 ">
+                  <div className="mb-8">
+                    <ExamplePrompts sendMessage={handleExamplePromptClick} />
+                  </div>
+                  <div className="px-4 py-6 rounded-lg bg-black/20">
                     <TemplateCards importChat={importChat} />
                   </div>
                 </>
