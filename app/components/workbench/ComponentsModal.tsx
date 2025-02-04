@@ -1,8 +1,9 @@
 import { memo, useState, useEffect } from 'react';
 import { classNames } from '~/utils/classNames';
-import { Search, ChevronDown, LayoutTemplate, Component as ComponentIcon } from 'lucide-react';
+import { Search, ChevronDown, LayoutTemplate, Component as ComponentIcon, Copy, Check } from 'lucide-react';
 import { categories, type Component } from './components-list';
 import { useChat } from 'ai/react';
+import { toast } from 'react-toastify';
 
 interface ComponentsModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ export const ComponentsModal = memo(({ isOpen, onClose, onSendMessage }: Compone
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+  const [hasCopied, setHasCopied] = useState(false);
 
   // Reseta o estado quando o modal fecha
   useEffect(() => {
@@ -41,13 +43,16 @@ export const ComponentsModal = memo(({ isOpen, onClose, onSendMessage }: Compone
   const toggleCategory = (category: string) => {
     // Se está clicando na mesma categoria
     if (category === selectedCategory) {
-      setExpandedCategories((prev) => ({
-        ...prev,
-        [category]: !prev[category],
-      }));
-      if (prev[category]) {
-        setSelectedSubcategory(null);
-      }
+      setExpandedCategories((prevState) => {
+        const newState = {
+          ...prevState,
+          [category]: !prevState[category],
+        };
+        if (newState[category]) {
+          setSelectedSubcategory(null);
+        }
+        return newState;
+      });
     } else {
       // Se está mudando de categoria, limpa tudo e expande a nova
       setSelectedCategory(category);
@@ -66,6 +71,19 @@ export const ComponentsModal = memo(({ isOpen, onClose, onSendMessage }: Compone
       setSelectedSubcategory(subcategory);
     }
     setSelectedComponent(null);
+  };
+
+  const handleCopyPrompt = async (e: React.MouseEvent, component: Component) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(component.prompt);
+      setHasCopied(true);
+      toast.success('Prompt copied successfully!');
+      setTimeout(() => setHasCopied(false), 2000);
+    } catch (error) {
+      console.error('Error copying prompt:', error);
+      toast.error('Failed to copy prompt');
+    }
   };
 
   if (!isOpen) return null;
@@ -253,30 +271,16 @@ export const ComponentsModal = memo(({ isOpen, onClose, onSendMessage }: Compone
 
             {/* Grid de componentes */}
             <div className="flex-1 p-4">
-              <div
-                className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto max-h-[460px] pr-4
-                overflow-x-hidden
-                scroll-smooth
-                [scrollbar-gutter:stable]
-                [&::-webkit-scrollbar]:w-2 
-                [&::-webkit-scrollbar-track]:bg-transparent 
-                [&::-webkit-scrollbar-thumb]:bg-[#333]/50
-                [&::-webkit-scrollbar-thumb]:rounded-full 
-                [&::-webkit-scrollbar-thumb]:border-2
-                [&::-webkit-scrollbar-thumb]:border-transparent
-                [&::-webkit-scrollbar-thumb]:bg-clip-padding
-                hover:[&::-webkit-scrollbar-thumb]:bg-[#444]
-                [@media(hover:none)]:scrollbar-none"
-              >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto max-h-[460px] pr-4">
                 {filteredComponents.map((component) =>
                   component && typeof component === 'object' ? (
-                    <button
+                    <div
                       key={component.id || component.name}
                       className={classNames(
-                        'group text-left rounded-lg overflow-hidden',
+                        'group relative rounded-lg overflow-hidden',
                         'bg-bolt-elements-background-depth-1',
                         'border transition-all duration-150 ease-in-out will-change-transform',
-                        'hover:translate-y-[-2px] hover:shadow-lg',
+                        'hover:translate-y-[-2px] hover:shadow-lg min-h-[280px]',
                         selectedComponent?.id === component.id
                           ? 'border-[#548BE4] ring-2 ring-[#548BE4]/30'
                           : 'border-bolt-elements-borderColor hover:border-[#548BE4]/30',
@@ -297,22 +301,34 @@ export const ComponentsModal = memo(({ isOpen, onClose, onSendMessage }: Compone
                       </div>
 
                       {/* Info */}
-                      <div className="p-3">
-                        <div className="flex items-center justify-between mb-1">
-                          <h3 className="font-medium text-bolt-elements-item-contentDefault">
+                      <div className="p-4 relative">
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="font-medium text-bolt-elements-item-contentDefault text-base">
                             {component.name || 'No name'}
                           </h3>
-                          {component.isNew && (
-                            <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-[#86efac] text-[#052e16] font-medium">
-                              New
-                            </span>
-                          )}
+                          <div className="flex items-center gap-2">
+                            {component.isNew && (
+                              <span className="px-2 py-1 text-xs font-medium rounded-full bg-[#86efac] text-[#052e16]">
+                                New
+                              </span>
+                            )}
+                            <button
+                              onClick={(e) => handleCopyPrompt(e, component)}
+                              className={classNames(
+                                'p-1.5 rounded-md transition-all duration-200',
+                                'bg-[#548BE4]/10 hover:bg-[#548BE4]/20 text-[#548BE4]',
+                              )}
+                              title="Copy prompt"
+                            >
+                              {hasCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                            </button>
+                          </div>
                         </div>
                         <p className="text-sm text-bolt-elements-item-contentDefault/60">
                           {component.description || 'No description'}
                         </p>
                       </div>
-                    </button>
+                    </div>
                   ) : null,
                 )}
               </div>
