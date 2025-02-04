@@ -6,7 +6,7 @@ import { PROVIDER_LIST } from '~/utils/constants';
 import { MAX_TOKENS } from '~/lib/.server/llm/constants';
 import { LLMManager } from '~/lib/modules/llm/manager';
 import type { ModelInfo } from '~/lib/modules/llm/types';
-import { getApiKeysFromCookie, getProviderSettingsFromCookie } from '~/lib/api/cookies';
+import { getApiKeysFromCookie, getProviderSettingsFromCookie } from '../lib/api/cookies';
 import { createScopedLogger } from '~/utils/logger';
 
 export async function action(args: ActionFunctionArgs) {
