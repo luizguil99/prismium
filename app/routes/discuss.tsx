@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Chat } from "~/components/discussion/chat";
 import { Sidebar } from "~/components/discussion/sidebar";
+import { Header } from "~/components/discussion/header";
 import type { KeyboardEvent, ChangeEvent } from "react";
 
 interface Message {
@@ -12,6 +13,7 @@ export default function DiscussPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedModel, setSelectedModel] = useState("claude-3-sonnet");
 
   const handleSendMessage = async (message: string) => {
     const newMessages: Message[] = [
@@ -46,6 +48,11 @@ export default function DiscussPage() {
 
       {/* Área principal */}
       <div className="flex flex-1 flex-col">
+        <Header 
+          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+          selectedModel={selectedModel}
+          onSelectModel={setSelectedModel}
+        />
         <Chat 
           messages={messages}
           onSendMessage={handleSendMessage}

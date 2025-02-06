@@ -56,6 +56,7 @@
     "@hookform/resolvers": "^3.10.0",
     "@iconify-json/ph": "^1.2.1",
     "@iconify-json/svg-spinners": "^1.2.1",
+    "@kobalte/core": "^0.13.7",
     "@lezer/highlight": "^1.2.1",
     "@nanostores/react": "^0.7.3",
     "@octokit/rest": "^21.0.2",
