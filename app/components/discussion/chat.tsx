@@ -126,92 +126,94 @@ export function Chat({ messages = [], onSendMessage, isLoading = false, onStop }
   };
 
   return (
-    <div className="flex flex-col h-full bg-transparent">
+    <div className="flex flex-col h-[calc(100vh-4rem)] bg-transparent">
       {/* Área de mensagens */}
-      <div className="flex-1 overflow-auto p-4 space-y-6">
-        {messages.map((message, i) => (
-          <div
-            key={i}
-            className={classNames(
-              "flex gap-3 max-w-3xl mx-auto group animate-in slide-in-from-bottom-2 duration-300 ease-out",
-              {
-                "justify-start": message.role === "assistant",
-                "justify-end": message.role === "user"
-              }
-            )}
-          >
-            {message.role === "assistant" && (
-              <div className="w-8 h-8 rounded-md bg-zinc-900/80 flex items-center justify-center ring-1 ring-zinc-800">
-                <Bot className="h-5 w-5 text-zinc-400" />
-              </div>
-            )}
-            <div 
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-6 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
+        <div className="max-w-3xl w-full mx-auto">
+          {messages.map((message, i) => (
+            <div
+              key={i}
               className={classNames(
-                "relative rounded-2xl px-4 py-3 text-sm leading-relaxed break-words",
-                message.role === "assistant" 
-                  ? "bg-zinc-900/80 text-zinc-100 max-w-2xl ring-1 ring-zinc-800" 
-                  : "bg-[#2563EB] text-[#FAFAFA] max-w-xl"
+                "flex gap-3 mb-6 group animate-in slide-in-from-bottom-2 duration-300 ease-out",
+                {
+                  "justify-start": message.role === "assistant",
+                  "justify-end": message.role === "user"
+                }
               )}
             >
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                rehypePlugins={[rehypeRaw, rehypeSanitize]}
-                components={{
-                  code({ inline, className, children, ...props }: any) {
-                    const match = /language-(\w+)/.exec(className || '');
-                    const lang = match ? match[1] : '';
-                    
-                    if (inline) {
+              {message.role === "assistant" && (
+                <div className="w-8 h-8 rounded-md bg-zinc-900/80 flex items-center justify-center ring-1 ring-zinc-800 flex-shrink-0">
+                  <Bot className="h-5 w-5 text-zinc-400" />
+                </div>
+              )}
+              <div 
+                className={classNames(
+                  "relative rounded-2xl px-4 py-3 text-sm leading-relaxed break-words",
+                  message.role === "assistant" 
+                    ? "bg-zinc-900/80 text-zinc-100 max-w-[calc(100%-3rem)] ring-1 ring-zinc-800" 
+                    : "bg-[#2563EB] text-[#FAFAFA] max-w-[85%]"
+                )}
+              >
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  rehypePlugins={[rehypeRaw, rehypeSanitize]}
+                  components={{
+                    code({ inline, className, children, ...props }: any) {
+                      const match = /language-(\w+)/.exec(className || '');
+                      const lang = match ? match[1] : '';
+                      
+                      if (inline) {
+                        return (
+                          <code className="px-1.5 py-0.5 rounded bg-black/30 font-mono text-sm" {...props}>
+                            {children}
+                          </code>
+                        );
+                      }
+
                       return (
-                        <code className="px-1.5 py-0.5 rounded bg-black/30 font-mono text-sm" {...props}>
-                          {children}
-                        </code>
+                        <div className="relative group">
+                          <SyntaxHighlighter
+                            language={lang}
+                            style={vscDarkPlus}
+                            PreTag="div"
+                            className="rounded-md overflow-x-auto my-2 !bg-black/30 !p-4 text-[13px] leading-5"
+                            showLineNumbers={true}
+                            customStyle={{
+                              margin: 0,
+                              background: 'transparent',
+                              padding: '1rem'
+                            }}
+                          >
+                            {String(children).replace(/\n$/, '')}
+                          </SyntaxHighlighter>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(String(children));
+                              toast.success('Código copiado!');
+                            }}
+                            className="absolute top-2 right-2 p-1.5 rounded-md bg-zinc-800/80 text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-zinc-100"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                              <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+                            </svg>
+                          </button>
+                        </div>
                       );
                     }
-
-                    return (
-                      <div className="relative group">
-                        <SyntaxHighlighter
-                          language={lang}
-                          style={vscDarkPlus}
-                          PreTag="div"
-                          className="rounded-md overflow-x-auto my-2 !bg-black/30 !p-4"
-                          showLineNumbers={true}
-                          customStyle={{
-                            margin: 0,
-                            background: 'transparent',
-                            padding: '1rem'
-                          }}
-                        >
-                          {String(children).replace(/\n$/, '')}
-                        </SyntaxHighlighter>
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(String(children));
-                            toast.success('Código copiado!');
-                          }}
-                          className="absolute top-2 right-2 p-1.5 rounded-md bg-zinc-800/80 text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-zinc-100"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
-                            <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
-                          </svg>
-                        </button>
-                      </div>
-                    );
-                  }
-                }}
-              >
-                {message.content}
-              </ReactMarkdown>
+                  }}
+                >
+                  {message.content}
+                </ReactMarkdown>
+              </div>
             </div>
-          </div>
-        ))}
-        <div ref={messagesEndRef} />
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
       </div>
 
       {/* Input área */}
-      <div className="border-t border-zinc-800/50 p-4">
+      <div className="flex-shrink-0 border-t border-zinc-800/50 p-4">
         <div className="max-w-3xl mx-auto">
           <div className="relative shadow-lg border border-zinc-800/50 backdrop-blur-lg rounded-xl bg-zinc-900/20 transition-all duration-300 hover:border-blue-500/30 hover:shadow-blue-500/5">
             {imageDataList.length > 0 && (
