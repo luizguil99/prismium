@@ -13,7 +13,7 @@ interface Message {
 
 interface ChatProps {
   messages?: Message[];
-  onSendMessage?: (message: string) => void;
+  onSendMessage?: (message: string, context?: { images?: string[]; files?: File[] }) => void;
   isLoading?: boolean;
   onStop?: () => void;
 }
@@ -39,8 +39,20 @@ export function Chat({ messages = [], onSendMessage, isLoading = false, onStop }
 
   const handleSend = () => {
     if (!input.trim() || isLoading) return;
-    onSendMessage?.(input);
+
+    // Prepara o contexto com imagens se houver
+    const context = {
+      images: imageDataList,
+      files: uploadedFiles,
+    };
+
+    // Envia a mensagem com o contexto
+    onSendMessage?.(input, context);
     setInput("");
+    
+    // Limpa as imagens após enviar
+    setImageDataList([]);
+    setUploadedFiles([]);
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {

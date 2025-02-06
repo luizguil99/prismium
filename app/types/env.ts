@@ -1,0 +1,30 @@
+export interface Env extends Record<string, string | number | boolean> {
+  ANTHROPIC_API_KEY: string;
+  OPENAI_API_KEY: string;
+  GROQ_API_KEY: string;
+  MISTRAL_API_KEY: string;
+  PERPLEXITY_API_KEY: string;
+  TOGETHER_API_KEY: string;
+  GOOGLE_API_KEY: string;
+  GOOGLE_CSE_ID: string;
+  SERPER_API_KEY: string;
+  SERPAPI_API_KEY: string;
+  BROWSERLESS_API_KEY: string;
+  BING_API_KEY: string;
+  BING_ENDPOINT: string;
+  AZURE_API_KEY: string;
+  AZURE_ENDPOINT: string;
+  AZURE_DEPLOYMENT_NAME: string;
+  AZURE_API_VERSION: string;
+  HuggingFace_API_KEY: string;
+  OPEN_ROUTER_API_KEY: string;
+  OLLAMA_API_BASE_URL: string;
+  OPENAI_LIKE_API_KEY: string;
+  OPENAI_LIKE_API_BASE_URL: string;
+  TOGETHER_API_BASE_URL: string;
+  DEEPSEEK_API_KEY: string;
+  LMSTUDIO_API_BASE_URL: string;
+  GOOGLE_GENERATIVE_AI_API_KEY: string;
+  XAI_API_KEY: string;
+  AWS_BEDROCK_CONFIG: string;
+} 
