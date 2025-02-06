@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "~/../@/components/ui/ui/button";
 import { Input } from "~/../@/components/ui/ui/input";
 import { classNames } from "~/utils/classNames";
-import { Send, Bot, Plus, Search, Loader2, StopCircle, Paperclip, Stars, X } from "lucide-react";
+import { Send, Bot, Plus, Search, Loader2, StopCircle, Paperclip, Stars, X, Code } from "lucide-react";
 import type { KeyboardEvent, ChangeEvent } from "react";
 import { toast } from "react-toastify";
 
@@ -13,7 +13,7 @@ interface Message {
 
 interface ChatProps {
   messages?: Message[];
-  onSendMessage?: (message: string, context?: { images?: string[]; files?: File[] }) => void;
+  onSendMessage?: (message: string, context?: { images?: string[]; files?: File[]; usePrompt?: boolean }) => void;
   isLoading?: boolean;
   onStop?: () => void;
 }
@@ -26,6 +26,7 @@ export function Chat({ messages = [], onSendMessage, isLoading = false, onStop }
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [imageDataList, setImageDataList] = useState<string[]>([]);
   const [enhancingPrompt, setEnhancingPrompt] = useState(false);
+  const [usePrompt, setUsePrompt] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -40,11 +41,16 @@ export function Chat({ messages = [], onSendMessage, isLoading = false, onStop }
   const handleSend = () => {
     if (!input.trim() || isLoading) return;
 
+    console.log('[chat] Estado do usePrompt antes de enviar:', usePrompt);
+
     // Prepara o contexto com imagens se houver
     const context = {
       images: imageDataList,
       files: uploadedFiles,
+      usePrompt // Inclui o estado do toggle no contexto
     };
+
+    console.log('[chat] Enviando contexto:', context);
 
     // Envia a mensagem com o contexto
     onSendMessage?.(input, context);
@@ -190,6 +196,23 @@ export function Chat({ messages = [], onSendMessage, isLoading = false, onStop }
             />
             <div className="flex justify-between items-center text-sm p-4 pt-2">
               <div className="flex gap-2 items-center">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={classNames(
+                    "p-2 rounded-lg bg-zinc-900/50 border border-zinc-800/50 transition-all duration-200",
+                    usePrompt 
+                      ? "text-blue-500 border-blue-500/30" 
+                      : "text-zinc-400 hover:text-blue-500 hover:border-blue-500/30"
+                  )}
+                  onClick={() => {
+                    console.log('[chat] Alterando usePrompt de', usePrompt, 'para', !usePrompt);
+                    setUsePrompt(!usePrompt);
+                  }}
+                  title={usePrompt ? "Prompt do sistema ativado" : "Prompt do sistema desativado"}
+                >
+                  <Code className="h-4 w-4" />
+                </Button>
                 <Button
                   variant="ghost"
                   size="icon"

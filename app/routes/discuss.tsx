@@ -54,7 +54,15 @@ export default function DiscussPage() {
   const [selectedModel, setSelectedModel] = useState("claude-3-sonnet");
   const [selectedProvider, setSelectedProvider] = useState("Anthropic");
 
-  const handleSendMessage = async (message: string, context?: { images?: string[]; files?: File[] }) => {
+  const handleSendMessage = async (message: string, context?: { images?: string[]; files?: File[]; usePrompt?: boolean }) => {
+    console.log('[discuss] Iniciando handleSendMessage');
+    console.log('[discuss] Contexto recebido:', context);
+    
+    if (!selectedProvider || !selectedModel) {
+      toast.error("Selecione um provedor e modelo primeiro");
+      return;
+    }
+
     try {
       setIsLoading(true);
       
@@ -77,10 +85,11 @@ export default function DiscussPage() {
             : msg.content
         })),
         files: context?.files || {},
-        contextOptimization: true
+        contextOptimization: true,
+        usePrompt: context?.usePrompt // Passa o flag usePrompt para a API
       };
 
-      console.log('Enviando payload:', payload);
+      console.log('[discuss] Payload a ser enviado:', payload);
 
       // Envia a requisição para a API
       const response = await fetch('/api/chat', {
@@ -199,7 +208,7 @@ export default function DiscussPage() {
       }
 
     } catch (error) {
-      console.error('Erro ao enviar mensagem:', error);
+      console.error('[discuss] Erro ao enviar mensagem:', error);
       toast.error('Erro ao enviar mensagem. Tente novamente.');
     } finally {
       setIsLoading(false);
@@ -208,13 +217,45 @@ export default function DiscussPage() {
 
   const handleStop = async () => {
     try {
-      const llmManager = LLMManager.getInstance(DEFAULT_ENV);
+      const envVars: Record<string, string> = {
+        DEFAULT_NUM_CTX: "4096",
+        ANTHROPIC_API_KEY: import.meta.env.ANTHROPIC_API_KEY?.toString() || "",
+        OPENAI_API_KEY: import.meta.env.OPENAI_API_KEY?.toString() || "",
+        GROQ_API_KEY: import.meta.env.GROQ_API_KEY?.toString() || "",
+        MISTRAL_API_KEY: import.meta.env.MISTRAL_API_KEY?.toString() || "",
+        PERPLEXITY_API_KEY: import.meta.env.PERPLEXITY_API_KEY?.toString() || "",
+        TOGETHER_API_KEY: import.meta.env.TOGETHER_API_KEY?.toString() || "",
+        GOOGLE_API_KEY: import.meta.env.GOOGLE_API_KEY?.toString() || "",
+        GOOGLE_CSE_ID: import.meta.env.GOOGLE_CSE_ID?.toString() || "",
+        SERPER_API_KEY: import.meta.env.SERPER_API_KEY?.toString() || "",
+        SERPAPI_API_KEY: import.meta.env.SERPAPI_API_KEY?.toString() || "",
+        BROWSERLESS_API_KEY: import.meta.env.BROWSERLESS_API_KEY?.toString() || "",
+        BING_API_KEY: import.meta.env.BING_API_KEY?.toString() || "",
+        BING_ENDPOINT: import.meta.env.BING_ENDPOINT?.toString() || "",
+        AZURE_API_KEY: import.meta.env.AZURE_API_KEY?.toString() || "",
+        AZURE_ENDPOINT: import.meta.env.AZURE_ENDPOINT?.toString() || "",
+        AZURE_DEPLOYMENT_NAME: import.meta.env.AZURE_DEPLOYMENT_NAME?.toString() || "",
+        AZURE_API_VERSION: import.meta.env.AZURE_API_VERSION?.toString() || "",
+        HuggingFace_API_KEY: import.meta.env.HuggingFace_API_KEY?.toString() || "",
+        OPEN_ROUTER_API_KEY: import.meta.env.OPEN_ROUTER_API_KEY?.toString() || "",
+        OLLAMA_API_BASE_URL: import.meta.env.OLLAMA_API_BASE_URL?.toString() || "",
+        OPENAI_LIKE_API_KEY: import.meta.env.OPENAI_LIKE_API_KEY?.toString() || "",
+        OPENAI_LIKE_API_BASE_URL: import.meta.env.OPENAI_LIKE_API_BASE_URL?.toString() || "",
+        TOGETHER_API_BASE_URL: import.meta.env.TOGETHER_API_BASE_URL?.toString() || "",
+        DEEPSEEK_API_KEY: import.meta.env.DEEPSEEK_API_KEY?.toString() || "",
+        LMSTUDIO_API_BASE_URL: import.meta.env.LMSTUDIO_API_BASE_URL?.toString() || "",
+        GOOGLE_GENERATIVE_AI_API_KEY: import.meta.env.GOOGLE_GENERATIVE_AI_API_KEY?.toString() || "",
+        XAI_API_KEY: import.meta.env.XAI_API_KEY?.toString() || "",
+        AWS_BEDROCK_CONFIG: import.meta.env.AWS_BEDROCK_CONFIG?.toString() || ""
+      };
+
+      const llmManager = LLMManager.getInstance(envVars);
       const provider = llmManager.getProvider(selectedProvider);
       
       if (provider) {
         const model = provider.getModelInstance({
           model: selectedModel,
-          serverEnv: DEFAULT_ENV,
+          serverEnv: envVars,
         });
         
         if (model && typeof (model as any).cancel === 'function') {

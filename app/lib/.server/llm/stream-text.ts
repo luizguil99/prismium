@@ -28,6 +28,7 @@ export async function streamText(props: {
   contextFiles?: FileMap;
   summary?: string;
   messageSliceId?: number;
+  usePrompt?: boolean;
 }) {
   const {
     messages,
@@ -40,6 +41,7 @@ export async function streamText(props: {
     contextOptimization,
     contextFiles,
     summary,
+    usePrompt = true
   } = props;
   let currentModel = DEFAULT_MODEL;
   let currentProvider = DEFAULT_PROVIDER.name;
@@ -92,14 +94,15 @@ export async function streamText(props: {
 
   const dynamicMaxTokens = modelDetails && modelDetails.maxTokenAllowed ? modelDetails.maxTokenAllowed : MAX_TOKENS;
 
-  let systemPrompt =
+  let systemPrompt = usePrompt ? (
     PromptLibrary.getPropmtFromLibrary(promptId || 'default', {
       cwd: WORK_DIR,
       allowedHtmlElements: allowedHTMLElements,
       modificationTagName: MODIFICATIONS_TAG_NAME,
-    }) ?? getSystemPrompt();
+    }) ?? getSystemPrompt()
+  ) : '';
 
-  if (files && contextFiles && contextOptimization) {
+  if (files && contextFiles && contextOptimization && usePrompt) {
     const codeContext = createFilesContext(contextFiles, true);
     const filePaths = getFilePaths(files);
 
@@ -138,8 +141,6 @@ ${props.summary}
   }
 
   logger.info(`Sending llm call to ${provider.name} with model ${modelDetails.name}`);
-
-  // console.log(systemPrompt,processedMessages);
 
   return await _streamText({
     model: provider.getModelInstance({
