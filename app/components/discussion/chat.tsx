@@ -126,9 +126,9 @@ export function Chat({ messages = [], onSendMessage, isLoading = false, onStop }
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] bg-transparent">
+    <div className="flex flex-col h-[calc(100vh-4rem)] bg-[#09090B]">
       {/* Área de mensagens */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-6 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-6 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-[#09090B]">
         <div className="max-w-3xl w-full mx-auto">
           {messages.map((message, i) => (
             <div

@@ -272,7 +272,7 @@ export default function DiscussPage() {
   };
 
   return (
-    <div className="flex h-screen bg-[#09090B] text-[#E2E2E2]">
+    <div className="flex h-screen min-h-screen bg-[#09090B] text-[#E2E2E2]">
       <Sidebar 
         isOpen={sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
@@ -280,7 +280,7 @@ export default function DiscussPage() {
       />
 
       {/* Área principal */}
-      <div className="flex flex-1 flex-col">
+      <div className="flex flex-1 flex-col min-h-screen overflow-hidden">
         <Header 
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           selectedModel={selectedModel}
