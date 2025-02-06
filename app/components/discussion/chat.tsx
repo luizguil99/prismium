@@ -129,12 +129,12 @@ export function Chat({ messages = [], onSendMessage, isLoading = false, onStop }
     <div className="flex flex-col h-[calc(100vh-4rem)] bg-[#09090B]">
       {/* Área de mensagens */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-6 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-[#09090B]">
-        <div className="max-w-3xl w-full mx-auto">
+        <div className="max-w-3xl w-full mx-auto space-y-8">
           {messages.map((message, i) => (
             <div
               key={i}
               className={classNames(
-                "flex gap-3 mb-6 group animate-in slide-in-from-bottom-2 duration-300 ease-out",
+                "flex gap-4 group animate-in slide-in-from-bottom-2 duration-300 ease-out",
                 {
                   "justify-start": message.role === "assistant",
                   "justify-end": message.role === "user"
@@ -148,9 +148,9 @@ export function Chat({ messages = [], onSendMessage, isLoading = false, onStop }
               )}
               <div 
                 className={classNames(
-                  "relative rounded-2xl px-4 py-3 text-sm leading-relaxed break-words",
+                  "relative rounded-2xl px-6 py-4 text-sm leading-relaxed break-words",
                   message.role === "assistant" 
-                    ? "bg-zinc-900/80 text-zinc-100 max-w-[calc(100%-3rem)] ring-1 ring-zinc-800" 
+                    ? "bg-zinc-900/80 text-zinc-100 max-w-[calc(100%-4rem)] ring-1 ring-zinc-800" 
                     : "bg-[#2563EB] text-[#FAFAFA] max-w-[85%]"
                 )}
               >
@@ -171,12 +171,12 @@ export function Chat({ messages = [], onSendMessage, isLoading = false, onStop }
                       }
 
                       return (
-                        <div className="relative group">
+                        <div className="relative group my-4">
                           <SyntaxHighlighter
                             language={lang}
                             style={vscDarkPlus}
                             PreTag="div"
-                            className="rounded-md overflow-x-auto my-2 !bg-black/30 !p-4 text-[13px] leading-5"
+                            className="rounded-md overflow-x-auto !bg-black/30 !p-4 text-[13px] leading-6"
                             showLineNumbers={true}
                             customStyle={{
                               margin: 0,
@@ -191,7 +191,7 @@ export function Chat({ messages = [], onSendMessage, isLoading = false, onStop }
                               navigator.clipboard.writeText(String(children));
                               toast.success('Código copiado!');
                             }}
-                            className="absolute top-2 right-2 p-1.5 rounded-md bg-zinc-800/80 text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-zinc-100"
+                            className="absolute top-3 right-3 p-1.5 rounded-md bg-zinc-800/80 text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-zinc-100"
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
