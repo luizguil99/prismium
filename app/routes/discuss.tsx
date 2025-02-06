@@ -4,6 +4,7 @@ import { Sidebar } from "~/components/discussion/sidebar";
 import { Header } from "~/components/discussion/header";
 import { LLMManager } from "~/lib/modules/llm/manager";
 import { toast } from "react-toastify";
+import { generateId } from "~/utils/fileUtils";
 import type { KeyboardEvent, ChangeEvent } from "react";
 import type { Env } from "~/types/env";
 import type { LanguageModelV1, LanguageModelV1CallOptions } from "ai";
@@ -11,6 +12,7 @@ import type { LanguageModelV1, LanguageModelV1CallOptions } from "ai";
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  id?: string;
 }
 
 const DEFAULT_ENV: Record<string, string> = {
@@ -55,58 +57,146 @@ export default function DiscussPage() {
   const handleSendMessage = async (message: string, context?: { images?: string[]; files?: File[] }) => {
     try {
       setIsLoading(true);
-      const newMessages: ChatMessage[] = [
-        ...messages,
-        { role: "user", content: message }
-      ];
+      
+      // Cria uma nova mensagem com ID
+      const newMessage: ChatMessage = {
+        id: generateId(),
+        role: "user",
+        content: message
+      };
+
+      const newMessages = [...messages, newMessage];
       setMessages(newMessages);
 
-      // Inicializa o LLM Manager
-      const llmManager = LLMManager.getInstance(DEFAULT_ENV);
-      const provider = llmManager.getProvider(selectedProvider);
+      // Prepara os dados para enviar para a API
+      const payload = {
+        messages: newMessages.map(msg => ({
+          ...msg,
+          content: msg.id === newMessage.id 
+            ? `[Model: ${selectedModel}]\n\n[Provider: ${selectedProvider}]\n\n${msg.content}`
+            : msg.content
+        })),
+        files: context?.files || {},
+        contextOptimization: true
+      };
 
-      if (!provider) {
-        throw new Error("Provider não encontrado");
-      }
+      console.log('Enviando payload:', payload);
 
-      // Envia a mensagem para o provider
-      const model = provider.getModelInstance({
-        model: selectedModel,
-        serverEnv: DEFAULT_ENV,
+      // Envia a requisição para a API
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
       });
 
-      // Formata o histórico de mensagens
-      const formattedMessages = newMessages.map(msg => ({
-        role: msg.role,
-        content: msg.content
-      }));
+      if (!response.ok) {
+        throw new Error('Erro ao enviar mensagem');
+      }
 
-      // Adiciona o contexto do sistema
-      const systemMessage = {
-        role: "system" as const,
-        content: "Você é um assistente prestativo e amigável. Responda em português brasileiro de forma clara e concisa."
-      };
+      // Processa a resposta em streaming
+      const reader = response.body?.getReader();
+      let accumulatedResponse = '';
+      let currentAssistantMessage: ChatMessage | null = null;
 
-      // Prepara o prompt no formato do LLM
-      const prompt: LanguageModelV1CallOptions = {
-        inputFormat: "messages",
-        mode: {
-          type: "regular"
-        },
-        prompt: [systemMessage, ...formattedMessages],
-        providerMetadata: {
-          temperature: "0.7",
-          maxTokens: "1000"
+      if (reader) {
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            
+            if (done) {
+              console.log('Stream finalizado. Resposta acumulada:', accumulatedResponse);
+              break;
+            }
+
+            // Decodifica o chunk recebido
+            const chunk = new TextDecoder().decode(value);
+            console.log('Chunk recebido:', chunk);
+            
+            const lines = chunk.split('\n');
+
+            for (const line of lines) {
+              if (line.trim() === '') continue;
+
+              try {
+                // Extrai o conteúdo após os números iniciais (ex: 0:", 2:", etc)
+                const match = line.match(/^\d+:(.+)$/);
+                if (match) {
+                  const content = match[1];
+                  const data = JSON.parse(content);
+
+                  // Se for um array, processa cada item
+                  if (Array.isArray(data)) {
+                    data.forEach(item => {
+                      if (item.type === 'progress') {
+                        console.log('Progresso:', item.message);
+                      }
+                    });
+                  } 
+                  // Se for texto direto
+                  else if (typeof data === 'string') {
+                    accumulatedResponse += data;
+                    
+                    // Se não tiver mensagem do assistente, cria uma nova
+                    if (!currentAssistantMessage) {
+                      currentAssistantMessage = {
+                        id: generateId(),
+                        role: 'assistant',
+                        content: accumulatedResponse
+                      };
+                      setMessages(prev => [...prev, currentAssistantMessage!]);
+                    } else {
+                      // Atualiza a mensagem existente
+                      setMessages(prev => {
+                        const lastMessage = prev[prev.length - 1];
+                        if (lastMessage?.role === 'assistant') {
+                          return [
+                            ...prev.slice(0, -1),
+                            { ...lastMessage, content: accumulatedResponse }
+                          ];
+                        }
+                        return prev;
+                      });
+                    }
+                  }
+                }
+              } catch (e) {
+                // Se não for JSON válido, pode ser texto direto
+                if (line.startsWith('0:"')) {
+                  const textContent = line.slice(3, -1); // Remove 0:" e "
+                  accumulatedResponse += textContent;
+                  
+                  // Atualiza a mensagem
+                  if (!currentAssistantMessage) {
+                    currentAssistantMessage = {
+                      id: generateId(),
+                      role: 'assistant',
+                      content: accumulatedResponse
+                    };
+                    setMessages(prev => [...prev, currentAssistantMessage!]);
+                  } else {
+                    setMessages(prev => {
+                      const lastMessage = prev[prev.length - 1];
+                      if (lastMessage?.role === 'assistant') {
+                        return [
+                          ...prev.slice(0, -1),
+                          { ...lastMessage, content: accumulatedResponse }
+                        ];
+                      }
+                      return prev;
+                    });
+                  }
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Erro durante o streaming:', e);
+        } finally {
+          reader.releaseLock();
         }
-      };
-
-      const response = await model.doGenerate(prompt);
-      const content = response.text || response.toString();
-
-      setMessages([
-        ...newMessages,
-        { role: "assistant", content }
-      ]);
+      }
 
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error);
