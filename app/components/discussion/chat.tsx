@@ -5,6 +5,12 @@ import { classNames } from "~/utils/classNames";
 import { Send, Bot, Plus, Search, Loader2, StopCircle, Paperclip, Stars, X, Code } from "lucide-react";
 import type { KeyboardEvent, ChangeEvent } from "react";
 import { toast } from "react-toastify";
+import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
+import remarkGfm from 'remark-gfm';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 
 interface Message {
   role: "user" | "assistant";
@@ -147,7 +153,57 @@ export function Chat({ messages = [], onSendMessage, isLoading = false, onStop }
                   : "bg-[#2563EB] text-[#FAFAFA] max-w-xl"
               )}
             >
-              {message.content}
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[rehypeRaw, rehypeSanitize]}
+                components={{
+                  code({ inline, className, children, ...props }: any) {
+                    const match = /language-(\w+)/.exec(className || '');
+                    const lang = match ? match[1] : '';
+                    
+                    if (inline) {
+                      return (
+                        <code className="px-1.5 py-0.5 rounded bg-black/30 font-mono text-sm" {...props}>
+                          {children}
+                        </code>
+                      );
+                    }
+
+                    return (
+                      <div className="relative group">
+                        <SyntaxHighlighter
+                          language={lang}
+                          style={vscDarkPlus}
+                          PreTag="div"
+                          className="rounded-md overflow-x-auto my-2 !bg-black/30 !p-4"
+                          showLineNumbers={true}
+                          customStyle={{
+                            margin: 0,
+                            background: 'transparent',
+                            padding: '1rem'
+                          }}
+                        >
+                          {String(children).replace(/\n$/, '')}
+                        </SyntaxHighlighter>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(String(children));
+                            toast.success('Código copiado!');
+                          }}
+                          className="absolute top-2 right-2 p-1.5 rounded-md bg-zinc-800/80 text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-zinc-100"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                            <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+                          </svg>
+                        </button>
+                      </div>
+                    );
+                  }
+                }}
+              >
+                {message.content}
+              </ReactMarkdown>
             </div>
           </div>
         ))}
