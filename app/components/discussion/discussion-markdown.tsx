@@ -146,6 +146,39 @@ export function DiscussionMarkdown({ content }: DiscussionMarkdownProps) {
           <blockquote className="pl-4 border-l-2 border-zinc-700 text-zinc-400 italic" {...props}>
             {children}
           </blockquote>
+        ),
+        // Novos componentes para tabelas
+        table: ({ children, ...props }: any) => (
+          <div className="my-6 w-full overflow-x-auto rounded-lg border border-zinc-800/50">
+            <table className="w-full border-collapse text-left text-sm" {...props}>
+              {children}
+            </table>
+          </div>
+        ),
+        thead: ({ children, ...props }: any) => (
+          <thead className="text-zinc-300 bg-zinc-900/50 border-b border-zinc-800/50" {...props}>
+            {children}
+          </thead>
+        ),
+        tbody: ({ children, ...props }: any) => (
+          <tbody className="divide-y divide-zinc-800/50" {...props}>
+            {children}
+          </tbody>
+        ),
+        tr: ({ children, ...props }: any) => (
+          <tr className="hover:bg-zinc-800/30 transition-colors" {...props}>
+            {children}
+          </tr>
+        ),
+        th: ({ children, ...props }: any) => (
+          <th className="px-4 py-3 font-medium text-zinc-200" {...props}>
+            {children}
+          </th>
+        ),
+        td: ({ children, ...props }: any) => (
+          <td className="px-4 py-3 text-zinc-300" {...props}>
+            {children}
+          </td>
         )
       }}
     >
