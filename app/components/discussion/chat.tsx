@@ -203,17 +203,12 @@ export function Chat({ messages = [], onSendMessage, isLoading = false, onStop }
                 }
               )}
             >
-              {message.role === "assistant" && (
-                <div className="w-8 h-8 rounded-md bg-zinc-900/80 flex items-center justify-center ring-1 ring-zinc-800 flex-shrink-0">
-                  <Bot className="h-5 w-5 text-zinc-400" />
-                </div>
-              )}
               <div 
                 className={classNames(
-                  "relative rounded-2xl px-6 py-4 text-sm leading-relaxed break-words",
+                  "relative px-6 py-4 text-sm leading-relaxed break-words",
                   message.role === "assistant" 
-                    ? "bg-zinc-900/80 text-zinc-100 max-w-[calc(100%-4rem)] ring-1 ring-zinc-800" 
-                    : "bg-[#2563EB] text-[#FAFAFA] max-w-[85%]"
+                    ? "text-zinc-100 max-w-[calc(100%-2rem)]" 
+                    : "bg-[#2563EB] text-[#FAFAFA] max-w-[85%] rounded-2xl"
                 )}
               >
                 {message.role === "assistant" ? (

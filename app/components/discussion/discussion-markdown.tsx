@@ -14,8 +14,7 @@ const formatMarkdownContent = (content: string): string => {
   // Formata títulos principais com destaque
   content = content.replace(/^# (.*)/gm, (_, title) => {
     const words = title.split(' ');
-    const highlightedWords = words.map(word => {
-      // Destaca palavras importantes em títulos
+    const highlightedWords = words.map((word: string) => {
       if (word.length > 3 && /^[A-Z]/.test(word)) {
         return `**${word}**`;
       }
@@ -24,33 +23,118 @@ const formatMarkdownContent = (content: string): string => {
     return `# ${highlightedWords.join(' ')}`;
   });
 
+  // Remove pontos duplos extras
+  content = content.replace(/:{2,}/g, ':');
+
+  // Formata seções principais com emojis
+  const sectionEmojis: Record<string, string> = {
+    'Key Figures': '👥',
+    'Major Events': '🎯',
+    'Summary': '📝',
+    'Overview': '🔍',
+    'Examples': '💡',
+    'Steps': '📋',
+    'Features': '✨',
+    'Benefits': '🌟',
+    'Requirements': '📋',
+    'Instructions': '📖',
+    'Notes': '📌',
+    'Tips': '💭',
+    'Warning': '⚠️',
+    'Important': '❗',
+    'Results': '🎉',
+    'Solution': '✅',
+    'Problem': '❌',
+    'Error': '🚫',
+    'Success': '✅',
+    'Update': '🔄',
+    'Question': '❓',
+    'Answer': '💬',
+    'Reference': '📚',
+    'Links': '🔗',
+    'Code': '💻',
+    'Data': '📊',
+    'Analysis': '📈',
+    'Conclusion': '🎯',
+    'Next Steps': '➡️',
+    'Status': '📊',
+    'Progress': '📈',
+    'Timeline': '⏱️',
+    'Team': '👥',
+    'Goals': '🎯',
+    'Challenges': '🔥',
+    'Solutions': '💡',
+    'Resources': '📚',
+    'Tools': '🛠️',
+    'Setup': '⚙️',
+    'Config': '⚙️',
+    'Testing': '🧪',
+    'Debug': '🔍',
+    'Deploy': '🚀',
+    'Performance': '⚡',
+    'Security': '🔒',
+    'API': '🔌',
+    'Database': '💾',
+    'Frontend': '🎨',
+    'Backend': '⚙️',
+    'Mobile': '📱',
+    'Desktop': '🖥️',
+    'Web': '🌐',
+    'Cloud': '☁️',
+    'AI': '🤖',
+    'ML': '🧠',
+    'Analytics': '📊',
+    'Report': '📊',
+    'Feedback': '💭',
+    'Review': '👀',
+    'Version': '🏷️'
+  };
+
+  // Aplica emojis em seções principais
+  Object.entries(sectionEmojis).forEach(([section, emoji]) => {
+    const regex = new RegExp(`\\b${section}:?\\b`, 'g');
+    content = content.replace(regex, `${emoji} **${section}:**`);
+  });
+
   // Formata subtítulos
   content = content.replace(/^## (.*)/gm, '## 🔍 $1');
   content = content.replace(/^### (.*)/gm, '### 📌 $1');
 
-  // Formata datas e números para não aparecerem como código
-  content = content.replace(/\b(\d{4})\b/g, '_$1_'); // Anos como itálico
-  content = content.replace(/\b(\d+)\b/g, '$1'); // Outros números como texto normal
+  // Formata datas e números
+  content = content.replace(/\b(\d{4})\b/g, '_$1_');
+  content = content.replace(/\b(\d+)\b/g, '$1');
 
+  // Formata eventos principais com bullets e quebras de linha
+  content = content.replace(/• (.*?):/gm, '\n• **$1:**');
+  
   // Formata listas numeradas com emojis e destaque
   content = content.replace(/^(\d+)\. (.*?):/gm, (_, num, title) => {
-    const emojis = ['📍', '💫', '🔹', '✨', '💡', '🎯', '📌', '🔍', '💭', '📝'];
+    const emojis = ['🌍', '🌊', '🏜️', '✨', '💫', '🔹'];
     const emoji = emojis[Number(num) % emojis.length];
-    return `${num}. ${emoji} **${title}:**`;
+    return `\n${num}. ${emoji} **${title}:**`;
   });
 
   // Formata listas com bullets personalizados
-  content = content.replace(/^- (.*)/gm, '• $1');
+  content = content.replace(/^- (.*)/gm, '\n• $1');
   content = content.replace(/^• ([^:]+):/gm, '• **$1:**');
 
   // Destaca termos importantes
-  content = content.replace(/\b(War|World|Great|Allied?s?|Axis|Treaty|League|Nations|Depression)\b/g, '**$1**');
+  content = content.replace(/\b(War|World|Great|Allied?s?|Axis|Treaty|League|Nations|Depression|Holocaust|Theater|Pacific|European|Mediterranean|North African)\b/g, '**$1**');
   
   // Destaca países e locais
-  content = content.replace(/\b(Germany|France|Britain|Italy|Japan|USA|Soviet Union|Austria|Czechoslovakia)\b/g, '**$1**');
+  content = content.replace(/\b(Germany|France|Britain|Italy|Japan|USA|Soviet Union|Austria|Czechoslovakia|Poland|United Kingdom|United States|USSR|Pearl Harbor|Hiroshima|Nagasaki|El Alamein|Normandy|Midway|Guadalcanal|Iwo Jima)\b/g, '**$1**');
+
+  // Destaca líderes e pessoas importantes
+  content = content.replace(/\b(Hitler|Churchill|Roosevelt|Stalin|Mussolini|Hirohito)\b/g, '**$1**');
+
+  // Destaca termos técnicos comuns
+  content = content.replace(/\b(API|REST|GraphQL|HTTP|HTTPS|SQL|NoSQL|JSON|XML|HTML|CSS|JavaScript|TypeScript|React|Vue|Angular|Node|Python|Java|Docker|Kubernetes|Git|AWS|Azure|Google Cloud|CI\/CD|DevOps|Agile|Scrum)\b/g, '`$1`');
 
   // Adiciona separadores visuais antes de seções importantes
-  content = content.replace(/\n(\d+)\. 📍/g, '\n\n---\n\n$1. 📍');
+  content = content.replace(/\n([A-Z][a-z]+ (?:Figures|Events|Steps|Examples|Notes|Tips|Requirements)):/g, '\n\n---\n\n$1:');
+
+  // Adiciona espaço extra entre seções principais
+  content = content.replace(/\n(• (?:[A-Z][a-z]+)):/g, '\n\n$1:');
 
   return content;
 };
