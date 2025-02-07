@@ -355,7 +355,7 @@ export function Chat({ messages = [], onSendMessage, isLoading = false, onStop }
               onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
-              placeholder="Como posso ajudar você hoje?"
+              placeholder="How can I help you today?"
               className="w-full pl-6 pt-4 pr-16 outline-none resize-none text-zinc-200 placeholder-zinc-500 bg-transparent text-sm transition-all duration-200 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/30"
               style={{
                 minHeight: TEXTAREA_MIN_HEIGHT,
@@ -375,10 +375,10 @@ export function Chat({ messages = [], onSendMessage, isLoading = false, onStop }
                       : "text-zinc-400 hover:text-blue-500 hover:border-blue-500/30"
                   )}
                   onClick={() => {
-                    console.log('[chat] Alterando usePrompt de', usePrompt, 'para', !usePrompt);
+                    console.log('[chat] Changing usePrompt from', usePrompt, 'to', !usePrompt);
                     setUsePrompt(!usePrompt);
                   }}
-                  title={usePrompt ? "Prompt do sistema ativado" : "Prompt do sistema desativado"}
+                  title={usePrompt ? "System prompt enabled" : "System prompt disabled"}
                 >
                   <Code className="h-4 w-4" />
                 </Button>
@@ -413,7 +413,7 @@ export function Chat({ messages = [], onSendMessage, isLoading = false, onStop }
               {input.length > 3 && (
                 <div className="text-xs text-zinc-500">
                   Use <kbd className="px-1.5 py-0.5 rounded bg-zinc-900/50 border border-zinc-800/50">Shift</kbd> +{' '}
-                  <kbd className="px-1.5 py-0.5 rounded bg-zinc-900/50 border border-zinc-800/50">Enter</kbd> para nova linha
+                  <kbd className="px-1.5 py-0.5 rounded bg-zinc-900/50 border border-zinc-800/50">Enter</kbd> for new line
                 </div>
               )}
             </div>

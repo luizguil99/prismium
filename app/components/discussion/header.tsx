@@ -5,10 +5,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
 } from "~/../@/components/ui/ui/dropdown-menu";
 import { LLMManager } from "~/lib/modules/llm/manager";
 import { useEffect, useState } from "react";
@@ -36,7 +32,6 @@ export function Header({
   const currentModel = models.find(m => m.id === selectedModel) || models[0];
 
   useEffect(() => {
-    // Carrega os provedores e modelos
     const env = import.meta.env as unknown as Env;
     const llmManager = LLMManager.getInstance(env);
     const availableProviders = llmManager.getAllProviders()
@@ -54,82 +49,88 @@ export function Header({
   }, [selectedProvider]);
 
   return (
-    <div className="border-b border-[#1C1C1F] p-4 flex items-center justify-between bg-transparent">
+    <div className="border-b border-zinc-800/50 p-4 flex items-center justify-between bg-[#101012]">
       <div className="flex items-center gap-4">
         <Button
           variant="ghost"
           size="icon"
-          className="hover:bg-[#18181B] bg-transparent lg:hidden"
+          className="hover:bg-zinc-800/50 bg-transparent lg:hidden"
           onClick={onToggleSidebar}
         >
-          <Menu className="h-5 w-5 text-[#A1A1AA]" />
+          <Menu className="h-5 w-5 text-zinc-400" />
         </Button>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className="bg-transparent hover:bg-[#18181B] text-[#E2E2E2] gap-2 flex items-center"
+        <div className="flex items-center gap-2">
+          {/* Provider Selection */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="bg-zinc-800/30 hover:bg-zinc-800/50 text-zinc-200 h-9 px-3 rounded-lg"
+              >
+                {selectedProvider}
+                <ChevronDown className="w-4 h-4 ml-2 text-zinc-400" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="start"
+              className="w-[200px] bg-[#101012] border border-zinc-800/50 text-zinc-200 rounded-lg shadow-xl"
             >
-              {selectedProvider} - {currentModel?.name || "Selecione um modelo"}
-              <ChevronDown className="h-4 w-4 text-[#A1A1AA]" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="start"
-            className="w-[300px] bg-[#18181B] border border-[#1C1C1F] text-[#E2E2E2] rounded-lg shadow-lg"
-          >
-            {providers.map((provider) => (
-              <DropdownMenuSub key={provider.name}>
-                <DropdownMenuSubTrigger
+              {providers.map((provider) => (
+                <DropdownMenuItem
+                  key={provider.name}
                   className={`
-                    flex items-center gap-2 cursor-pointer px-3 py-2 text-sm
-                    ${provider.name === selectedProvider ? 'bg-[#27272A]' : 'hover:bg-[#27272A]'}
-                    transition-colors duration-150 ease-in-out
+                    px-2 py-2 cursor-pointer text-sm
+                    ${provider.name === selectedProvider 
+                      ? 'bg-blue-500/10 text-blue-500' 
+                      : 'text-zinc-300 hover:bg-zinc-800/50 hover:text-zinc-100'
+                    }
                   `}
+                  onClick={() => onSelectProvider?.(provider.name)}
                 >
-                  {provider.icon && (
-                    <img 
-                      src={provider.icon} 
-                      alt={provider.name} 
-                      className="w-4 h-4"
-                    />
-                  )}
-                  <span>{provider.name}</span>
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent
-                  className="min-w-[200px] bg-[#18181B] border border-[#1C1C1F] text-[#E2E2E2] rounded-lg shadow-lg"
+                  {provider.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Model Selection */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="bg-zinc-800/30 hover:bg-zinc-800/50 text-zinc-200 h-9 px-3 rounded-lg"
+              >
+                {currentModel?.name || "Select model"}
+                <ChevronDown className="w-4 h-4 ml-2 text-zinc-400" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="start"
+              className="w-[200px] bg-[#101012] border border-zinc-800/50 text-zinc-200 rounded-lg shadow-xl"
+            >
+              {models.map((model) => (
+                <DropdownMenuItem
+                  key={model.id}
+                  className={`
+                    px-2 py-2 cursor-pointer text-sm
+                    ${model.id === selectedModel 
+                      ? 'bg-blue-500/10 text-blue-500' 
+                      : 'text-zinc-300 hover:bg-zinc-800/50 hover:text-zinc-100'
+                    }
+                  `}
+                  onClick={() => onSelectModel(model.id)}
                 >
-                  {provider.staticModels.map((model) => (
-                    <DropdownMenuItem
-                      key={model.name}
-                      className={`
-                        flex items-center gap-2 cursor-pointer px-3 py-2 text-sm
-                        ${model.name === selectedModel ? 'bg-[#27272A]' : 'hover:bg-[#27272A]'}
-                        transition-colors duration-150 ease-in-out
-                      `}
-                      onClick={() => {
-                        onSelectProvider?.(provider.name);
-                        onSelectModel(model.name);
-                      }}
-                    >
-                      <div className="flex flex-col flex-1">
-                        <span className="text-sm">{model.label}</span>
-                        <span className="text-xs text-[#A1A1AA]">
-                          Max tokens: {model.maxTokenAllowed.toLocaleString()}
-                        </span>
-                      </div>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                  {model.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
-      <div className="flex items-center">
-        {/* Área para botões adicionais no futuro */}
+      <div className="flex items-center gap-2">
+        {/* Space for additional buttons */}
       </div>
     </div>
   );
