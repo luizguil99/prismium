@@ -2,149 +2,71 @@ import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/cjs/styles/prism';
-import { toast } from 'react-toastify';
+import { CodeMarkdown } from './code-markdown';
 
 interface DiscussionMarkdownProps {
   content: string;
 }
 
-const formatMarkdownContent = (content: string): string => {
-  // Formata títulos principais com destaque
-  content = content.replace(/^# (.*)/gm, (_, title) => {
-    const words = title.split(' ');
-    const highlightedWords = words.map((word: string) => {
-      if (word.length > 3 && /^[A-Z]/.test(word)) {
-        return `**${word}**`;
-      }
-      return word;
-    });
-    return `# ${highlightedWords.join(' ')}`;
-  });
+const KEYWORDS = [
+  'useState', 'useEffect', 'useContext', 'useRef', 'localStorage',
+  'setTimeout', 'setInterval', 'React', 'JSX', 'App', 'let', 'const',
+  'var', 'true', 'false', 'null', 'undefined', 'String', 'Number',
+  'Boolean', 'Array', 'Object', 'Function', 'Promise', 'async', 'await'
+];
 
-  // Formata seções principais com emojis
-  const sectionEmojis: Record<string, string> = {
-    'Key Figures': '👥',
-    'Major Events': '🎯',
-    'Summary': '📝',
-    'Overview': '🔍',
-    'Examples': '💡',
-    'Steps': '📋',
-    'Features': '✨',
-    'Benefits': '🌟',
-    'Requirements': '📋',
-    'Instructions': '📖',
-    'Notes': '📌',
-    'Tips': '💭',
-    'Warning': '⚠️',
-    'Important': '❗',
-    'Results': '🎉',
-    'Solution': '✅',
-    'Problem': '❌',
-    'Error': '🚫',
-    'Success': '✅',
-    'Update': '🔄',
-    'Question': '❓',
-    'Answer': '💬',
-    'Reference': '📚',
-    'Links': '🔗',
-    'Code': '💻',
-    'Data': '📊',
-    'Analysis': '📈',
-    'Conclusion': '🎯',
-    'Next Steps': '➡️',
-    'Status': '📊',
-    'Progress': '📈',
-    'Timeline': '⏱️',
-    'Team': '👥',
-    'Goals': '🎯',
-    'Challenges': '🔥',
-    'Solutions': '💡',
-    'Resources': '📚',
-    'Tools': '🛠️',
-    'Setup': '⚙️',
-    'Config': '⚙️',
-    'Testing': '🧪',
-    'Debug': '🔍',
-    'Deploy': '🚀',
-    'Performance': '⚡',
-    'Security': '🔒',
-    'API': '🔌',
-    'Database': '💾',
-    'Frontend': '🎨',
-    'Backend': '⚙️',
-    'Mobile': '📱',
-    'Desktop': '🖥️',
-    'Web': '🌐',
-    'Cloud': '☁️',
-    'AI': '🤖',
-    'ML': '🧠',
-    'Analytics': '📊',
-    'Report': '📊',
-    'Feedback': '💭',
-    'Review': '👀',
-    'Version': '🏷️'
-  };
-
-  // Primeiro remove quaisquer dois pontos extras do texto inteiro
-  content = content.replace(/:{2,}/g, ':');
-
-  // Aplica emojis em seções principais (agora com regex melhorada)
-  Object.entries(sectionEmojis).forEach(([section, emoji]) => {
-    // Busca a seção com ou sem dois pontos, garantindo que não adicione mais pontos
-    const regex = new RegExp(`\\b${section}:*\\s*`, 'g');
-    content = content.replace(regex, `${emoji} **${section}:** `);
-  });
-
-  // Garante que não haja dois pontos duplicados após as substituições
-  content = content.replace(/:{2,}/g, ':');
-
-  // Formata subtítulos
-  content = content.replace(/^## (.*)/gm, '## 🔍 $1');
-  content = content.replace(/^### (.*)/gm, '### 📌 $1');
-
-  // Formata datas e números
-  content = content.replace(/\b(\d{4})\b/g, '_$1_');
-  content = content.replace(/\b(\d+)\b/g, '$1');
-
-  // Formata eventos principais com bullets e quebras de linha
-  content = content.replace(/• (.*?):/gm, '\n• **$1:**');
-  
-  // Formata listas numeradas com emojis e destaque
-  content = content.replace(/^(\d+)\. (.*?):/gm, (_, num, title) => {
-    const emojis = ['🌍', '🌊', '🏜️', '✨', '💫', '🔹'];
-    const emoji = emojis[Number(num) % emojis.length];
-    return `\n${num}. ${emoji} **${title}:**`;
-  });
-
-  // Formata listas com bullets personalizados
-  content = content.replace(/^- (.*)/gm, '\n• $1');
-  content = content.replace(/^• ([^:]+):/gm, '• **$1:**');
-
-  // Destaca termos importantes
-  content = content.replace(/\b(War|World|Great|Allied?s?|Axis|Treaty|League|Nations|Depression|Holocaust|Theater|Pacific|European|Mediterranean|North African)\b/g, '**$1**');
-  
-  // Destaca países e locais
-  content = content.replace(/\b(Germany|France|Britain|Italy|Japan|USA|Soviet Union|Austria|Czechoslovakia|Poland|United Kingdom|United States|USSR|Pearl Harbor|Hiroshima|Nagasaki|El Alamein|Normandy|Midway|Guadalcanal|Iwo Jima)\b/g, '**$1**');
-
-  // Destaca líderes e pessoas importantes
-  content = content.replace(/\b(Hitler|Churchill|Roosevelt|Stalin|Mussolini|Hirohito)\b/g, '**$1**');
-
-  // Destaca termos técnicos comuns
-  content = content.replace(/\b(API|REST|GraphQL|HTTP|HTTPS|SQL|NoSQL|JSON|XML|HTML|CSS|JavaScript|TypeScript|React|Vue|Angular|Node|Python|Java|Docker|Kubernetes|Git|AWS|Azure|Google Cloud|CI\/CD|DevOps|Agile|Scrum)\b/g, '`$1`');
-
-  // Adiciona separadores visuais antes de seções importantes
-  content = content.replace(/\n([A-Z][a-z]+ (?:Figures|Events|Steps|Examples|Notes|Tips|Requirements)):/g, '\n\n---\n\n$1:');
-
-  // Adiciona espaço extra entre seções principais
-  content = content.replace(/\n(• (?:[A-Z][a-z]+)):/g, '\n\n$1:');
-
-  return content;
-};
+const CODE_PATTERNS = [
+  // Funções e métodos
+  /\w+\s*\([^)]*\)/,
+  // Operadores
+  /[+\-*/%]=|[&|^]=|<<=|>>=|>>>=|\+\+|--|&&|\|\||[<>]=?|===|!==|[+\-*/%&|^!~?]/,
+  // Declarações
+  /\b(const|let|var|function|class|interface|type|import|export)\s+\w+/,
+  // Arrays e objetos
+  /[\[{]\s*[\w\s,'"]*[\]}]/,
+  // Template strings
+  /`[^`]*`/,
+  // Strings com aspas
+  /'[^']*'|"[^"]*"/,
+  // JSX
+  /<[^>]+>/,
+  // Números
+  /\b\d+\.?\d*\b/,
+  // Atribuições
+  /\w+\s*=\s*[^;]+/
+];
 
 export function DiscussionMarkdown({ content }: DiscussionMarkdownProps) {
-  const formattedContent = formatMarkdownContent(content);
+  const renderCode = (code: string, inline: boolean = false, lang: string = '') => {
+    const trimmed = code.trim();
+    const isKeyword = KEYWORDS.includes(trimmed);
+    const isSimpleWord = !trimmed.includes(' ') && !/[^\w]/.test(trimmed);
+    
+    // Se for uma palavra-chave ou palavra simples, sempre renderiza como inline
+    if (isKeyword || isSimpleWord || trimmed.length < 15) {
+      return (
+        <code 
+          className={`px-1.5 py-0.5 rounded-md font-mono text-sm ${
+            isKeyword ? 'bg-blue-500/10 text-blue-400 font-semibold' : 'bg-zinc-900/50 text-zinc-200'
+          }`}
+        >
+          {trimmed}
+        </code>
+      );
+    }
+
+    // Se não tiver nenhum padrão de código, também renderiza como inline
+    if (!CODE_PATTERNS.some(pattern => pattern.test(trimmed))) {
+      return (
+        <code className="bg-zinc-900/50 px-1.5 py-0.5 rounded-md font-mono text-sm text-zinc-200">
+          {trimmed}
+        </code>
+      );
+    }
+
+    // Se chegou aqui, é um bloco de código válido
+    return <CodeMarkdown code={trimmed} language={lang} />;
+  };
 
   return (
     <ReactMarkdown
@@ -154,149 +76,80 @@ export function DiscussionMarkdown({ content }: DiscussionMarkdownProps) {
         code({ inline, className, children, ...props }: any) {
           const match = /language-(\w+)/.exec(className || '');
           const lang = match ? match[1] : '';
+          const code = String(children).replace(/^\s*\d+\s*/, '').trim();
           
-          if (inline) {
-            return (
-              <code className="px-2 py-1 rounded-md bg-zinc-800/80 font-mono text-sm text-blue-400 border border-zinc-700/50" {...props}>
-                {children}
-              </code>
-            );
-          }
-
-          return (
-            <div className="relative group my-8 rounded-xl overflow-hidden border border-zinc-800/80 bg-zinc-900/50">
-              {lang && (
-                <div className="absolute top-0 right-0 px-4 py-2 text-xs font-medium text-zinc-400 bg-zinc-800/90 rounded-bl-lg border-l border-b border-zinc-700/50">
-                  {lang.toUpperCase()}
-                </div>
-              )}
-              <SyntaxHighlighter
-                language={lang || 'text'}
-                style={vscDarkPlus}
-                PreTag="div"
-                className="!bg-transparent !p-6 text-[14px] leading-6"
-                showLineNumbers={true}
-                customStyle={{
-                  margin: 0,
-                  background: 'transparent',
-                  padding: '2rem'
-                }}
-                wrapLongLines={true}
-              >
-                {String(children).replace(/\n$/, '')}
-              </SyntaxHighlighter>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(String(children));
-                  toast.success('Código copiado! 📋');
-                }}
-                className="absolute top-4 right-16 p-2 rounded-lg bg-zinc-800/90 text-zinc-400 opacity-0 group-hover:opacity-100 transition-all duration-200 hover:text-blue-400 hover:bg-zinc-800 border border-zinc-700/50"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
-                  <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
-                </svg>
-              </button>
-            </div>
-          );
+          return renderCode(code, inline, lang);
         },
-        p: ({ children }) => (
-          <p className="mb-6 last:mb-0 text-zinc-300 leading-relaxed text-[16px] tracking-wide">
+        p: ({ children, ...props }: any) => (
+          <p className="mb-4 text-[16px] leading-7" {...props}>
             {children}
           </p>
         ),
-        ul: ({ children }) => (
-          <ul className="mb-6 space-y-3 text-zinc-300 pl-6">
-            {children}
-          </ul>
-        ),
-        ol: ({ children }) => (
-          <ol className="mb-6 space-y-4 text-zinc-300 pl-6 list-decimal">
-            {children}
-          </ol>
-        ),
-        li: ({ children }) => (
-          <li className="leading-relaxed text-[16px] relative pl-2">
-            {children}
-          </li>
-        ),
-        h1: ({ children }) => (
-          <h1 className="text-4xl font-bold mb-8 mt-12 first:mt-0 bg-gradient-to-br from-white to-zinc-400 bg-clip-text text-transparent tracking-tight leading-tight">
+        h1: ({ children, ...props }: any) => (
+          <h1 className="mt-8 mb-6 text-4xl font-bold" {...props}>
             {children}
           </h1>
         ),
-        h2: ({ children }) => (
-          <h2 className="text-2xl font-bold mb-6 mt-10 bg-gradient-to-br from-white to-zinc-400 bg-clip-text text-transparent tracking-tight">
+        h2: ({ children, ...props }: any) => (
+          <h2 className="mt-8 mb-5 text-3xl font-bold" {...props}>
             {children}
           </h2>
         ),
-        h3: ({ children }) => (
-          <h3 className="text-xl font-bold mb-4 mt-8 text-zinc-100 tracking-tight">
+        h3: ({ children, ...props }: any) => (
+          <h3 className="mt-6 mb-4 text-2xl font-bold" {...props}>
             {children}
           </h3>
         ),
-        blockquote: ({ children }) => (
-          <blockquote className="my-6 border-l-4 border-blue-500 pl-6 py-4 bg-blue-500/5 rounded-r-xl">
-            <p className="text-zinc-300 italic text-[16px] leading-relaxed">{children}</p>
-          </blockquote>
-        ),
-        hr: () => (
-          <hr className="my-12 border-zinc-800/50" />
-        ),
-        table: ({ children }) => (
-          <div className="my-8 overflow-x-auto rounded-xl border border-zinc-800/50 bg-zinc-900/30">
-            <table className="w-full border-collapse">
-              {children}
-            </table>
-          </div>
-        ),
-        th: ({ children }) => (
-          <th className="px-6 py-4 bg-zinc-800/50 text-left text-sm font-bold text-zinc-200 uppercase tracking-wider border-b border-zinc-700/50">
+        ul: ({ children, ...props }: any) => (
+          <ul className="mb-4 list-none space-y-2" {...props}>
             {children}
-          </th>
+          </ul>
         ),
-        td: ({ children }) => (
-          <td className="px-6 py-4 text-[15px] text-zinc-300 border-b border-zinc-800/50">
+        ol: ({ children, ...props }: any) => (
+          <ol className="mb-4 list-none space-y-2 [counter-reset:item]" {...props}>
             {children}
-          </td>
+          </ol>
         ),
-        a: ({ children, href }) => (
-          <a 
-            href={href} 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="text-blue-400 hover:text-blue-300 underline decoration-blue-400/30 hover:decoration-blue-300/50 transition-all duration-200 font-medium"
-          >
+        li: ({ children, ordered, ...props }: any) => {
+          if (ordered) {
+            return (
+              <li className="flex gap-2 text-[16px] leading-7 [counter-increment:item] before:content-[counter(item)'.'] before:font-medium before:text-zinc-500" {...props}>
+                <span className="flex-1">{children}</span>
+              </li>
+            );
+          }
+          return (
+            <li className="flex gap-2 text-[16px] leading-7" {...props}>
+              <span className="text-zinc-500">•</span>
+              <span className="flex-1">{children}</span>
+            </li>
+          );
+        },
+        a: ({ children, ...props }: any) => (
+          <a className="text-blue-500 hover:text-blue-600 underline" {...props}>
             {children}
           </a>
         ),
-        img: ({ src, alt }) => (
-          <div className="my-8">
-            <img 
-              src={src} 
-              alt={alt} 
-              className="w-full h-auto rounded-xl border border-zinc-800/50 shadow-2xl" 
-            />
-            {alt && (
-              <p className="mt-4 text-sm text-zinc-500 text-center italic">
-                {alt}
-              </p>
-            )}
-          </div>
-        ),
-        strong: ({ children }) => (
-          <strong className="font-bold text-zinc-50">
+        strong: ({ children, ...props }: any) => {
+          const text = String(children);
+          const isKeyword = KEYWORDS.includes(text);
+          return (
+            <strong 
+              className={`font-semibold ${isKeyword ? 'text-blue-400' : 'text-zinc-200'}`} 
+              {...props}
+            >
+              {children}
+            </strong>
+          );
+        },
+        blockquote: ({ children, ...props }: any) => (
+          <blockquote className="pl-4 border-l-2 border-zinc-700 text-zinc-400 italic" {...props}>
             {children}
-          </strong>
-        ),
-        em: ({ children }) => (
-          <em className="italic text-zinc-400">
-            {children}
-          </em>
+          </blockquote>
         )
       }}
     >
-      {formattedContent}
+      {content}
     </ReactMarkdown>
   );
 }

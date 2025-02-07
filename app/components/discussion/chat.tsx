@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "~/../@/components/ui/ui/button";
 import { Input } from "~/../@/components/ui/ui/input";
 import { classNames } from "~/utils/classNames";
-import { Send, Bot, Plus, Search, Loader2, StopCircle, Paperclip, Stars, X, Code } from "lucide-react";
+import { Send, Bot, Plus, Search, Loader2, StopCircle, Paperclip, Stars, X, Code, ArrowDown } from "lucide-react";
 import type { KeyboardEvent, ChangeEvent } from "react";
 import { toast } from "react-toastify";
 import { DiscussionMarkdown } from './discussion-markdown';
@@ -31,10 +31,36 @@ export function Chat({ messages = [], onSendMessage, isLoading = false, onStop }
   const [enhancingPrompt, setEnhancingPrompt] = useState(false);
   const [usePrompt, setUsePrompt] = useState(true);
   const [displayMessages, setDisplayMessages] = useState<Message[]>([]);
+  const [showScrollButton, setShowScrollButton] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const streamTimeoutRef = useRef<NodeJS.Timeout>();
   const currentMessageRef = useRef<string>("");
+
+  // Função para verificar se precisa mostrar o botão de scroll
+  const checkScroll = () => {
+    const container = messagesContainerRef.current;
+    if (container) {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+      setShowScrollButton(!isNearBottom);
+    }
+  };
+
+  // Monitora o scroll
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (container) {
+      container.addEventListener('scroll', checkScroll);
+      return () => container.removeEventListener('scroll', checkScroll);
+    }
+  }, []);
+
+  // Atualiza o estado do botão quando mensagens mudam
+  useEffect(() => {
+    checkScroll();
+  }, [displayMessages]);
 
   // Atualiza as mensagens quando recebe novas
   useEffect(() => {
@@ -187,7 +213,10 @@ export function Chat({ messages = [], onSendMessage, isLoading = false, onStop }
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] bg-[#09090B]">
       {/* Área de mensagens */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-6 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-[#09090B]">
+      <div 
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-6 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-[#09090B]"
+      >
         <div className="max-w-3xl w-full mx-auto space-y-8">
           {displayMessages.map((message, i) => (
             <div
@@ -222,6 +251,16 @@ export function Chat({ messages = [], onSendMessage, isLoading = false, onStop }
           <div ref={messagesEndRef} />
         </div>
       </div>
+
+      {/* Botão de scroll to bottom */}
+      {showScrollButton && (
+        <button
+          onClick={scrollToBottom}
+          className="fixed bottom-32 right-8 p-2 bg-zinc-800/90 hover:bg-zinc-700/90 rounded-full shadow-lg transition-all duration-200 text-zinc-400 hover:text-zinc-200 z-50"
+        >
+          <ArrowDown className="w-5 h-5" />
+        </button>
+      )}
 
       {/* Input área */}
       <div className="flex-shrink-0 border-t border-zinc-800/50 p-4">
