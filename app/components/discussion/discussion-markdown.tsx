@@ -36,6 +36,62 @@ const CODE_PATTERNS = [
   /\w+\s*=\s*[^;]+/
 ];
 
+// Mapeamento de palavras-chave para emojis
+const TITLE_EMOJIS: Record<string, string> = {
+  // Desenvolvimento
+  'código': '💻', 'code': '💻', 'programação': '👨‍💻', 'programming': '👨‍💻',
+  'bug': '🐛', 'debug': '🔍', 'feature': '✨', 'performance': '⚡',
+  'api': '🔌', 'database': '🗄️', 'dados': '📊', 'data': '📊',
+  'teste': '🧪', 'test': '🧪', 'deploy': '🚀', 'release': '📦',
+  
+  // Tópicos comuns
+  'exemplo': '📝', 'example': '📝', 'nota': '📝', 'note': '📝',
+  'importante': '⚠️', 'important': '⚠️', 'aviso': '⚠️', 'warning': '⚠️',
+  'dica': '💡', 'tip': '💡', 'solução': '✅', 'solution': '✅',
+  'problema': '❌', 'problem': '❌', 'erro': '❌', 'error': '❌',
+  
+  // Áreas específicas
+  'frontend': '🎨', 'backend': '⚙️', 'design': '🎯', 'ui': '🎨',
+  'ux': '👥', 'mobile': '📱', 'web': '🌐', 'cloud': '☁️',
+  'segurança': '🔒', 'security': '🔒', 'análise': '📊', 'analysis': '📊',
+  
+  // Status
+  'pendente': '⏳', 'pending': '⏳', 'completo': '✅', 'complete': '✅',
+  'em progresso': '🚧', 'in progress': '🚧', 'revisão': '👀', 'review': '👀',
+  
+  // Documentação
+  'documentação': '📚', 'documentation': '📚', 'guia': '📖', 'guide': '📖',
+  'tutorial': '📝', 'referência': '📚', 'reference': '📚',
+  
+  // Genéricos
+  'novo': '🆕', 'new': '🆕', 'atualização': '🔄', 'update': '🔄',
+  'configuração': '⚙️', 'config': '⚙️', 'setup': '🛠️',
+  'resumo': '📋', 'summary': '📋', 'lista': '📋', 'list': '📋',
+  
+  // Específicos
+  'react': '⚛️', 'vue': '💚', 'angular': '🅰️', 'node': '💚',
+  'python': '🐍', 'java': '☕', 'javascript': '💛', 'typescript': '💙',
+  'docker': '🐳', 'kubernetes': '⛵', 'git': '📦', 'github': '🐱',
+  
+  // Domínios
+  'ai': '🤖', 'ml': '🧠', 'data science': '📊', 'blockchain': '⛓️',
+  'iot': '🔌', 'cloud': '☁️', 'devops': '🔄', 'security': '🔒'
+};
+
+const getEmojiForTitle = (title: string): string => {
+  const lowerTitle = title.toLowerCase();
+  
+  // Procura por palavras-chave no título
+  for (const [keyword, emoji] of Object.entries(TITLE_EMOJIS)) {
+    if (lowerTitle.includes(keyword.toLowerCase())) {
+      return emoji + ' ';
+    }
+  }
+  
+  // Emoji padrão se nenhuma palavra-chave for encontrada
+  return '📌 ';
+};
+
 export function DiscussionMarkdown({ content }: DiscussionMarkdownProps) {
   const renderCode = (code: string, inline: boolean = false, lang: string = '') => {
     const trimmed = code.trim();
@@ -86,18 +142,21 @@ export function DiscussionMarkdown({ content }: DiscussionMarkdownProps) {
           </p>
         ),
         h1: ({ children, ...props }: any) => (
-          <h1 className="mt-8 mb-6 text-4xl font-bold" {...props}>
-            {children}
+          <h1 className="mt-8 mb-6 text-4xl font-bold flex items-center gap-2" {...props}>
+            <span>{getEmojiForTitle(String(children))}</span>
+            <span>{children}</span>
           </h1>
         ),
         h2: ({ children, ...props }: any) => (
-          <h2 className="mt-8 mb-5 text-3xl font-bold" {...props}>
-            {children}
+          <h2 className="mt-8 mb-5 text-3xl font-bold flex items-center gap-2" {...props}>
+            <span>{getEmojiForTitle(String(children))}</span>
+            <span>{children}</span>
           </h2>
         ),
         h3: ({ children, ...props }: any) => (
-          <h3 className="mt-6 mb-4 text-2xl font-bold" {...props}>
-            {children}
+          <h3 className="mt-6 mb-4 text-2xl font-bold flex items-center gap-2" {...props}>
+            <span>{getEmojiForTitle(String(children))}</span>
+            <span>{children}</span>
           </h3>
         ),
         ul: ({ children, ...props }: any) => (
