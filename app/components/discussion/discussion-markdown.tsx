@@ -23,9 +23,6 @@ const formatMarkdownContent = (content: string): string => {
     return `# ${highlightedWords.join(' ')}`;
   });
 
-  // Remove pontos duplos extras
-  content = content.replace(/:{2,}/g, ':');
-
   // Formata seções principais com emojis
   const sectionEmojis: Record<string, string> = {
     'Key Figures': '👥',
@@ -90,11 +87,18 @@ const formatMarkdownContent = (content: string): string => {
     'Version': '🏷️'
   };
 
-  // Aplica emojis em seções principais
+  // Primeiro remove quaisquer dois pontos extras do texto inteiro
+  content = content.replace(/:{2,}/g, ':');
+
+  // Aplica emojis em seções principais (agora com regex melhorada)
   Object.entries(sectionEmojis).forEach(([section, emoji]) => {
-    const regex = new RegExp(`\\b${section}:?\\b`, 'g');
-    content = content.replace(regex, `${emoji} **${section}:**`);
+    // Busca a seção com ou sem dois pontos, garantindo que não adicione mais pontos
+    const regex = new RegExp(`\\b${section}:*\\s*`, 'g');
+    content = content.replace(regex, `${emoji} **${section}:** `);
   });
+
+  // Garante que não haja dois pontos duplicados após as substituições
+  content = content.replace(/:{2,}/g, ':');
 
   // Formata subtítulos
   content = content.replace(/^## (.*)/gm, '## 🔍 $1');
