@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "~/../@/components/ui/ui/button";
 import { Input } from "~/../@/components/ui/ui/input";
 import { classNames } from "~/utils/classNames";
-import { Send, Bot, Plus, Search, Loader2, StopCircle, Paperclip, Stars, X, Code, ArrowDown } from "lucide-react";
+import { Send, Bot, Plus, Search, Loader2, StopCircle, Paperclip, Stars, X, Code, ArrowDown, CircleDashed } from "lucide-react";
 import type { KeyboardEvent, ChangeEvent } from "react";
 import { toast } from "react-toastify";
 import { DiscussionMarkdown } from './discussion-markdown';
@@ -293,6 +293,19 @@ export function Chat({ messages = [], onSendMessage, isLoading = false, onStop }
               </div>
             </div>
           ))}
+          
+          {/* Indicador de digitação do LLM */}
+          {isLoading && (
+            <div className="flex gap-4 animate-in slide-in-from-bottom-2 duration-300 ease-out">
+              <div className="flex items-center gap-4 px-6 py-4 text-sm text-zinc-100">
+                <CircleDashed className="w-4 h-4 animate-spin text-blue-500" />
+                <span className="text-zinc-400 text-sm">Generating Answer...</span>
+              </div>
+            </div>
+
+
+          )}
+
           <div ref={messagesEndRef} />
         </div>
       </div>
@@ -431,11 +444,6 @@ export function Chat({ messages = [], onSendMessage, isLoading = false, onStop }
               )}
             </div>
           </div>
-          {isLoading && (
-            <div className="text-xs text-zinc-500 mt-2 text-center animate-pulse">
-              Gerando resposta...
-            </div>
-          )}
         </div>
       </div>
     </div>
