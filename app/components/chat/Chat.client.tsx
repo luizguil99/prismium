@@ -170,25 +170,13 @@ export const ChatImpl = memo(
           'There was an error processing your request: ' + (error.message ? error.message : 'No details were returned'),
         );
       },
-      onFinish: async (message, response) => {
-        const usage = response.usage;
-
-        if (usage) {
-          console.log('Token usage:', usage);
-        }
-
+      onFinish: async (message) => {
         // Processa blocos de código da resposta final
         if (message.content) {
-          await processCodeBlocks(message.content);
+          await processCodeBlocks(typeof message.content === 'string' ? message.content : '');
         }
 
         logger.debug('Finished streaming');
-      },
-      onMessage: async (message) => {
-        // Processa blocos de código para cada mensagem recebida
-        if (message.content) {
-          await processCodeBlocks(message.content);
-        }
       },
       initialMessages,
       initialInput: Cookies.get(PROMPT_COOKIE_KEY) || '',
@@ -297,7 +285,7 @@ export const ChatImpl = memo(
       const _input = messageInput || input;
 
       // Não permite enviar mensagem vazia ou durante carregamento
-      if (_input.length === 0 || isLoading) {
+      if ((typeof _input === 'string' && _input.length === 0) || isLoading) {
         console.log('[ChatClient] Input vazio ou carregando, retornando');
         return;
       }
@@ -372,7 +360,7 @@ Por favor, use essas configurações do Supabase ao gerar o código da aplicaç�
 
         // Seleciona um template inicial baseado na mensagem
         const { template, title } = await selectStarterTemplate({
-          message: _input,
+          message: typeof _input === 'string' ? _input : _input.text,
           model,
           provider,
         });
@@ -399,7 +387,7 @@ Por favor, use essas configurações do Supabase ao gerar o código da aplicaç�
               {
                 id: `${new Date().getTime()}`,
                 role: 'user',
-                content: _input,
+                content: typeof _input === 'string' ? _input : _input.text,
               },
               {
                 id: `${new Date().getTime()}`,
@@ -473,7 +461,7 @@ Por favor, use essas configurações do Supabase ao gerar o código da aplicaç�
           content: [
             {
               type: 'text',
-              text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${finalPrompt}`,
+              text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${typeof _input === 'string' ? _input : _input.text}`,
             },
             ...imageDataList.map((imageData) => ({
               type: 'image',
@@ -490,7 +478,7 @@ Por favor, use essas configurações do Supabase ao gerar o código da aplicaç�
           content: [
             {
               type: 'text',
-              text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${finalPrompt}`,
+              text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${typeof _input === 'string' ? _input : _input.text}`,
             },
             ...imageDataList.map((imageData) => ({
               type: 'image',
@@ -531,7 +519,8 @@ Por favor, use essas configurações do Supabase ao gerar o código da aplicaç�
       for (const { language, code } of codeBlocks) {
         try {
           const filename = `generated.${language === 'javascript' ? 'js' : language}`;
-          await workbenchStore.writeFile(filename, code);
+          // Atualiza o arquivo diretamente no FilesStore
+          workbenchStore.files.setKey(filename, { type: 'file', content: code, isBinary: false });
           console.log(`✅ Código salvo em ${filename}`);
         } catch (error) {
           console.error('❌ Erro ao salvar código:', error);
