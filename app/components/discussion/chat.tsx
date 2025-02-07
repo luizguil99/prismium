@@ -33,8 +33,70 @@ export function Chat({ messages = [], onSendMessage, isLoading = false, onStop }
   const [imageDataList, setImageDataList] = useState<string[]>([]);
   const [enhancingPrompt, setEnhancingPrompt] = useState(false);
   const [usePrompt, setUsePrompt] = useState(true);
+  const [displayMessages, setDisplayMessages] = useState<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const streamTimeoutRef = useRef<NodeJS.Timeout>();
+  const currentMessageRef = useRef<string>("");
+
+  // Atualiza as mensagens quando recebe novas
+  useEffect(() => {
+    if (messages.length === 0) {
+      setDisplayMessages([]);
+      return;
+    }
+
+    // Se for uma nova mensagem do assistente
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage.role === 'assistant') {
+      // Mantém todas as mensagens anteriores
+      const previousMessages = messages.slice(0, -1);
+      setDisplayMessages([
+        ...previousMessages,
+        {
+          ...lastMessage,
+          content: currentMessageRef.current || lastMessage.content
+        }
+      ]);
+    } else {
+      setDisplayMessages(messages);
+    }
+  }, [messages]);
+
+  // Atualiza o texto atual quando recebe chunks
+  useEffect(() => {
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage?.role === 'assistant') {
+      currentMessageRef.current = lastMessage.content;
+      
+      // Atualiza o display com um pequeno delay para suavizar
+      if (streamTimeoutRef.current) {
+        clearTimeout(streamTimeoutRef.current);
+      }
+      
+      streamTimeoutRef.current = setTimeout(() => {
+        setDisplayMessages(prev => {
+          const newMessages = [...prev];
+          if (newMessages.length > 0) {
+            newMessages[newMessages.length - 1] = {
+              ...lastMessage,
+              content: currentMessageRef.current
+            };
+          }
+          return newMessages;
+        });
+      }, 50); // Ajuste este delay conforme necessário
+    }
+  }, [messages]);
+
+  // Limpa o timeout quando o componente é desmontado
+  useEffect(() => {
+    return () => {
+      if (streamTimeoutRef.current) {
+        clearTimeout(streamTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -42,7 +104,7 @@ export function Chat({ messages = [], onSendMessage, isLoading = false, onStop }
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [displayMessages]);
 
   const handleSend = () => {
     if (!input.trim() || isLoading) return;
@@ -130,11 +192,14 @@ export function Chat({ messages = [], onSendMessage, isLoading = false, onStop }
       {/* Área de mensagens */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-6 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-[#09090B]">
         <div className="max-w-3xl w-full mx-auto space-y-8">
-          {messages.map((message, i) => (
+          {displayMessages.map((message, i) => (
             <div
               key={i}
               className={classNames(
-                "flex gap-4 group animate-in slide-in-from-bottom-2 duration-300 ease-out",
+                "flex gap-4 group",
+                message.role === "assistant" && i === displayMessages.length - 1
+                  ? "animate-in slide-in-from-bottom-2 duration-300 ease-out"
+                  : "",
                 {
                   "justify-start": message.role === "assistant",
                   "justify-end": message.role === "user"
@@ -183,6 +248,7 @@ export function Chat({ messages = [], onSendMessage, isLoading = false, onStop }
                               background: 'transparent',
                               padding: '1rem'
                             }}
+                            wrapLongLines={true}
                           >
                             {String(children).replace(/\n$/, '')}
                           </SyntaxHighlighter>
@@ -200,7 +266,61 @@ export function Chat({ messages = [], onSendMessage, isLoading = false, onStop }
                           </button>
                         </div>
                       );
-                    }
+                    },
+                    p: ({ children }) => (
+                      <p className="mb-4 last:mb-0 whitespace-pre-wrap">{children}</p>
+                    ),
+                    ul: ({ children }) => (
+                      <ul className="mb-4 list-disc list-inside space-y-2">{children}</ul>
+                    ),
+                    ol: ({ children }) => (
+                      <ol className="mb-4 list-decimal list-inside space-y-2">{children}</ol>
+                    ),
+                    li: ({ children }) => (
+                      <li className="leading-relaxed">{children}</li>
+                    ),
+                    h1: ({ children }) => (
+                      <h1 className="text-2xl font-bold mb-4 mt-6 first:mt-0">{children}</h1>
+                    ),
+                    h2: ({ children }) => (
+                      <h2 className="text-xl font-bold mb-3 mt-5">{children}</h2>
+                    ),
+                    h3: ({ children }) => (
+                      <h3 className="text-lg font-bold mb-3 mt-4">{children}</h3>
+                    ),
+                    blockquote: ({ children }) => (
+                      <blockquote className="border-l-4 border-zinc-700 pl-4 my-4 italic">{children}</blockquote>
+                    ),
+                    hr: () => (
+                      <hr className="my-6 border-zinc-800" />
+                    ),
+                    table: ({ children }) => (
+                      <div className="overflow-x-auto mb-4">
+                        <table className="min-w-full divide-y divide-zinc-800">
+                          {children}
+                        </table>
+                      </div>
+                    ),
+                    th: ({ children }) => (
+                      <th className="px-4 py-2 bg-zinc-800/50 text-left font-medium">{children}</th>
+                    ),
+                    td: ({ children }) => (
+                      <td className="px-4 py-2 border-t border-zinc-800">{children}</td>
+                    ),
+                    a: ({ children, href }) => (
+                      <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
+                        {children}
+                      </a>
+                    ),
+                    img: ({ src, alt }) => (
+                      <img src={src} alt={alt} className="max-w-full h-auto rounded-lg my-4" />
+                    ),
+                    strong: ({ children }) => (
+                      <strong className="font-semibold text-blue-400">{children}</strong>
+                    ),
+                    em: ({ children }) => (
+                      <em className="italic text-zinc-300">{children}</em>
+                    )
                   }}
                 >
                   {message.content}
