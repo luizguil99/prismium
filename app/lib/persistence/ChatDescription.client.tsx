@@ -19,9 +19,9 @@ export function ChatDescription() {
   }
 
   return (
-    <div className="flex items-center justify-center">
+    <div className="flex items-center">
       {editing ? (
-        <form onSubmit={handleSubmit} className="flex items-center justify-center">
+        <form onSubmit={handleSubmit} className="flex items-center">
           <input
             type="text"
             className="bg-bolt-elements-background-depth-1 text-bolt-elements-textPrimary rounded px-2 mr-2 w-fit"
@@ -34,10 +34,10 @@ export function ChatDescription() {
           />
           <TooltipProvider>
             <WithTooltip tooltip="Save title">
-              <div className="flex justify-between items-center p-2 rounded-md bg-bolt-elements-item-backgroundAccent">
+              <div className="flex justify-between items-center p-2 rounded-md hover:bg-zinc-800/50">
                 <button
                   type="submit"
-                  className="i-ph:check-bold scale-110 hover:text-bolt-elements-item-contentAccent"
+                  className="i-ph:check-bold text-lg text-zinc-400 hover:text-purple-400 transition-colors"
                   onMouseDown={handleSubmit}
                 />
               </div>
@@ -45,23 +45,23 @@ export function ChatDescription() {
           </TooltipProvider>
         </form>
       ) : (
-        <>
-          {currentDescription}
+        <div className="flex items-center gap-2 group">
+          <span className="text-base">{currentDescription}</span>
           <TooltipProvider>
             <WithTooltip tooltip="Rename chat">
-              <div className="flex justify-between items-center p-2 rounded-md bg-bolt-elements-item-backgroundAccent ml-2">
-                <button
-                  type="button"
-                  className="i-ph:pencil-fill scale-110 hover:text-bolt-elements-item-contentAccent"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    toggleEditMode();
-                  }}
-                />
-              </div>
+              <button
+                type="button"
+                className="p-1.5 rounded-md bg-[#09090B] text-purple-400 transition-colors"
+                onClick={(event) => {
+                  event.preventDefault();
+                  toggleEditMode();
+                }}
+              >
+                <div className="i-ph:note-pencil text-sm" />
+              </button>
             </WithTooltip>
           </TooltipProvider>
-        </>
+        </div>
       )}
     </div>
   );

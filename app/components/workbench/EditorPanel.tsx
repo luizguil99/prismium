@@ -1,6 +1,7 @@
 import { useStore } from '@nanostores/react';
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
+import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import {
   CodeMirrorEditor,
   type EditorDocument,
@@ -55,6 +56,7 @@ export const EditorPanel = memo(
 
     const theme = useStore(themeStore);
     const showTerminal = useStore(workbenchStore.showTerminal);
+    const [showFileTree, setShowFileTree] = useState(true);
 
     const activeFileSegments = useMemo(() => {
       if (!editorDocument) {
@@ -72,26 +74,44 @@ export const EditorPanel = memo(
       <PanelGroup direction="vertical">
         <Panel defaultSize={showTerminal ? DEFAULT_EDITOR_SIZE : 100} minSize={20}>
           <PanelGroup direction="horizontal">
-            <Panel defaultSize={20} minSize={10} collapsible>
-              <div className="flex flex-col border-r border-bolt-elements-borderColor h-full">
-                <PanelHeader>
-                  <div className="i-ph:tree-structure-duotone shrink-0" />
-                  Files
-                </PanelHeader>
-                <FileTree
-                  className="h-full"
-                  files={files}
-                  hideRoot
-                  unsavedFiles={unsavedFiles}
-                  rootFolder={WORK_DIR}
-                  selectedFile={selectedFile}
-                  onFileSelect={onFileSelect}
-                />
-              </div>
-            </Panel>
-            <PanelResizeHandle />
+            {showFileTree && (
+              <Panel defaultSize={20} minSize={10} collapsible>
+                <div className="flex flex-col border-r border-bolt-elements-borderColor h-full">
+                  <PanelHeader>
+                    <div className="flex items-center w-full">
+                      <div className="i-ph:tree-structure-duotone shrink-0" />
+                      <span className="ml-2">Files</span>
+                      <button
+                        onClick={() => setShowFileTree(false)}
+                        className="ml-auto text-bolt-elements-item-contentDefault bg-[#548BE4]/10 hover:text-[#548BE4]"
+                      >
+                        <PanelLeftClose className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </PanelHeader>
+                  <FileTree
+                    className="h-full"
+                    files={files}
+                    hideRoot
+                    unsavedFiles={unsavedFiles}
+                    rootFolder={WORK_DIR}
+                    selectedFile={selectedFile}
+                    onFileSelect={onFileSelect}
+                  />
+                </div>
+              </Panel>
+            )}
+            {showFileTree && <PanelResizeHandle />}
             <Panel className="flex flex-col" defaultSize={80} minSize={20}>
               <PanelHeader className="overflow-x-auto">
+                {!showFileTree && (
+                  <button
+                    onClick={() => setShowFileTree(true)}
+                    className="mr-2 text-bolt-elements-item-contentDefault bg-[#548BE4]/10 hover:text-[#548BE4]"
+                  >
+                    <PanelLeftOpen className="w-4 h-4" />
+                  </button>
+                )}
                 {activeFileSegments?.length && (
                   <div className="flex items-center flex-1 text-sm">
                     <FileBreadcrumb pathSegments={activeFileSegments} files={files} onFileSelect={onFileSelect} />

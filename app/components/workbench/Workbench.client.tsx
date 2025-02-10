@@ -31,6 +31,13 @@ import { ComponentsModal } from './ComponentsModal';
 import useViewport from '~/lib/hooks';
 import Cookies from 'js-cookie';
 
+const SidebarButton = ({ icon, label, onClick, disabled }: { icon: string; label: string; onClick: () => void; disabled?: boolean }) => (
+  <button onClick={onClick} disabled={disabled} className="w-full py-2 flex flex-col items-center hover:bg-gray-200 focus:outline-none">
+    <div className={icon} />
+    <span className="mt-1 text-xs font-semibold">{label}</span>
+  </button>
+);
+
 // Interface de props do Workbench
 interface WorkspaceProps {
   chatStarted?: boolean; // Indica se o chat foi iniciado
@@ -63,7 +70,7 @@ const workbenchVariants = {
     },
   },
   open: {
-    width: 'var(--workbench-width)',
+    width: '100%',
     transition: {
       duration: 0.2,
       ease: cubicEasingFn,
@@ -158,17 +165,19 @@ export const Workbench = memo(({ chatStarted, isStreaming, onSendMessage }: Work
       >
         <div
           className={classNames(
-            'fixed top-[calc(var(--header-height)+0.2rem)] bottom-4 w-[var(--workbench-inner-width)] mr-4 z-0 transition-[left,width] duration-200 bolt-ease-cubic-bezier',
+            'fixed top-0 bottom-0 z-0 transition-[left,width] duration-200 bolt-ease-cubic-bezier',
             {
               'w-full': isSmallViewport,
               'left-0': showWorkbench && isSmallViewport,
               'left-[var(--workbench-left)]': showWorkbench,
               'left-[100%]': !showWorkbench,
+              'right-0': showWorkbench && !isSmallViewport,
+              'w-[calc(100%-var(--workbench-left))]': showWorkbench && !isSmallViewport,
             },
           )}
         >
-          <div className="absolute inset-0 px-2 lg:px-6">
-            <div className="h-full flex flex-col bg-bolt-elements-background-depth-2 border border-bolt-elements-borderColor shadow-sm rounded-lg overflow-hidden">
+          <div className="absolute inset-0">
+            <div className="h-full flex flex-col bg-bolt-elements-background-depth-2 border-l border-bolt-elements-borderColor overflow-hidden">
               <div className="flex items-center px-3 py-2 border-b border-bolt-elements-borderColor">
                 <Slider selected={selectedView} options={sliderOptions} setSelected={setSelectedView} />
                 <div className="ml-auto" />
