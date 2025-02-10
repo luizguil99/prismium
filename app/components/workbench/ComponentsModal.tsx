@@ -18,6 +18,9 @@ export const ComponentsModal = memo(({ isOpen, onClose, onSendMessage }: Compone
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
   const [hasCopied, setHasCopied] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [showPromptInput, setShowPromptInput] = useState(false);
+  const [additionalPrompt, setAdditionalPrompt] = useState('');
 
   // Reseta o estado quando o modal fecha
   useEffect(() => {
@@ -83,6 +86,38 @@ export const ComponentsModal = memo(({ isOpen, onClose, onSendMessage }: Compone
     } catch (error) {
       console.error('Error copying prompt:', error);
       toast.error('Failed to copy prompt');
+    }
+  };
+
+  const handleGenerateComponent = async (prompt: string) => {
+    try {
+      setLoading(true);
+      
+      // Cria um evento sintético do React
+      const syntheticEvent = new UIEvent('submit', {
+        bubbles: true,
+        cancelable: true,
+        view: window
+      });
+      
+      // Combina o prompt original com o adicional
+      const finalPrompt = additionalPrompt ? `${prompt}\n\nAdditional requirements:\n${additionalPrompt}` : prompt;
+      
+      // Envia a mensagem do usuário com o prompt formatado
+      const userMessage = `Generate component: ${selectedComponent?.name}\n\n\`\`\`prompt
+${finalPrompt}
+\`\`\``;
+      
+      onSendMessage && onSendMessage(syntheticEvent as unknown as React.UIEvent, userMessage);
+      
+      setShowPromptInput(false);
+      setAdditionalPrompt('');
+      onClose();
+    } catch (error) {
+      console.error('Failed to generate component:', error);
+      toast.error('Falha ao gerar componente: ' + (error as Error).message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -363,17 +398,7 @@ export const ComponentsModal = memo(({ isOpen, onClose, onSendMessage }: Compone
               <button
                 onClick={() => {
                   if (selectedComponent) {
-                    console.log(`Generating component: ${selectedComponent.name}`);
-                    console.log('Prompt do componente:', selectedComponent.prompt);
-                    
-                    // Envia o prompt usando o callback
-                    if (selectedComponent.prompt && onSendMessage) {
-                      const event = new Event('submit') as React.UIEvent;
-                      event.preventDefault = () => {};
-                      onSendMessage(event, selectedComponent.prompt);
-                    }
-                    
-                    onClose();
+                    setShowPromptInput(true);
                   }
                 }}
                 className={classNames(
@@ -391,6 +416,72 @@ export const ComponentsModal = memo(({ isOpen, onClose, onSendMessage }: Compone
           </div>
         </div>
       </div>
+
+      {/* Modal de input do prompt adicional */}
+      {showPromptInput && selectedComponent && (
+        <div className="fixed inset-0 z-[60] overflow-y-auto" onClick={() => setShowPromptInput(false)}>
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" />
+          <div className="relative min-h-screen flex items-center justify-center p-4">
+            <div
+              className="relative bg-bolt-elements-background-depth-2 rounded-lg w-full max-w-lg shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6 space-y-4">
+                <h3 className="text-lg font-semibold text-bolt-elements-item-contentDefault">
+                  Additional Requirements
+                </h3>
+                <textarea
+                  value={additionalPrompt}
+                  onChange={(e) => setAdditionalPrompt(e.target.value)}
+                  placeholder="Examples:
+- Place this component above my header
+- Create a login route with this component
+- Add a dark mode toggle to this component
+- Make it responsive for mobile devices
+- Add authentication to this component"
+                  className={classNames(
+                    'w-full h-32 p-3 rounded-md text-sm',
+                    'bg-[#1D1D1D] hover:bg-[#202020]',
+                    'border border-bolt-elements-borderColor',
+                    'focus:outline-none focus:ring-2 focus:ring-[#548BE4]/30',
+                    'placeholder-bolt-elements-item-contentDefault/50',
+                    'text-bolt-elements-item-contentDefault',
+                    'resize-none'
+                  )}
+                />
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => setShowPromptInput(false)}
+                    className={classNames(
+                      'px-4 py-2 rounded-md text-sm',
+                      'text-bolt-elements-item-contentDefault',
+                      'bg-[#1D1D1D] hover:bg-[#202020]',
+                      'transition-colors duration-200',
+                    )}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (selectedComponent) {
+                        handleGenerateComponent(selectedComponent.prompt);
+                      }
+                    }}
+                    className={classNames(
+                      'px-4 py-2 rounded-md text-sm font-medium',
+                      'bg-[#548BE4] hover:bg-[#4A7CCF]',
+                      'text-white',
+                      'transition-colors duration-200',
+                    )}
+                  >
+                    Generate
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 });
