@@ -48,7 +48,7 @@ import logoAstro from '~/lib/png/logo_astro.svg.png';
 import logoNextjs from '~/lib/png/logo_nextjs.svg.png';
 import logoReact from '~/lib/png/logo_react.svg.png';
 import logoVue from '~/lib/png/logo_vue.svg fill@2x.png';
-import { ChevronRight, ChevronLeft, Search, ArrowRight, Github, X } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Search, ArrowRight, Github, X, Menu as MenuIcon } from 'lucide-react';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/ui/dialog';
 import { Button } from '@/components/ui/ui/button';
@@ -499,6 +499,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
         className={classNames(styles.BaseChat, 'relative flex h-full w-full overflow-hidden bg-[#09090B]')}
         data-chat-visible={showChat}
       >
+        <div className="i-ph:sidebar-simple-duotone absolute top-4 left-4 text-xl text-bolt-elements-textPrimary hover:text-blue-500 transition-colors duration-200 cursor-pointer z-50" />
         <ClientOnly>{() => <Menu />}</ClientOnly>
         <div ref={scrollRef} className="flex flex-col lg:flex-row overflow-y-auto w-full h-full">
           <div className={classNames(styles.Chat, 'flex flex-col flex-grow lg:min-w-[var(--chat-min-width)] h-full')}>
