@@ -54,5 +54,7 @@ export const promptStore = atom<string>('default');
 
 export const latestBranchStore = atom(false);
 
-export const autoSelectStarterTemplate = atom(false);
+export const autoSelectStarterTemplate = atom(
+  import.meta.env.VITE_AUTO_SELECT_TEMPLATE === 'true'
+);
 export const enableContextOptimizationStore = atom(false);

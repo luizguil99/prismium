@@ -41,7 +41,7 @@ export const Messages = React.forwardRef<HTMLDivElement, MessagesProps>((props: 
   };
 
   return (
-    <div id={id} ref={ref} className={props.className}>
+    <div id={id} ref={ref} className={classNames(props.className, 'relative')}>
       {messages.length > 0
         ? messages.map((message, index) => {
             const { role, content, id: messageId, annotations } = message;
@@ -57,19 +57,21 @@ export const Messages = React.forwardRef<HTMLDivElement, MessagesProps>((props: 
             return (
               <div
                 key={index}
-                className={classNames('flex gap-4 w-full p-4', {
-                  'bg-bolt-elements-messages-background': isUserMessage || !isStreaming || (isStreaming && !isLast),
-                  'bg-gradient-to-b from-bolt-elements-messages-background from-30% to-transparent':
-                    isStreaming && isLast,
-                })}
+                className={classNames(
+                  'flex gap-4 w-full p-4 transition-colors duration-200',
+                  {
+                    'bg-[#09090B]': true,
+                    'animate-fade-in': isLast && isStreaming,
+                  }
+                )}
               >
                 {isUserMessage ? (
-                  <div className="flex items-center justify-center w-[34px] h-[34px] overflow-hidden bg-white text-gray-600 rounded-full shrink-0 self-start">
-                    <div className="i-ph:user-fill text-xl"></div>
+                  <div className="flex items-center justify-center w-[34px] h-[34px] overflow-hidden bg-blue-500/10 text-blue-400 rounded-full shrink-0 self-start border border-blue-500/30 transition-colors duration-200 hover:bg-blue-500/20">
+                    <div className="i-ph:user-duotone text-xl"></div>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-center w-[34px] h-[34px] overflow-hidden bg-primary-500 text-white rounded-full shrink-0 self-start">
-                    <div className="i-ph:robot-fill text-xl"></div>
+                  <div className="flex items-center justify-center w-[34px] h-[34px] overflow-hidden bg-purple-500/10 text-purple-400 rounded-full shrink-0 self-start border border-purple-500/30 transition-colors duration-200 hover:bg-purple-500/20">
+                    <div className="i-ph:robot-duotone text-xl"></div>
                   </div>
                 )}
 
@@ -84,23 +86,23 @@ export const Messages = React.forwardRef<HTMLDivElement, MessagesProps>((props: 
                 {!isUserMessage && (
                   <div className="flex gap-2 flex-col lg:flex-row">
                     {messageId && (
-                      <WithTooltip tooltip="Revert to this message">
+                      <WithTooltip tooltip="Reverter para esta mensagem">
                         <button
                           onClick={() => handleRewind(messageId)}
                           className={classNames(
-                            'i-ph:arrow-u-up-left',
-                            'text-xl text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary transition-colors',
+                            'i-ph:arrow-counter-clockwise-duotone',
+                            'text-xl text-purple-400 hover:text-purple-300 transition-colors duration-200',
                           )}
                         />
                       </WithTooltip>
                     )}
 
-                    <WithTooltip tooltip="Fork chat from this message">
+                    <WithTooltip tooltip="Criar nova ramificação a partir desta mensagem">
                       <button
                         onClick={() => handleFork(messageId)}
                         className={classNames(
-                          'i-ph:git-fork',
-                          'text-xl text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary transition-colors',
+                          'i-ph:git-fork-duotone',
+                          'text-xl text-purple-400 hover:text-purple-300 transition-colors duration-200',
                         )}
                       />
                     </WithTooltip>
@@ -111,7 +113,9 @@ export const Messages = React.forwardRef<HTMLDivElement, MessagesProps>((props: 
           })
         : null}
       {isStreaming && (
-        <div className="text-center w-full text-bolt-elements-textSecondary i-svg-spinners:3-dots-fade text-4xl p-2"></div>
+        <div className="flex justify-center w-full text-gray-400 p-4">
+          <div className="i-svg-spinners:3-dots-fade text-4xl"></div>
+        </div>
       )}
     </div>
   );

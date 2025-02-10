@@ -49,7 +49,6 @@ import logoNextjs from '~/lib/png/logo_nextjs.svg.png';
 import logoReact from '~/lib/png/logo_react.svg.png';
 import logoVue from '~/lib/png/logo_vue.svg fill@2x.png';
 import { ChevronRight, ChevronLeft, Search, ArrowRight, Github, X } from 'lucide-react';
-import BackgroundRays from '../ui/BackgroundRays';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/ui/dialog';
 import { Button } from '@/components/ui/ui/button';
@@ -442,7 +441,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
 
       return (
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DialogContent className="bg-black/95 border border-zinc-800 text-zinc-100 shadow-2xl [&>button]:text-white [&>button]:bg-transparent [&>button]:border-0 [&>button]:hover:bg-zinc-900 [&>button]:transition-colors [&>button]:p-1.5">
+          <DialogContent className="bg-[#09090B]/95 border border-zinc-800 text-zinc-100 shadow-2xl [&>button]:text-white [&>button]:bg-transparent [&>button]:border-0 [&>button]:hover:bg-[#09090B] [&>button]:transition-colors [&>button]:p-1.5">
             <DialogHeader className="border-b border-zinc-800 pb-4">
               <DialogTitle className="text-lg font-semibold text-zinc-100">Configurações do Modelo</DialogTitle>
             </DialogHeader>
@@ -478,7 +477,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
               <Button
                 variant="outline"
                 onClick={() => setIsModalOpen(false)}
-                className="bg-black hover:bg-zinc-900 text-zinc-100 border-zinc-800"
+                className="bg-[#09090B] hover:bg-[#09090B] text-zinc-100 border-zinc-800"
               >
                 Fechar
               </Button>
@@ -497,12 +496,11 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     const baseChat = (
       <div
         ref={ref}
-        className={classNames(styles.BaseChat, 'relative flex h-full w-full overflow-hidden bg-black')}
+        className={classNames(styles.BaseChat, 'relative flex h-full w-full overflow-hidden bg-[#09090B]')}
         data-chat-visible={showChat}
       >
-        <BackgroundRays />
         <ClientOnly>{() => <Menu />}</ClientOnly>
-        <div ref={scrollRef} className="flex flex-col lg:flex-row overflow-y-auto w-full h-full ">
+        <div ref={scrollRef} className="flex flex-col lg:flex-row overflow-y-auto w-full h-full">
           <div className={classNames(styles.Chat, 'flex flex-col flex-grow lg:min-w-[var(--chat-min-width)] h-full')}>
             {!chatStarted && (
               <div id="intro" className="mt-[10vh] max-w-chat mx-auto text-center px-4 lg:px-0">
@@ -536,7 +534,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                   'sticky bottom-2': chatStarted,
                 })}
               >
-                <div className="bg-bolt-elements-background-depth-2">
+                <div className="bg-[#09090B]">
                   {actionAlert && (
                     <ChatAlert
                       alert={actionAlert}
@@ -551,7 +549,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                 {progressAnnotations && <ProgressCompilation data={progressAnnotations} />}
                 <div
                   className={classNames(
-                    'relative shadow-lg border border-[#2A2F3A]/60 backdrop-blur-lg rounded-xl bg-black/60',
+                    'relative shadow-lg border border-zinc-800/60 backdrop-blur-lg rounded-xl bg-[#111113]',
                     'transition-all duration-300 hover:border-blue-500/30 hover:shadow-blue-500/5',
                   )}
                 >
@@ -562,7 +560,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                           <img
                             src={image}
                             alt={`Preview ${index + 1}`}
-                            className="w-24 h-24 object-cover rounded-lg border border-zinc-700"
+                            className="w-24 h-24 object-cover rounded-lg border border-zinc-800"
                           />
                           <button
                             onClick={() => {
@@ -574,7 +572,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                               newFiles.splice(index, 1);
                               setUploadedFiles?.(newFiles);
                             }}
-                            className="absolute top-1 right-1 p-1 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="absolute top-1 right-1 p-1 bg-[#09090B]/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                           >
                             <X size={14} className="text-white" />
                           </button>
@@ -675,7 +673,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                     <div className="flex gap-2 items-center">
                       <IconButton
                         title="Upload file"
-                        className="p-2 rounded-lg bg-black/50 border border-[#2A2F3A]/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200"
+                        className="p-2 rounded-lg bg-[#111113] border border-zinc-800/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200"
                         onClick={() => handleFileUpload()}
                       >
                         <div className="i-ph:paperclip text-xl"></div>
@@ -684,7 +682,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                         title="Enhance prompt"
                         disabled={input.length === 0 || enhancingPrompt}
                         className={classNames(
-                          'p-2 rounded-lg bg-black/50 border border-[#2A2F3A]/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
+                          'p-2 rounded-lg bg-[#111113] border border-zinc-800/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
                           enhancingPrompt ? 'opacity-100' : '',
                         )}
                         onClick={() => {
@@ -711,7 +709,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                         <IconButton
                           title="Model Settings"
                           className={classNames(
-                            'p-2 rounded-lg bg-black/50 border border-[#2A2F3A]/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
+                            'p-2 rounded-lg bg-[#111113] border border-zinc-800/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
                             {
                               'bg-blue-500/10 text-blue-400 border-blue-500/30': isModelSettingsCollapsed,
                             },
@@ -726,7 +724,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                         <IconButton
                           title="Configure API"
                           className={classNames(
-                            'p-2 rounded-lg bg-black/50 border border-[#2A2F3A]/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
+                            'p-2 rounded-lg bg-[#111113] border border-zinc-800/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
                           )}
                           onClick={() => setIsModalOpen(true)}
                           disabled={!providerList || providerList.length === 0}
@@ -737,8 +735,8 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                     </div>
                     {input.length > 3 ? (
                       <div className="text-xs text-gray-500">
-                        Use <kbd className="px-1.5 py-0.5 rounded bg-black/50 border border-[#2A2F3A]/50">Shift</kbd> +{' '}
-                        <kbd className="px-1.5 py-0.5 rounded bg-black/50 border border-[#2A2F3A]/50">Return</kbd> for
+                        Use <kbd className="px-1.5 py-0.5 rounded bg-[#111113] border border-zinc-800/50">Shift</kbd> +{' '}
+                        <kbd className="px-1.5 py-0.5 rounded bg-[#111113] border border-zinc-800/50">Return</kbd> for
                         new line
                       </div>
                     ) : null}
@@ -752,7 +750,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                   <div className="mb-8">
                     <ExamplePrompts sendMessage={handleExamplePromptClick} />
                   </div>
-                  <div className="px-4 py-6 rounded-lg bg-black/20">
+                  <div className="px-4 py-6 rounded-lg bg-[#09090B]/20">
                     <TemplateCards importChat={importChat} />
                   </div>
                 </>
