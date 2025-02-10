@@ -30,13 +30,7 @@ import { Preview } from './Preview';
 import { ComponentsModal } from './ComponentsModal';
 import useViewport from '~/lib/hooks';
 import Cookies from 'js-cookie';
-
-const SidebarButton = ({ icon, label, onClick, disabled }: { icon: string; label: string; onClick: () => void; disabled?: boolean }) => (
-  <button onClick={onClick} disabled={disabled} className="w-full py-2 flex flex-col items-center hover:bg-gray-200 focus:outline-none">
-    <div className={icon} />
-    <span className="mt-1 text-xs font-semibold">{label}</span>
-  </button>
-);
+import { WorkbenchSidebar } from './WorkbenchSidebar';
 
 // Interface de props do Workbench
 interface WorkspaceProps {
@@ -181,77 +175,6 @@ export const Workbench = memo(({ chatStarted, isStreaming, onSendMessage }: Work
               <div className="flex items-center px-3 py-2 border-b border-bolt-elements-borderColor">
                 <Slider selected={selectedView} options={sliderOptions} setSelected={setSelectedView} />
                 <div className="ml-auto" />
-                {selectedView === 'code' && (
-                  <div className="flex overflow-y-auto">
-                    <PanelHeaderButton className="mr-1 text-sm" onClick={() => setComponentsModalOpen(true)}>
-                      <div className="i-ph:puzzle-piece-duotone" />
-                      Components
-                    </PanelHeaderButton>
-                    <PanelHeaderButton
-                      className="mr-1 text-sm"
-                      onClick={() => {
-                        workbenchStore.downloadZip();
-                      }}
-                    >
-                      <div className="i-ph:code" />
-                      Download Code
-                    </PanelHeaderButton>
-                    <PanelHeaderButton className="mr-1 text-sm" onClick={handleSyncFiles} disabled={isSyncing}>
-                      {isSyncing ? <div className="i-ph:spinner" /> : <div className="i-ph:cloud-arrow-down" />}
-                      {isSyncing ? 'Syncing...' : 'Sync Files'}
-                    </PanelHeaderButton>
-                    <PanelHeaderButton
-                      className="mr-1 text-sm"
-                      onClick={() => {
-                        workbenchStore.toggleTerminal(!workbenchStore.showTerminal.get());
-                      }}
-                    >
-                      <div className="i-ph:terminal" />
-                      Toggle Terminal
-                    </PanelHeaderButton>
-                    <PanelHeaderButton
-                      className={`mr-1 text-sm ${supabaseStore.isConnected.get() ? 'text-green-400' : ''}`}
-                      onClick={() => setSupabaseModalOpen(true)}
-                    >
-                      <div className="i-ph:database" />
-                      {supabaseStore.isConnected.get() ? 'Connected to Supabase' : 'Connect Supabase'}
-                    </PanelHeaderButton>
-                    <PanelHeaderButton
-                      className="mr-1 text-sm"
-                      onClick={() => {
-                        const repoName = prompt(
-                          'Please enter a name for your new GitHub repository:',
-                          'bolt-generated-project',
-                        );
-
-                        if (!repoName) {
-                          alert('Repository name is required. Push to GitHub cancelled.');
-                          return;
-                        }
-
-                        const githubUsername = Cookies.get('githubUsername');
-                        const githubToken = Cookies.get('githubToken');
-
-                        if (!githubUsername || !githubToken) {
-                          const usernameInput = prompt('Please enter your GitHub username:');
-                          const tokenInput = prompt('Please enter your GitHub personal access token:');
-
-                          if (!usernameInput || !tokenInput) {
-                            alert('GitHub username and token are required. Push to GitHub cancelled.');
-                            return;
-                          }
-
-                          workbenchStore.pushToGitHub(repoName, usernameInput, tokenInput);
-                        } else {
-                          workbenchStore.pushToGitHub(repoName, githubUsername, githubToken);
-                        }
-                      }}
-                    >
-                      <div className="i-ph:github-logo" />
-                      Push to GitHub
-                    </PanelHeaderButton>
-                  </div>
-                )}
                 <IconButton
                   icon="i-ph:x-circle"
                   className="-mr-1"
@@ -266,18 +189,28 @@ export const Workbench = memo(({ chatStarted, isStreaming, onSendMessage }: Work
                   initial={{ x: selectedView === 'code' ? 0 : '-100%' }}
                   animate={{ x: selectedView === 'code' ? 0 : '-100%' }}
                 >
-                  <EditorPanel
-                    editorDocument={currentDocument}
-                    isStreaming={isStreaming}
-                    selectedFile={selectedFile}
-                    files={files}
-                    unsavedFiles={unsavedFiles}
-                    onFileSelect={onFileSelect}
-                    onEditorScroll={onEditorScroll}
-                    onEditorChange={onEditorChange}
-                    onFileSave={onFileSave}
-                    onFileReset={onFileReset}
-                  />
+                  <div className="absolute inset-0 flex">
+                    {selectedView === 'code' && (
+                      <WorkbenchSidebar 
+                        isSyncing={isSyncing}
+                        onSyncFiles={handleSyncFiles}
+                        onOpenComponents={() => setComponentsModalOpen(true)}
+                        onOpenSupabase={() => setSupabaseModalOpen(true)}
+                      />
+                    )}
+                    <EditorPanel
+                      editorDocument={currentDocument}
+                      isStreaming={isStreaming}
+                      selectedFile={selectedFile}
+                      files={files}
+                      unsavedFiles={unsavedFiles}
+                      onFileSelect={onFileSelect}
+                      onEditorScroll={onEditorScroll}
+                      onEditorChange={onEditorChange}
+                      onFileSave={onFileSave}
+                      onFileReset={onFileReset}
+                    />
+                  </div>
                 </View>
                 <View
                   initial={{ x: selectedView === 'preview' ? 0 : '100%' }}
