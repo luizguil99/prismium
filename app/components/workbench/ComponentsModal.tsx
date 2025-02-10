@@ -1,6 +1,6 @@
 import { memo, useState, useEffect } from 'react';
 import { classNames } from '~/utils/classNames';
-import { Search, ChevronDown, LayoutTemplate, Component as ComponentIcon, Copy, Check } from 'lucide-react';
+import { Search, ChevronDown, LayoutTemplate, Component as ComponentIcon, Copy, Check, Wand2 } from 'lucide-react';
 import { categories, type Component } from './components-list';
 import { useChat } from 'ai/react';
 import { toast } from 'react-toastify';
@@ -423,7 +423,7 @@ ${finalPrompt}
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" />
           <div className="relative min-h-screen flex items-center justify-center p-4">
             <div
-              className="relative bg-bolt-elements-background-depth-2 rounded-lg w-full max-w-lg shadow-xl"
+              className="relative bg-bolt-elements-background-depth-2 rounded-lg w-full max-w-lg shadow-xl border border-white/10"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="p-6 space-y-4">
@@ -472,8 +472,10 @@ ${finalPrompt}
                       'bg-[#548BE4] hover:bg-[#4A7CCF]',
                       'text-white',
                       'transition-colors duration-200',
+                      'flex items-center gap-2'
                     )}
                   >
+                    <Wand2 className="w-4 h-4" />
                     Generate
                   </button>
                 </div>
