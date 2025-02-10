@@ -236,7 +236,7 @@ const ActionList = memo(({ actions }: ActionListProps) => {
                   <div className={classNames('text-lg', getIconColor(action.status))}>
                     {status === 'running' ? (
                       <Loader className="w-4 h-4 animate-spin text-gray-500" />
-                    ) : status === 'complete' ? (
+                    ) : status === 'complete' || (type === 'start' && status !== 'failed') ? (
                       <CheckCircle2 className="w-4 h-4 text-green-500 " />
                     ) : status === 'failed' || status === 'aborted' ? (
                       <XCircle className="w-4 h-4 text-red-500" />
@@ -244,8 +244,8 @@ const ActionList = memo(({ actions }: ActionListProps) => {
                   </div>
                 </div>
                 {type === 'start' && (
-                  <div className="mt-4 pl-6 ">
-                    <ShellCodeBlock  code={content} />
+                  <div className="mt-4 pl-6">
+                    <ShellCodeBlock code={content} />
                   </div>
                 )}
               </motion.li>
@@ -275,7 +275,7 @@ function getIconColor(status: ActionState['status']) {
       return 'text-bolt-elements-icon-error';
     }
     default: {
-      return undefined;
+      return 'text-bolt-elements-icon-success';
     }
   }
 }
