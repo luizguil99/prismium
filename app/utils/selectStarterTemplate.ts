@@ -57,6 +57,7 @@ Instructions:
 3. Follow the exact XML format
 4. Consider both technical requirements and tags
 5. If no perfect match exists, recommend the closest option
+6.For html, css and js projects, always recommend the blank template
 MOST IMPORTANT: YOU DONT HAVE TIME TO THINK JUST START RESPONDING BASED ON HUNCH
 
 Important: Provide only the selection tags in your response, no additional text.

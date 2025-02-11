@@ -74,6 +74,7 @@
     "@radix-ui/react-tooltip": "^1.1.4",
     "@remix-run/cloudflare": "^2.15.0",
     "@remix-run/cloudflare-pages": "^2.15.0",
+    "@remix-run/node": "^2.15.3",
     "@remix-run/react": "^2.15.0",
     "@shadcn/ui": "^0.0.4",
     "@types/react-syntax-highlighter": "^15.5.13",
