@@ -8,17 +8,39 @@ import { db, chatId } from '~/lib/persistence/useChatHistory';
 import { forkChat } from '~/lib/persistence/db';
 import { toast } from 'react-toastify';
 import WithTooltip from '~/components/ui/Tooltip';
+import { CircleDashed } from 'lucide-react';
+import type { ProgressAnnotation } from '~/types/context';
+import ProgressCompilation from './ProgressCompilation';
 
 interface MessagesProps {
   id?: string;
   className?: string;
   isStreaming?: boolean;
   messages?: Message[];
+  data?: any[];
 }
 
 export const Messages = React.forwardRef<HTMLDivElement, MessagesProps>((props: MessagesProps, ref) => {
-  const { id, isStreaming = false, messages = [] } = props;
+  const { id, isStreaming = false, messages = [], data = [] } = props;
   const location = useLocation();
+  const [currentProgress, setCurrentProgress] = React.useState<ProgressAnnotation | null>(null);
+  const [progressList, setProgressList] = React.useState<ProgressAnnotation[]>([]);
+
+  React.useEffect(() => {
+    if (data) {
+      const newProgressList = data.filter(
+        (x) => typeof x === 'object' && x.type === 'progress',
+      ) as ProgressAnnotation[];
+      
+      setProgressList(newProgressList);
+      
+      if (newProgressList.length > 0) {
+        setCurrentProgress(newProgressList[newProgressList.length - 1]);
+      } else {
+        setCurrentProgress(null);
+      }
+    }
+  }, [data]);
 
   const handleRewind = (messageId: string) => {
     const searchParams = new URLSearchParams(location.search);
@@ -113,8 +135,11 @@ export const Messages = React.forwardRef<HTMLDivElement, MessagesProps>((props: 
           })
         : null}
       {isStreaming && (
-        <div className="flex justify-center w-full text-gray-400 p-4">
-          <div className="i-svg-spinners:3-dots-fade text-4xl"></div>
+        <div className="flex gap-4 w-full p-4 transition-colors duration-200 bg-[#09090B] animate-in slide-in-from-bottom-2">
+          <div className="flex items-center gap-4 text-sm text-zinc-100">
+            <CircleDashed className="w-4 h-4 animate-spin text-blue-500" />
+            <span className="text-zinc-400">{currentProgress?.message || 'Generating response...'}</span>
+          </div>
         </div>
       )}
     </div>

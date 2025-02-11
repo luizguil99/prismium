@@ -155,13 +155,10 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
     const [transcript, setTranscript] = useState('');
     const [isModelLoading, setIsModelLoading] = useState<string | undefined>('all');
-    const [progressAnnotations, setProgressAnnotations] = useState<ProgressAnnotation[]>([]);
+
     useEffect(() => {
       if (data) {
-        const progressList = data.filter(
-          (x) => typeof x === 'object' && (x as any).type === 'progress',
-        ) as ProgressAnnotation[];
-        setProgressAnnotations(progressList);
+        console.log(transcript);
       }
     }, [data]);
 
@@ -187,9 +184,6 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
 
       return providerSettings;
     }, []);
-    useEffect(() => {
-      console.log(transcript);
-    }, [transcript]);
 
     useEffect(() => {
       if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
@@ -531,6 +525,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                       className="flex flex-col w-full flex-1 max-w-chat pb-6 mx-auto z-1"
                       messages={messages}
                       isStreaming={isStreaming}
+                      data={data}
                     />
                   ) : null;
                 }}
@@ -552,7 +547,6 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                     />
                   )}
                 </div>
-                {progressAnnotations && <ProgressCompilation data={progressAnnotations} />}
                 <div
                   className={classNames(
                     'relative shadow-lg border border-zinc-800/60 backdrop-blur-lg rounded-xl bg-[#111113]',
