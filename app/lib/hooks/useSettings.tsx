@@ -36,8 +36,6 @@ export function useSettings() {
   const [activeProviders, setActiveProviders] = useState<ProviderInfo[]>([]);
   const contextOptimizationEnabled = useStore(enableContextOptimizationStore);
 
-  console.log('contextOptimizationEnabled:', contextOptimizationEnabled);
-
   // Function to check if we're on stable version
   const checkIsStableVersion = async () => {
     try {
@@ -131,10 +129,11 @@ export function useSettings() {
       autoSelectStarterTemplate.set(autoSelectTemplate === 'true');
     }
 
-    // Sempre usar o valor do .env para context optimization
-    const envValue = import.meta.env.VITE_CONTEXT_OPTIMIZATION === 'true';
-    enableContextOptimizationStore.set(envValue);
-    Cookies.set('contextOptimizationEnabled', String(envValue));
+    const savedContextOptimizationEnabled = Cookies.get('contextOptimizationEnabled');
+
+    if (savedContextOptimizationEnabled) {
+      enableContextOptimizationStore.set(savedContextOptimizationEnabled === 'true');
+    }
   }, []);
 
   // writing values to cookies on change
@@ -203,12 +202,9 @@ export function useSettings() {
   }, []);
 
   const enableContextOptimization = useCallback((enabled: boolean) => {
-    const envValue = import.meta.env.VITE_CONTEXT_OPTIMIZATION === 'true';
-    // Se tentar desabilitar, volta para o valor do .env
-    const finalValue = enabled ? enabled : envValue;
-    enableContextOptimizationStore.set(finalValue);
-    logStore.logSystem(`Context optimization ${finalValue ? 'enabled' : 'disabled'}`);
-    Cookies.set('contextOptimizationEnabled', String(finalValue));
+    enableContextOptimizationStore.set(enabled);
+    logStore.logSystem(`Context optimization ${enabled ? 'enabled' : 'disabled'}`);
+    Cookies.set('contextOptimizationEnabled', String(enabled));
   }, []);
 
   return {
