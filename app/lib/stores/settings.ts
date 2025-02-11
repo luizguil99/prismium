@@ -57,4 +57,7 @@ export const latestBranchStore = atom(false);
 export const autoSelectStarterTemplate = atom(
   import.meta.env.VITE_AUTO_SELECT_TEMPLATE === 'true'
 );
-export const enableContextOptimizationStore = atom(false);
+
+const envContextOptimization = import.meta.env.VITE_CONTEXT_OPTIMIZATION === 'true';
+console.log('VITE_CONTEXT_OPTIMIZATION value:', envContextOptimization);
+export const enableContextOptimizationStore = atom(envContextOptimization);
