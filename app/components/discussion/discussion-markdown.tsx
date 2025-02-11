@@ -75,7 +75,7 @@ const TITLE_EMOJIS: Record<string, string> = {
   
   // Domínios
   'ai': '🤖', 'ml': '🧠', 'data science': '📊', 'blockchain': '⛓️',
-  'iot': '🔌', 'cloud': '☁️', 'devops': '🔄', 'security': '🔒'
+  'iot': '🔌', 'devops': '🔄'
 };
 
 const getEmojiForTitle = (title: string): string => {
