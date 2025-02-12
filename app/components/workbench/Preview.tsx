@@ -4,6 +4,7 @@ import { IconButton } from '~/components/ui/IconButton';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { PortDropdown } from './PortDropdown';
 import { ScreenshotSelector } from './ScreenshotSelector';
+import styles from './Preview.module.css';
 
 type ResizeSide = 'left' | 'right' | null;
 interface WindowSize {
@@ -442,7 +443,42 @@ export const Preview = memo(() => {
               />
             </>
           ) : (
-            <div className="flex w-full h-full justify-center items-center bg-white">No preview available</div>
+            <div className="flex flex-col w-full h-full justify-center items-center bg-[#09090B] gap-6">
+              {/* Ícone de mágica pulsante */}
+              <div className="animate-pulse">
+                <div className="i-ph:sparkle-fill text-5xl text-accent-500" />
+              </div>
+              
+              {/* Texto principal */}
+              <div className="flex flex-col items-center gap-2">
+                <div className="text-gray-200 text-lg font-medium">
+                  Start prompting to see the magic
+                </div>
+                <div className="text-gray-400 text-sm">
+                  Spinning up preview...
+                </div>
+              </div>
+
+              {/* Lista de features */}
+              <div className="flex flex-col gap-3 mt-2 text-gray-500 text-sm max-w-[300px]">
+                <div className={`flex items-center gap-2 ${styles.featureItem}`}>
+                  <div className="i-ph:image text-lg" />
+                  <span>Upload images as a reference</span>
+                </div>
+                <div className={`flex items-center gap-2 ${styles.featureItem}`}>
+                  <div className="i-ph:monitor-play text-lg" />
+                  <span>Instantly preview your changes</span>
+                </div>
+                <div className={`flex items-center gap-2 ${styles.featureItem}`}>
+                  <div className="i-ph:graduation-cap text-lg" />
+                  <span>Set custom knowledge for every edit</span>
+                </div>
+                <div className={`flex items-center gap-2 ${styles.featureItem}`}>
+                  <div className="i-ph:database text-lg" />
+                  <span>Connect Supabase for backend</span>
+                </div>
+              </div>
+            </div>
           )}
 
           {isDeviceModeOn && (
