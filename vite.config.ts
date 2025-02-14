@@ -23,6 +23,9 @@ export default defineConfig((config) => {
     define: {
       __COMMIT_HASH: JSON.stringify(getGitHash()),
       __APP_VERSION: JSON.stringify(process.env.npm_package_version),
+      'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(process.env.SUPABASE_URL),
+      'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(process.env.SUPABASE_ANON_KEY),
+      'import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY': JSON.stringify(process.env.SUPABASE_SERVICE_ROLE_KEY),
       // 'process.env': JSON.stringify(process.env)
     },
     build: {
@@ -67,6 +70,9 @@ export default defineConfig((config) => {
       'GROQ_API_KEY',
       'AWS_BEDROCK_CONFIG',
       'HYPERBOLIC_API_KEY',
+      'SUPABASE_URL',
+      'SUPABASE_ANON_KEY',
+      'SUPABASE_SERVICE_ROLE_KEY',
     ],
     css: {
       preprocessorOptions: {

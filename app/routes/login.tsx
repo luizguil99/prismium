@@ -2,36 +2,27 @@ import { useState } from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
 import * as Label from '@radix-ui/react-label';
 import { useNavigate } from '@remix-run/react';
-import { getOrCreateClient } from '~/components/supabase/client';
+import { useSupabaseAuth } from '~/components/supabase';
 import { toast } from 'react-toastify';
 
 export default function Login() {
   const navigate = useNavigate();
+  const { signIn, signUp, loading } = useSupabaseAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
 
-    try {
-      const supabase = getOrCreateClient();
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) throw error;
-
+    const { error } = await signIn(email, password);
+    
+    if (error) {
+      toast.error(error.message || 'Error during login');
+    } else {
       toast.success('Login successful!');
       navigate('/');
-    } catch (error: any) {
-      toast.error(error.message || 'Error during login');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -42,27 +33,12 @@ export default function Login() {
       return;
     }
 
-    setLoading(true);
-
-    try {
-      const supabase = getOrCreateClient();
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            name,
-          },
-        },
-      });
-
-      if (error) throw error;
-
-      toast.success('Check your email to confirm your account!');
-    } catch (error: any) {
+    const { error } = await signUp(email, password, { name });
+    
+    if (error) {
       toast.error(error.message || 'Error during sign up');
-    } finally {
-      setLoading(false);
+    } else {
+      toast.success('Check your email to confirm your account!');
     }
   };
 
