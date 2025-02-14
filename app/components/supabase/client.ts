@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createBrowserClient as createSupabaseBrowserClient } from '@supabase/auth-helpers-remix';
 
 const supabaseUrl = import.meta.env.SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.SUPABASE_ANON_KEY;
@@ -9,23 +9,30 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 // Cliente Supabase singleton
-let supabaseClient: ReturnType<typeof createClient> | null = null;
+let supabaseClient: ReturnType<typeof createSupabaseBrowserClient> | null = null;
 
 // Função para obter ou criar o cliente Supabase
 export const getOrCreateClient = () => {
   if (!supabaseClient) {
+    console.log('🔧 Criando novo cliente Supabase...');
     try {
-      supabaseClient = createClient(supabaseUrl as string, supabaseAnonKey as string, {
-        auth: {
-          autoRefreshToken: true,
-          persistSession: true,
-          detectSessionInUrl: true
-        }
-      });
+      supabaseClient = createSupabaseBrowserClient(
+        supabaseUrl,
+        supabaseAnonKey,
+      );
     } catch (error) {
       console.error('Erro ao criar cliente Supabase:', error);
       throw error;
     }
   }
   return supabaseClient;
+};
+
+// Função específica para o cliente (browser)
+export const createBrowserClient = () => {
+  console.log('🌐 Criando cliente Supabase para o browser...');
+  return createSupabaseBrowserClient(
+    supabaseUrl,
+    supabaseAnonKey,
+  );
 };

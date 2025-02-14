@@ -4,6 +4,22 @@ import * as Label from '@radix-ui/react-label';
 import { useNavigate } from '@remix-run/react';
 import { useSupabaseAuth } from '~/components/supabase';
 import { toast } from 'react-toastify';
+import { redirect } from '@remix-run/cloudflare';
+import { getOrCreateClient } from '~/components/supabase/client';
+
+export const loader = async () => {
+  console.log('🔍 Login Route: Verificando sessão...');
+  const supabase = getOrCreateClient();
+  const { data: { session } } = await supabase.auth.getSession();
+
+  console.log('📝 Login Route: Sessão encontrada:', session ? 'Sim' : 'Não');
+  if (session?.user) {
+    console.log('🔄 Login Route: Usuário já logado, redirecionando para /', session.user.email);
+    return redirect('/');
+  }
+
+  return null;
+};
 
 export default function Login() {
   const navigate = useNavigate();
@@ -15,12 +31,15 @@ export default function Login() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('🔑 Tentando fazer login com email:', email);
 
-    const { error } = await signIn(email, password);
+    const { error, data } = await signIn(email, password);
     
     if (error) {
+      console.error('❌ Erro no login:', error.message);
       toast.error(error.message || 'Error during login');
     } else {
+      console.log('✅ Login bem sucedido! Dados:', data);
       toast.success('Login successful!');
       navigate('/');
     }
@@ -34,7 +53,7 @@ export default function Login() {
     }
 
     const { error } = await signUp(email, password, { name });
-    
+
     if (error) {
       toast.error(error.message || 'Error during sign up');
     } else {
