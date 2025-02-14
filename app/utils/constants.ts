@@ -150,4 +150,12 @@ export const STARTER_TEMPLATES: Template[] = [
     tags: ['angular', 'typescript', 'frontend', 'spa'],
     icon: 'i-bolt:angular',
   },
+  {
+    name: 'Spotify-Clone',
+    label: 'Spotify Clone with typescript',
+    description: 'A modern Spotify Clone with TypeScript support and best practices configuration',
+    githubRepo: 'luizguil99/spotify-ts',
+    tags: ['spotify', 'typescript', 'frontend', 'clone'],
+    icon: 'i-bolt:spotify',
+  },
 ];
