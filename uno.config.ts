@@ -102,6 +102,7 @@ export default defineConfig({
     ...Object.keys(customIconCollection[collectionName] || {}).map((x) => `i-bolt:${x}`),
     // Radix UI states
     'data-[state=active]',
+    'data-[state=inactive]',
     'data-[state=open]',
     'data-[state=closed]',
     'data-[state=on]',
@@ -120,8 +121,8 @@ export default defineConfig({
     kdb: 'bg-bolt-elements-code-background text-bolt-elements-code-text py-1 px-1.5 rounded-md',
     'max-w-chat': 'max-w-[var(--chat-max-width)]',
     // Radix UI shortcuts
-    'tabs-trigger-active': 'data-[state=active]:bg-white data-[state=active]:text-primary',
-    'tabs-content': 'data-[state=inactive]:hidden',
+    'tabs-trigger': 'relative px-3 py-2.5 text-sm font-medium text-zinc-400 outline-none transition-all rounded-md hover:text-white bg-[#111113] data-[state=active]:bg-white data-[state=active]:text-black',
+    'tabs-content': 'data-[state=inactive]:hidden outline-none',
   },
   rules: [
     /**

@@ -9,26 +9,26 @@ export default function Login() {
   const [confirmPassword, setConfirmPassword] = useState('');
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-[#09090B]">
       <div className="grid grid-cols-1 lg:grid-cols-2 h-screen">
         {/* Left Column - Form */}
-        <div className="flex items-center justify-center p-8 bg-white">
+        <div className="flex items-center justify-center p-8 bg-[#09090B]">
           <div className="w-full max-w-md space-y-6">
             <Tabs.Root defaultValue="login" className="w-full" orientation="horizontal">
               <Tabs.List 
                 aria-label="Manage your account" 
-                className="relative w-full mb-6 bg-gray-100 p-1 rounded-lg"
+                className="relative w-full mb-6 bg-[#09090B] p-1 rounded-lg border border-zinc-800/60"
               >
                 <div className="grid w-full grid-cols-2 gap-1">
                   <Tabs.Trigger 
                     value="login"
-                    className="relative px-3 py-2.5 text-sm font-medium text-gray-600 outline-none transition-all rounded-md data-[state=active]:bg-white data-[state=active]:text-gray-900"
+                    className="tabs-trigger"
                   >
                     <span className="relative z-10">Login</span>
                   </Tabs.Trigger>
                   <Tabs.Trigger 
                     value="register"
-                    className="relative px-3 py-2.5 text-sm font-medium text-gray-600 outline-none transition-all rounded-md data-[state=active]:bg-white data-[state=active]:text-gray-900"
+                    className="tabs-trigger"
                   >
                     <span className="relative z-10">Sign Up</span>
                   </Tabs.Trigger>
@@ -38,17 +38,17 @@ export default function Login() {
               {/* Login Form */}
               <Tabs.Content 
                 value="login" 
-                className="outline-none rounded-lg data-[state=inactive]:hidden"
+                className="tabs-content rounded-lg"
               >
                 <div className="space-y-2 text-center mb-8">
-                  <h1 className="text-2xl font-bold text-gray-900">Welcome back</h1>
-                  <p className="text-gray-600">
+                  <h1 className="text-2xl font-bold text-white">Welcome back</h1>
+                  <p className="text-zinc-400">
                     Enter your credentials to access your account
                   </p>
                 </div>
                 <form className="space-y-4">
                   <div className="space-y-2">
-                    <Label.Root htmlFor="login-email" className="text-sm font-medium text-gray-700">
+                    <Label.Root htmlFor="login-email" className="text-sm font-medium text-zinc-400">
                       Email
                     </Label.Root>
                     <input
@@ -56,13 +56,13 @@ export default function Login() {
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="mt-1 block w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
+                      className="mt-1 block w-full px-4 py-3 bg-[#111113] border border-zinc-800/60 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-700 focus:ring-1 focus:ring-zinc-700 transition-all"
                       placeholder="your@email.com"
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label.Root htmlFor="login-password" className="text-sm font-medium text-gray-700">
+                    <Label.Root htmlFor="login-password" className="text-sm font-medium text-zinc-400">
                       Password
                     </Label.Root>
                     <input
@@ -70,19 +70,19 @@ export default function Login() {
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="mt-1 block w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
+                      className="mt-1 block w-full px-4 py-3 bg-[#111113] border border-zinc-800/60 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-700 focus:ring-1 focus:ring-zinc-700 transition-all"
                       placeholder="••••••••"
                       required
                     />
                   </div>
                   <button
                     type="submit"
-                    className="w-full flex justify-center py-3 px-4 rounded-lg text-sm font-medium text-white bg-black hover:bg-gray-900 transition-all duration-200"
+                    className="w-full flex justify-center py-3 px-4 rounded-lg text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 transform hover:scale-[1.02]"
                   >
                     Sign In
                   </button>
                   <div className="text-center">
-                    <a href="#" className="text-sm text-gray-600 hover:text-gray-900 transition-colors duration-200">
+                    <a href="#" className="text-sm text-zinc-400 hover:text-white transition-colors duration-200">
                       Forgot your password?
                     </a>
                   </div>
@@ -92,17 +92,17 @@ export default function Login() {
               {/* Registration Form */}
               <Tabs.Content 
                 value="register" 
-                className="outline-none rounded-lg data-[state=inactive]:hidden"
+                className="tabs-content rounded-lg"
               >
                 <div className="space-y-2 text-center mb-8">
-                  <h1 className="text-2xl font-bold text-gray-900">Create your account</h1>
-                  <p className="text-gray-600">
+                  <h1 className="text-2xl font-bold text-white">Create your account</h1>
+                  <p className="text-zinc-400">
                     Fill in the fields below to get started
                   </p>
                 </div>
                 <form className="space-y-4">
                   <div className="space-y-2">
-                    <Label.Root htmlFor="register-name" className="text-sm font-medium text-gray-700">
+                    <Label.Root htmlFor="register-name" className="text-sm font-medium text-zinc-400">
                       Full name
                     </Label.Root>
                     <input
@@ -110,13 +110,13 @@ export default function Login() {
                       type="text"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="mt-1 block w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
+                      className="mt-1 block w-full px-4 py-3 bg-[#111113] border border-zinc-800/60 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-700 focus:ring-1 focus:ring-zinc-700 transition-all"
                       placeholder="Your name"
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label.Root htmlFor="register-email" className="text-sm font-medium text-gray-700">
+                    <Label.Root htmlFor="register-email" className="text-sm font-medium text-zinc-400">
                       Email
                     </Label.Root>
                     <input
@@ -124,13 +124,13 @@ export default function Login() {
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="mt-1 block w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
+                      className="mt-1 block w-full px-4 py-3 bg-[#111113] border border-zinc-800/60 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-700 focus:ring-1 focus:ring-zinc-700 transition-all"
                       placeholder="your@email.com"
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label.Root htmlFor="register-password" className="text-sm font-medium text-gray-700">
+                    <Label.Root htmlFor="register-password" className="text-sm font-medium text-zinc-400">
                       Password
                     </Label.Root>
                     <input
@@ -138,14 +138,14 @@ export default function Login() {
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="mt-1 block w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
+                      className="mt-1 block w-full px-4 py-3 bg-[#111113] border border-zinc-800/60 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-700 focus:ring-1 focus:ring-zinc-700 transition-all"
                       placeholder="••••••••"
                       required
                     />
                   </div>
                   <button
                     type="submit"
-                    className="w-full flex justify-center py-3 px-4 rounded-lg text-sm font-medium text-white bg-black hover:bg-gray-900 transition-all duration-200"
+                    className="w-full flex justify-center py-3 px-4 rounded-lg text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 transform hover:scale-[1.02]"
                   >
                     Create Account
                   </button>
@@ -156,14 +156,14 @@ export default function Login() {
         </div>
 
         {/* Right Column - Hero */}
-        <div className="hidden lg:flex flex-col justify-between p-16 bg-gray-100 relative">
+        <div className="hidden lg:flex flex-col justify-between p-16 bg-gradient-to-br from-blue-500/20 via-purple-500/20 to-blue-500/20 relative">
           <div></div>
           <div className="self-end">
             <blockquote className="space-y-2 text-right">
-              <p className="text-lg text-gray-600">
+              <p className="text-lg text-white/90">
                 "Turn your ideas into reality with our platform."
               </p>
-              <footer className="text-sm text-gray-500">
+              <footer className="text-sm text-white/70">
                 - Development Team
               </footer>
             </blockquote>
