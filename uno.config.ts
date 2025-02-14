@@ -98,12 +98,30 @@ const COLOR_PRIMITIVES = {
 };
 
 export default defineConfig({
-  safelist: [...Object.keys(customIconCollection[collectionName] || {}).map((x) => `i-bolt:${x}`)],
+  safelist: [
+    ...Object.keys(customIconCollection[collectionName] || {}).map((x) => `i-bolt:${x}`),
+    // Radix UI states
+    'data-[state=active]',
+    'data-[state=open]',
+    'data-[state=closed]',
+    'data-[state=on]',
+    'data-[state=off]',
+    'data-[state=checked]',
+    'data-[state=unchecked]',
+    'data-[state=indeterminate]',
+    'data-[state=disabled]',
+    'data-[state=loading]',
+    'data-[state=selected]',
+    'data-[state=highlighted]',
+  ],
   shortcuts: {
     'bolt-ease-cubic-bezier': 'ease-[cubic-bezier(0.4,0,0.2,1)]',
     'transition-theme': 'transition-[background-color,border-color,color] duration-150 bolt-ease-cubic-bezier',
     kdb: 'bg-bolt-elements-code-background text-bolt-elements-code-text py-1 px-1.5 rounded-md',
     'max-w-chat': 'max-w-[var(--chat-max-width)]',
+    // Radix UI shortcuts
+    'tabs-trigger-active': 'data-[state=active]:bg-white data-[state=active]:text-primary',
+    'tabs-content': 'data-[state=inactive]:hidden',
   },
   rules: [
     /**
