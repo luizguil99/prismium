@@ -78,6 +78,7 @@
     "@remix-run/node": "^2.15.3",
     "@remix-run/react": "^2.15.0",
     "@shadcn/ui": "^0.0.4",
+    "@supabase/supabase-js": "^2.48.1",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@uiw/codemirror-theme-dracula": "^4.23.7",
     "@uiw/codemirror-theme-material": "^4.23.7",
