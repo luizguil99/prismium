@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { supabaseStore } from '../stores/supabase';
+import { supabaseStore } from '~/lib/stores/supabase';
 
 // Função para obter o cliente Supabase
 export const getSupabaseClient = () => {

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
 import * as Label from '@radix-ui/react-label';
 import { useNavigate } from '@remix-run/react';
-import { getOrCreateClient } from '~/lib/supabase/client';
+import { getOrCreateClient } from '~/components/supabase/client';
 import { toast } from 'react-toastify';
 
 export default function Login() {
