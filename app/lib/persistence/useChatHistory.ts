@@ -4,7 +4,8 @@ import { atom } from 'nanostores';
 import type { Message } from 'ai';
 import { toast } from 'react-toastify';
 import { workbenchStore } from '~/lib/stores/workbench';
-import { logStore } from '~/lib/stores/logs'; // Import logStore
+import { logStore } from '~/lib/stores/logs';
+import { getOrCreateClient } from '~/components/supabase/client';
 import {
   getMessages,
   getNextId,
@@ -25,10 +26,29 @@ export interface ChatHistoryItem {
 
 const persistenceEnabled = !import.meta.env.VITE_DISABLE_PERSISTENCE;
 
+// Tenta inicializar o IndexedDB primeiro
 export const db = persistenceEnabled ? await openDatabase() : undefined;
+
+// Tenta inicializar o Supabase como fallback
+let supabase: any;
+try {
+  if (!db && persistenceEnabled) {
+    console.log('📦 IndexedDB não disponível, tentando Supabase...');
+    supabase = getOrCreateClient();
+    console.log('✅ Supabase inicializado com sucesso');
+  }
+} catch (error) {
+  console.error('❌ Erro ao inicializar Supabase:', error);
+  supabase = undefined;
+}
 
 export const chatId = atom<string | undefined>(undefined);
 export const description = atom<string | undefined>(undefined);
+
+function isValidUUID(id: string) {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(id);
+}
 
 export function useChatHistory() {
   const navigate = useNavigate();
@@ -40,7 +60,7 @@ export function useChatHistory() {
   const [urlId, setUrlId] = useState<string | undefined>();
 
   useEffect(() => {
-    if (!db) {
+    if (!db && !supabase) {
       setReady(true);
 
       if (persistenceEnabled) {
@@ -53,28 +73,53 @@ export function useChatHistory() {
     }
 
     if (mixedId) {
-      getMessages(db, mixedId)
-        .then((storedMessages) => {
-          if (storedMessages && storedMessages.messages.length > 0) {
+      const loadChat = async () => {
+        try {
+          const storage = db || supabase;
+          
+          // Usa a função getMessages que já implementa a lógica de fallback
+          const chat = await getMessages(storage, mixedId);
+          
+          if (chat) {
             const rewindId = searchParams.get('rewindTo');
             const filteredMessages = rewindId
-              ? storedMessages.messages.slice(0, storedMessages.messages.findIndex((m) => m.id === rewindId) + 1)
-              : storedMessages.messages;
+              ? chat.messages.slice(0, chat.messages.findIndex((m) => m.id === rewindId) + 1)
+              : chat.messages;
 
             setInitialMessages(filteredMessages);
-            setUrlId(storedMessages.urlId);
-            description.set(storedMessages.description);
-            chatId.set(storedMessages.id);
-          } else {
-            navigate('/', { replace: true });
+            setUrlId(chat.urlId);
+            description.set(chat.description);
+            chatId.set(chat.id);
+            setReady(true);
+            return;
           }
 
+          // Se não encontrou, cria novo
+          const newId = await getNextId(storage);
+          chatId.set(newId);
+          const newUrlId = await getUrlId(storage, mixedId);
+          setUrlId(newUrlId);
           setReady(true);
-        })
-        .catch((error) => {
-          logStore.logError('Failed to load chat messages', error);
-          toast.error(error.message);
-        });
+
+        } catch (error) {
+          console.error('Erro ao carregar chat:', error);
+          logStore.logError('Failed to load chat', error);
+          
+          let errorMessage = 'Erro ao carregar chat';
+          if (error instanceof Error) {
+            errorMessage = error.message;
+          } else if (typeof error === 'object' && error !== null && 'message' in error) {
+            errorMessage = (error as { message: string }).message;
+          }
+          
+          toast.error(errorMessage);
+          setReady(true);
+        }
+      };
+
+      loadChat();
+    } else {
+      setReady(true);
     }
   }, []);
 
@@ -82,17 +127,17 @@ export function useChatHistory() {
     ready: !mixedId || ready,
     initialMessages,
     storeMessageHistory: async (messages: Message[]) => {
-      if (!db || messages.length === 0) {
+      const storage = db || supabase;
+      if (!storage || messages.length === 0) {
         return;
       }
 
       const { firstArtifact } = workbenchStore;
 
       if (!urlId && firstArtifact?.id) {
-        const urlId = await getUrlId(db, firstArtifact.id);
-
-        navigateChat(urlId);
-        setUrlId(urlId);
+        const nextUrlId = await getUrlId(storage, firstArtifact.id);
+        navigateChat(nextUrlId);
+        setUrlId(nextUrlId);
       }
 
       if (!description.get() && firstArtifact?.title) {
@@ -100,8 +145,7 @@ export function useChatHistory() {
       }
 
       if (initialMessages.length === 0 && !chatId.get()) {
-        const nextId = await getNextId(db);
-
+        const nextId = await getNextId(storage);
         chatId.set(nextId);
 
         if (!urlId) {
@@ -109,45 +153,48 @@ export function useChatHistory() {
         }
       }
 
-      await setMessages(db, chatId.get() as string, messages, urlId, description.get());
+      await setMessages(storage, chatId.get() as string, messages, urlId, description.get());
     },
     duplicateCurrentChat: async (listItemId: string) => {
-      if (!db || (!mixedId && !listItemId)) {
+      const storage = db || supabase;
+      if (!storage || (!mixedId && !listItemId)) {
         return;
       }
 
       try {
-        const newId = await duplicateChat(db, mixedId || listItemId);
+        const newId = await duplicateChat(storage, mixedId || listItemId);
         navigate(`/chat/${newId}`);
-        toast.success('Chat duplicated successfully');
+        toast.success('Chat duplicado com sucesso');
       } catch (error) {
-        toast.error('Failed to duplicate chat');
-        console.log(error);
+        toast.error('Falha ao duplicar chat');
+        console.error(error);
       }
     },
     importChat: async (description: string, messages: Message[]) => {
-      if (!db) {
+      const storage = db || supabase;
+      if (!storage) {
         return;
       }
 
       try {
-        const newId = await createChatFromMessages(db, description, messages);
+        const newId = await createChatFromMessages(storage, description, messages);
         window.location.href = `/chat/${newId}`;
-        toast.success('Chat imported successfully');
+        toast.success('Chat importado com sucesso');
       } catch (error) {
         if (error instanceof Error) {
-          toast.error('Failed to import chat: ' + error.message);
+          toast.error('Falha ao importar chat: ' + error.message);
         } else {
-          toast.error('Failed to import chat');
+          toast.error('Falha ao importar chat');
         }
       }
     },
     exportChat: async (id = urlId) => {
-      if (!db || !id) {
+      const storage = db || supabase;
+      if (!storage || !id) {
         return;
       }
 
-      const chat = await getMessages(db, id);
+      const chat = await getMessages(storage, id);
       const chatData = {
         messages: chat.messages,
         description: chat.description,
@@ -168,13 +215,7 @@ export function useChatHistory() {
 }
 
 function navigateChat(nextId: string) {
-  /**
-   * FIXME: Using the intended navigate function causes a rerender for <Chat /> that breaks the app.
-   *
-   * `navigate(`/chat/${nextId}`, { replace: true });`
-   */
   const url = new URL(window.location.href);
   url.pathname = `/chat/${nextId}`;
-
   window.history.replaceState({}, '', url);
 }
