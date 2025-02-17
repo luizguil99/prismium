@@ -1,12 +1,10 @@
 import { redirect, type LoaderFunctionArgs, json } from "@remix-run/node";
-import { useLoaderData } from "@remix-run/react";
+import { useLoaderData, Outlet } from "@remix-run/react";
 import { createServerClient } from "@supabase/auth-helpers-remix";
 import { Provider as TooltipProvider } from '@radix-ui/react-tooltip';
 import { useState, useEffect } from "react";
 import { Header } from "~/admin-components/Header";
-import { StatsCards } from "~/admin-components/StatsCards";
-import { AdminTabs } from "~/admin-components/AdminTabs";
-import { SettingsDialog } from "~/admin-components/SettingsDialog";
+import { AdminSidebar } from "~/admin-components/AdminSidebar";
 import { useAuth } from "~/components/supabase/auth-context";
 import { useNavigate } from "@remix-run/react";
 import { toast } from 'react-toastify';
@@ -46,34 +44,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     return redirect("/");
   }
 
-  // Busca estatísticas gerais
-  const { data: stats, error: statsError } = await supabase
-    .from("profiles")
-    .select("subscription_plan, subscription_status");
-
-  if (statsError) {
-    console.error("❌ Admin: Erro ao buscar estatísticas:", statsError);
-    throw json({ error: "Erro ao carregar estatísticas" }, { status: 500 });
-  }
-
-  const totalUsers = stats?.length || 0;
-  const proUsers = stats?.filter(u => u.subscription_plan === 'pro').length || 0;
-  const activeTrials = stats?.filter(u => u.subscription_status === 'trial').length || 0;
-
   console.log('✅ Admin: Dados carregados com sucesso');
   
-  return json({ 
-    profile,
-    stats: {
-      totalUsers,
-      proUsers,
-      activeTrials
-    }
-  });
+  return json({ profile });
 };
 
 export default function AdminPage() {
-  const { profile, stats } = useLoaderData<typeof loader>();
+  const { profile } = useLoaderData<typeof loader>();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -111,33 +88,19 @@ export default function AdminPage() {
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-[#09090B]">
-        <Header 
-          email={profile.email}
-          onOpenSettings={() => setIsSettingsOpen(true)}
-        />
-
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
-            <p className="text-zinc-400 mt-2">Gerencie usuários e monitore estatísticas do sistema</p>
-          </div>
-
-          <StatsCards
-            totalUsers={stats.totalUsers}
-            proUsers={stats.proUsers}
-            activeTrials={stats.activeTrials}
+      <div className="min-h-screen bg-[#09090B] flex">
+        <AdminSidebar />
+        
+        <div className="flex-1 ml-64">
+          <Header 
+            email={profile.email}
+            onOpenSettings={() => setIsSettingsOpen(true)}
           />
 
-          <div className="mt-8">
-            <AdminTabs />
-          </div>
-        </main>
-
-        <SettingsDialog
-          isOpen={isSettingsOpen}
-          onClose={() => setIsSettingsOpen(false)}
-        />
+          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 h-[calc(100vh-4rem)] overflow-y-auto">
+            <Outlet />
+          </main>
+        </div>
       </div>
     </TooltipProvider>
   );
