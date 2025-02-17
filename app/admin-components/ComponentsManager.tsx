@@ -1,77 +1,113 @@
-import { useState } from 'react';
-import { categories, type Component, type Category, type Subcategory } from '~/components/workbench/components-list';
-import { Plus, Save, Trash2, Edit2, Search, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { categories } from '~/components/workbench/components-list';
+import { Plus, Search, X } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { classNames } from '~/utils/classNames';
+import { getOrCreateClient } from '~/components/supabase/client';
+import type { Database } from '~/types/supabase';
+import { ComponentCard } from './ComponentCard';
+import { ComponentModal } from './ComponentModal';
 
-interface ComponentFormData {
-  id: string;
-  name: string;
-  description: string;
-  preview: string;
-  prompt: string;
-  isNew?: boolean;
-  category: string;
-  subcategory: string;
-}
+type SupabaseComponent = Database['public']['Tables']['components']['Row'];
 
 export function ComponentsManager() {
+  const supabase = getOrCreateClient();
   const [isAddingComponent, setIsAddingComponent] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [formData, setFormData] = useState<ComponentFormData>({
-    id: '',
-    name: '',
-    description: '',
-    preview: '',
-    prompt: '',
-    isNew: false,
-    category: '',
-    subcategory: ''
-  });
+  const [components, setComponents] = useState<SupabaseComponent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedComponent, setSelectedComponent] = useState<SupabaseComponent | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      // Aqui você implementaria a lógica para salvar no Supabase
-      console.log('Salvando componente:', formData);
-      toast.success('Componente salvo com sucesso!');
-      setIsAddingComponent(false);
-      setFormData({
-        id: '',
-        name: '',
-        description: '',
-        preview: '',
-        prompt: '',
-        isNew: false,
-        category: '',
-        subcategory: ''
-      });
-    } catch (error) {
-      console.error('Erro ao salvar componente:', error);
-      toast.error('Erro ao salvar componente');
+  // Carregar componentes do Supabase
+  useEffect(() => {
+    async function loadComponents() {
+      try {
+        const { data, error } = await supabase
+          .from('components')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        setComponents(data as SupabaseComponent[]);
+      } catch (error) {
+        console.error('Erro ao carregar componentes:', error);
+        toast.error('Erro ao carregar componentes');
+      } finally {
+        setIsLoading(false);
+      }
     }
-  };
+
+    loadComponents();
+  }, [supabase]);
+
+  async function handleDeleteComponent(id: string) {
+    if (!window.confirm('Tem certeza que deseja excluir este componente?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('components')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast.success('Componente excluído com sucesso!');
+      setComponents(components.filter(comp => comp.id !== id));
+    } catch (error) {
+      console.error('Erro ao excluir componente:', error);
+      toast.error('Erro ao excluir componente');
+    }
+  }
+
+  function handleEditComponent(component: SupabaseComponent) {
+    setSelectedComponent(component);
+    setIsAddingComponent(true);
+  }
+
+  function handleCloseModal() {
+    setIsAddingComponent(false);
+    setSelectedComponent(null);
+  }
+
+  async function handleSaveComponent() {
+    const { data, error } = await supabase
+      .from('components')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Erro ao recarregar componentes:', error);
+      return;
+    }
+
+    setComponents(data as SupabaseComponent[]);
+  }
 
   // Filtra os componentes baseado na busca
-  const filteredCategories = Object.entries(categories).filter(([key, category]) => {
-    if (selectedCategory && key !== selectedCategory) return false;
+  const filteredComponents = components.filter(component => {
+    if (selectedCategory && component.category !== selectedCategory) return false;
     
     if (!searchTerm) return true;
 
     const searchLower = searchTerm.toLowerCase();
-    return Object.values(category.subcategories).some(subcategory =>
-      subcategory.components.some(component =>
-        component.name.toLowerCase().includes(searchLower) ||
-        component.description?.toLowerCase().includes(searchLower)
-      )
+    return (
+      component.name.toLowerCase().includes(searchLower) ||
+      component.description.toLowerCase().includes(searchLower)
     );
   });
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      {/* Barra de ações */}
-      <div className="flex items-center justify-between gap-4 bg-[#1D1D1D] p-4 rounded-lg">
+    <div className="relative flex flex-col h-full">
+      {/* Barra de ações - fixa */}
+      <div className="flex items-center justify-between gap-4 bg-[#1D1D1D] p-4 rounded-lg mb-6">
         <div className="flex items-center gap-4 flex-1">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
@@ -116,246 +152,27 @@ export function ComponentsManager() {
       </div>
 
       {/* Lista de componentes */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredCategories.map(([categoryKey, category]) => (
-          Object.entries(category.subcategories).map(([subcategoryKey, subcategory]) => (
-            subcategory.components
-              .filter(component => 
-                !searchTerm || 
-                component.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                component.description?.toLowerCase().includes(searchTerm.toLowerCase())
-              )
-              .map((component) => (
-                <div
-                  key={component.id}
-                  className="group bg-[#1D1D1D] rounded-lg overflow-hidden border border-zinc-800 hover:border-[#548BE4]/30 transition-all"
-                >
-                  {/* Preview */}
-                  <div className="relative aspect-video w-full overflow-hidden bg-black/20">
-                    {component.preview ? (
-                      <img
-                        src={component.preview}
-                        alt={component.name}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-zinc-600">
-                        Sem preview
-                      </div>
-                    )}
-                    {component.isNew && (
-                      <span className="absolute top-2 right-2 px-2 py-1 text-xs font-medium rounded-full bg-[#86efac] text-[#052e16]">
-                        Novo
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Info */}
-                  <div className="p-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <h3 className="font-medium text-white">{component.name}</h3>
-                        <p className="text-sm text-zinc-400 mt-1">{component.description}</p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <span className="text-xs text-zinc-500">{category.name}</span>
-                          <span className="text-zinc-600">•</span>
-                          <span className="text-xs text-zinc-500">{subcategory.name}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Ações */}
-                    <div className="flex items-center justify-end gap-2 mt-4 pt-4 border-t border-zinc-800">
-                      <button
-                        onClick={() => {
-                          setFormData({
-                            ...component,
-                            category: categoryKey,
-                            subcategory: subcategoryKey,
-                          });
-                          setIsAddingComponent(true);
-                        }}
-                        className="p-2 text-zinc-400 hover:text-white transition-colors"
-                        title="Editar"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          toast.error('Funcionalidade em desenvolvimento');
-                        }}
-                        className="p-2 text-zinc-400 hover:text-red-500 transition-colors"
-                        title="Excluir"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))
-          ))
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 flex-1">
+        {filteredComponents.map((component) => (
+          <ComponentCard
+            key={component.id}
+            component={component}
+            onEdit={handleEditComponent}
+            onDelete={handleDeleteComponent}
+          />
         ))}
       </div>
 
       {/* Modal de adição/edição */}
-      {isAddingComponent && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-[#1D1D1D] rounded-lg w-full max-w-2xl">
-            <div className="flex items-center justify-between p-4 border-b border-zinc-800">
-              <h2 className="text-lg font-semibold text-white">
-                {formData.id ? 'Editar Componente' : 'Novo Componente'}
-              </h2>
-              <button
-                onClick={() => setIsAddingComponent(false)}
-                className="text-zinc-400 hover:text-white"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-zinc-400 mb-1">
-                    Categoria
-                  </label>
-                  <select
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full px-3 py-2 bg-[#2D2D2D] border border-zinc-700 rounded-md text-white"
-                    required
-                  >
-                    <option value="">Selecione uma categoria</option>
-                    {Object.entries(categories).map(([key, category]) => (
-                      <option key={key} value={key}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-zinc-400 mb-1">
-                    Subcategoria
-                  </label>
-                  <select
-                    value={formData.subcategory}
-                    onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })}
-                    className="w-full px-3 py-2 bg-[#2D2D2D] border border-zinc-700 rounded-md text-white"
-                    required
-                    disabled={!formData.category}
-                  >
-                    <option value="">Selecione uma subcategoria</option>
-                    {formData.category &&
-                      Object.entries(categories[formData.category].subcategories).map(([key, subcategory]) => (
-                        <option key={key} value={key}>
-                          {subcategory.name}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-zinc-400 mb-1">
-                    ID
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.id}
-                    onChange={(e) => setFormData({ ...formData, id: e.target.value })}
-                    className="w-full px-3 py-2 bg-[#2D2D2D] border border-zinc-700 rounded-md text-white"
-                    placeholder="ex: hero-gradient"
-                    required
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-zinc-400 mb-1">
-                    Nome
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 bg-[#2D2D2D] border border-zinc-700 rounded-md text-white"
-                    placeholder="ex: Hero com Gradiente"
-                    required
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-zinc-400 mb-1">
-                    Descrição
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full px-3 py-2 bg-[#2D2D2D] border border-zinc-700 rounded-md text-white"
-                    placeholder="Breve descrição do componente"
-                    required
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-zinc-400 mb-1">
-                    URL da Preview
-                  </label>
-                  <input
-                    type="url"
-                    value={formData.preview}
-                    onChange={(e) => setFormData({ ...formData, preview: e.target.value })}
-                    className="w-full px-3 py-2 bg-[#2D2D2D] border border-zinc-700 rounded-md text-white"
-                    placeholder="URL da imagem de preview"
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-zinc-400 mb-1">
-                    Prompt
-                  </label>
-                  <textarea
-                    value={formData.prompt}
-                    onChange={(e) => setFormData({ ...formData, prompt: e.target.value })}
-                    className="w-full px-3 py-2 bg-[#2D2D2D] border border-zinc-700 rounded-md text-white h-32 resize-none"
-                    placeholder="Prompt para geração do componente"
-                    required
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <label className="flex items-center gap-2 text-sm text-zinc-400">
-                    <input
-                      type="checkbox"
-                      checked={formData.isNew}
-                      onChange={(e) => setFormData({ ...formData, isNew: e.target.checked })}
-                      className="rounded border-zinc-700 bg-[#2D2D2D] text-[#548BE4]"
-                    />
-                    Marcar como novo
-                  </label>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-zinc-800">
-                <button
-                  type="button"
-                  onClick={() => setIsAddingComponent(false)}
-                  className="px-4 py-2 text-white bg-zinc-800 hover:bg-zinc-700 rounded-md transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="flex items-center gap-2 px-4 py-2 bg-[#548BE4] hover:bg-[#4A7CCF] text-white rounded-md transition-colors"
-                >
-                  <Save className="w-4 h-4" />
-                  Salvar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <ComponentModal
+        isOpen={isAddingComponent}
+        onClose={handleCloseModal}
+        onSave={handleSaveComponent}
+        initialData={selectedComponent ? {
+          ...selectedComponent,
+          preview_url: selectedComponent.preview_url || undefined
+        } : undefined}
+      />
     </div>
   );
 } 

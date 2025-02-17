@@ -88,18 +88,25 @@ export default function AdminPage() {
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-[#09090B] flex">
+      <div className="flex h-screen overflow-hidden bg-[#09090B]">
+        {/* Sidebar fixa */}
         <AdminSidebar />
         
-        <div className="flex-1 ml-64">
+        {/* Conteúdo principal com scroll */}
+        <div className="flex-1 flex flex-col ml-64">
+          {/* Header fixo */}
           <Header 
             email={profile.email}
             onOpenSettings={() => setIsSettingsOpen(true)}
+            className="flex-shrink-0"
           />
 
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 h-[calc(100vh-4rem)] overflow-y-auto">
-            <Outlet />
-          </main>
+          {/* Área de conteúdo com scroll */}
+          <div className="flex-1 overflow-auto">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              <Outlet />
+            </div>
+          </div>
         </div>
       </div>
     </TooltipProvider>
