@@ -6,7 +6,7 @@ create table public.chats (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users on delete cascade not null,
   messages jsonb not null default '[]'::jsonb,
-  url_id text unique,
+  urlId text unique,
   description text,
   timestamp timestamptz default now() not null,
   created_at timestamptz default now() not null,
