@@ -3,7 +3,7 @@ import type { LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { createServerClient } from '@supabase/auth-helpers-remix';
 
 export async function requireAuth({ request }: LoaderFunctionArgs) {
-  console.log(' Verificando autenticação...');
+  console.log('🔐 Verificando autenticação...');
   
   const response = new Response();
   const supabase = createServerClient(
@@ -12,19 +12,19 @@ export async function requireAuth({ request }: LoaderFunctionArgs) {
     { request, response }
   );
 
-  const { data: { session }, error } = await supabase.auth.getSession();
-  console.log(' Sessão:', session ? 'Existe' : 'Não existe');
+  const { data: { user }, error } = await supabase.auth.getUser();
+  console.log('🔑 Usuário:', user ? 'Encontrado' : 'Não encontrado');
 
   if (error) {
-    console.error(' Erro ao verificar sessão:', error.message);
+    console.error('❌ Erro ao verificar autenticação:', error.message);
     throw redirect('/login');
   }
 
-  if (!session?.user) {
-    console.log(' Usuário não autenticado, redirecionando para /login');
+  if (!user) {
+    console.log('⚠️ Usuário não autenticado, redirecionando para /login');
     throw redirect('/login');
   }
 
-  console.log(' Usuário autenticado:', session.user.email);
-  return session.user;
+  console.log('✅ Usuário autenticado:', user.email);
+  return user;
 }

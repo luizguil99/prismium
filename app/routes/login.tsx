@@ -8,13 +8,13 @@ import { redirect } from '@remix-run/cloudflare';
 import { getOrCreateClient } from '~/components/supabase/client';
 
 export const loader = async () => {
-  console.log('🔍 Login Route: Verificando sessão...');
+  console.log('🔍 Login Route: Verificando autenticação...');
   const supabase = getOrCreateClient();
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { user }, error } = await supabase.auth.getUser();
 
-  console.log('📝 Login Route: Sessão encontrada:', session ? 'Sim' : 'Não');
-  if (session?.user) {
-    console.log('🔄 Login Route: Usuário já logado, redirecionando para /', session.user.email);
+  console.log('📝 Login Route: Usuário encontrado:', user ? 'Sim' : 'Não');
+  if (user) {
+    console.log('🔄 Login Route: Usuário já logado, redirecionando para /', user.email);
     return redirect('/');
   }
 
