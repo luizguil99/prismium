@@ -1,22 +1,26 @@
 import { useState, useEffect } from 'react';
 import { categories } from '~/components/workbench/components-list';
-import { Plus, Search, X } from 'lucide-react';
+import { Plus, Search, X, Loader2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { getOrCreateClient } from '~/components/supabase/client';
 import type { Database } from '~/types/supabase';
 import { ComponentCard } from './ComponentCard';
 import { ComponentModal } from './ComponentModal';
+import { EditComponentModal } from './EditComponentModal';
+import { classNames } from '~/utils/classNames';
 
 type SupabaseComponent = Database['public']['Tables']['components']['Row'];
 
 export function ComponentsManager() {
   const supabase = getOrCreateClient();
   const [isAddingComponent, setIsAddingComponent] = useState(false);
+  const [isEditingComponent, setIsEditingComponent] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [components, setComponents] = useState<SupabaseComponent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedComponent, setSelectedComponent] = useState<SupabaseComponent | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Carregar componentes do Supabase
   useEffect(() => {
@@ -61,26 +65,33 @@ export function ComponentsManager() {
 
   function handleEditComponent(component: SupabaseComponent) {
     setSelectedComponent(component);
-    setIsAddingComponent(true);
+    setIsEditingComponent(true);
   }
 
-  function handleCloseModal() {
-    setIsAddingComponent(false);
+  function handleCloseEditModal() {
+    setIsEditingComponent(false);
     setSelectedComponent(null);
   }
 
   async function handleSaveComponent() {
-    const { data, error } = await supabase
-      .from('components')
-      .select('*')
-      .order('created_at', { ascending: false });
+    setIsSaving(true);
+    try {
+      const { data, error } = await supabase
+        .from('components')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    if (error) {
+      if (error) throw error;
+
+      setComponents(data as SupabaseComponent[]);
+      toast.success(selectedComponent ? 'Componente atualizado com sucesso!' : 'Componente criado com sucesso!');
+      handleCloseEditModal();
+    } catch (error) {
       console.error('Erro ao recarregar componentes:', error);
-      return;
+      toast.error('Erro ao salvar componente');
+    } finally {
+      setIsSaving(false);
     }
-
-    setComponents(data as SupabaseComponent[]);
   }
 
   // Filtra os componentes baseado na busca
@@ -92,14 +103,14 @@ export function ComponentsManager() {
     const searchLower = searchTerm.toLowerCase();
     return (
       component.name.toLowerCase().includes(searchLower) ||
-      component.description.toLowerCase().includes(searchLower)
+      component.description?.toLowerCase().includes(searchLower)
     );
   });
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+        <Loader2 className="w-8 h-8 animate-spin text-[#548BE4]" />
       </div>
     );
   }
@@ -144,7 +155,10 @@ export function ComponentsManager() {
 
         <button
           onClick={() => setIsAddingComponent(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-[#548BE4] hover:bg-[#4A7CCF] text-white rounded-md transition-colors"
+          className={classNames(
+            "flex items-center gap-2 px-4 py-2 rounded-md transition-colors",
+            "bg-[#548BE4] hover:bg-[#4A7CCF] text-white"
+          )}
         >
           <Plus className="w-4 h-4" />
           Adicionar Componente
@@ -152,27 +166,46 @@ export function ComponentsManager() {
       </div>
 
       {/* Lista de componentes */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 flex-1">
-        {filteredComponents.map((component) => (
-          <ComponentCard
-            key={component.id}
-            component={component}
-            onEdit={handleEditComponent}
-            onDelete={handleDeleteComponent}
-          />
-        ))}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 flex-1 overflow-y-auto">
+        {filteredComponents.length === 0 ? (
+          <div className="col-span-full flex flex-col items-center justify-center text-zinc-400 py-8">
+            <div className="text-lg mb-2">Nenhum componente encontrado</div>
+            <div className="text-sm">
+              {searchTerm || selectedCategory ? 
+                'Tente ajustar os filtros de busca' : 
+                'Clique em "Adicionar Componente" para começar'
+              }
+            </div>
+          </div>
+        ) : (
+          filteredComponents.map((component) => (
+            <ComponentCard
+              key={component.id}
+              component={component}
+              onEdit={handleEditComponent}
+              onDelete={handleDeleteComponent}
+            />
+          ))
+        )}
       </div>
 
-      {/* Modal de adição/edição */}
+      {/* Modal de adição */}
       <ComponentModal
         isOpen={isAddingComponent}
-        onClose={handleCloseModal}
+        onClose={() => setIsAddingComponent(false)}
         onSave={handleSaveComponent}
-        initialData={selectedComponent ? {
-          ...selectedComponent,
-          preview_url: selectedComponent.preview_url || undefined
-        } : undefined}
+        initialData={undefined}
       />
+
+      {/* Modal de edição */}
+      {selectedComponent && (
+        <EditComponentModal
+          isOpen={isEditingComponent}
+          onClose={handleCloseEditModal}
+          onSave={handleSaveComponent}
+          component={selectedComponent}
+        />
+      )}
     </div>
   );
-} 
+}
