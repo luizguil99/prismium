@@ -1,7 +1,7 @@
 import { memo, useState, useEffect } from 'react';
 import { classNames } from '~/utils/classNames';
-import { Search, ChevronDown, LayoutTemplate, Component as ComponentIcon, Copy, Check, Wand2 } from 'lucide-react';
-import { categories, type Component } from './components-list';
+import { Search, ChevronDown, LayoutTemplate, Component as ComponentIcon, Copy, Check, Wand2, Loader2 } from 'lucide-react';
+import { useComponents, type Component } from '~/lib/hooks/useComponents';
 import { useChat } from 'ai/react';
 import { toast } from 'react-toastify';
 
@@ -10,6 +10,12 @@ interface ComponentsModalProps {
   onClose: () => void;
   onSendMessage?: (event: React.UIEvent, message: string) => void;
 }
+
+// Função para obter a URL da imagem através do proxy
+const getProxiedImageUrl = (url: string) => {
+  if (!url) return '';
+  return `/api/image-proxy?url=${encodeURIComponent(url)}`;
+};
 
 export const ComponentsModal = memo(({ isOpen, onClose, onSendMessage }: ComponentsModalProps) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -21,6 +27,8 @@ export const ComponentsModal = memo(({ isOpen, onClose, onSendMessage }: Compone
   const [loading, setLoading] = useState(false);
   const [showPromptInput, setShowPromptInput] = useState(false);
   const [additionalPrompt, setAdditionalPrompt] = useState('');
+
+  const { categories, loading: loadingComponents, error } = useComponents();
 
   // Reseta o estado quando o modal fecha
   useEffect(() => {
@@ -121,6 +129,14 @@ ${finalPrompt}
     }
   };
 
+  // Função para obter o ícone baseado na categoria
+  const getCategoryIcon = (categoryKey: string) => {
+    if (categoryKey === 'landingPages') {
+      return <LayoutTemplate className="w-5 h-5 text-[#548BE4] transition-transform duration-150 ease-in-out group-hover:scale-110" />;
+    }
+    return <ComponentIcon className="w-5 h-5 text-[#548BE4] transition-transform duration-150 ease-in-out group-hover:scale-110" />;
+  };
+
   if (!isOpen) return null;
 
   // Filtra os componentes baseado na categoria e subcategoria selecionadas
@@ -196,8 +212,8 @@ ${finalPrompt}
                 <p className="text-sm text-bolt-elements-item-contentDefault/60">
                   {selectedCategory
                     ? selectedSubcategory
-                      ? `${categories[selectedCategory].subcategories[selectedSubcategory].name}`
-                      : categories[selectedCategory].name
+                      ? categories[selectedCategory]?.subcategories[selectedSubcategory]?.name
+                      : categories[selectedCategory]?.name
                     : 'Select a category'}
                 </p>
               </div>
@@ -236,81 +252,80 @@ ${finalPrompt}
           <div className="flex divide-x divide-bolt-elements-borderColor h-[500px]">
             {/* Sidebar */}
             <div className="w-64 flex flex-col bg-transparent border-r border-bolt-elements-borderColor/50">
-              <div
-                className="flex-1 p-2 space-y-1 overflow-y-auto h-full 
-                overflow-x-hidden
-                scroll-smooth
-                [scrollbar-gutter:stable]
-                [&::-webkit-scrollbar]:w-2 
-                [&::-webkit-scrollbar-track]:bg-transparent 
-                [&::-webkit-scrollbar-thumb]:bg-[#333]/50
-                [&::-webkit-scrollbar-thumb]:rounded-full 
-                [&::-webkit-scrollbar-thumb]:border-2
-                [&::-webkit-scrollbar-thumb]:border-transparent
-                [&::-webkit-scrollbar-thumb]:bg-clip-padding
-                hover:[&::-webkit-scrollbar-thumb]:bg-[#444]
-                [@media(hover:none)]:scrollbar-none"
-              >
-                {Object.entries(categories).map(([categoryKey, category]) => (
-                  <div key={categoryKey} className="space-y-1">
-                    <button
-                      onClick={() => toggleCategory(categoryKey)}
-                      className={classNames(
-                        'w-full flex items-center justify-between px-3 py-2 rounded-md text-sm',
-                        'text-bolt-elements-item-contentDefault group',
-                        'bg-transparent hover:bg-[#1D1D1D]',
-                        'transition-all duration-150 ease-in-out will-change-transform',
-                        selectedCategory === categoryKey && 'bg-[#1D1D1D]/50',
-                      )}
-                    >
-                      <div className="flex items-center gap-2">
-                        {categoryKey === 'landingPages' ? (
-                          <LayoutTemplate className="w-5 h-5 text-[#548BE4] transition-transform duration-150 ease-in-out group-hover:scale-110" />
-                        ) : (
-                          <ComponentIcon className="w-5 h-5 text-[#548BE4] transition-transform duration-150 ease-in-out group-hover:scale-110" />
-                        )}
-                        <span className="font-medium">{category.name}</span>
-                      </div>
-                      <ChevronDown
+              {loadingComponents ? (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="w-6 h-6 animate-spin text-bolt-elements-item-contentDefault/60" />
+                </div>
+              ) : error ? (
+                <div className="flex items-center justify-center h-full text-red-500 p-4 text-center">
+                  {error}
+                </div>
+              ) : (
+                <div className="flex-1 p-2 space-y-1 overflow-y-auto">
+                  {Object.entries(categories).map(([categoryKey, category]) => (
+                    <div key={categoryKey} className="space-y-1">
+                      <button
+                        onClick={() => toggleCategory(categoryKey)}
                         className={classNames(
-                          'w-4 h-4 transition-transform duration-200 ease-in-out will-change-transform',
-                          expandedCategories[categoryKey] ? 'rotate-180' : '',
+                          'w-full flex items-center justify-between px-3 py-2 rounded-md text-sm',
+                          'text-bolt-elements-item-contentDefault group',
+                          'bg-transparent hover:bg-[#1D1D1D]',
+                          'transition-all duration-150 ease-in-out will-change-transform',
+                          { 'bg-[#1D1D1D]/50': selectedCategory === categoryKey }
                         )}
-                      />
-                    </button>
+                      >
+                        <div className="flex items-center gap-2">
+                          {getCategoryIcon(categoryKey)}
+                          <span className="font-medium">{category.name}</span>
+                        </div>
+                        <ChevronDown
+                          className={classNames(
+                            'w-4 h-4 transition-transform duration-200 ease-in-out will-change-transform',
+                            expandedCategories[categoryKey] ? 'rotate-180' : ''
+                          )}
+                        />
+                      </button>
 
-                    {expandedCategories[categoryKey] && (
-                      <div className="ml-2 space-y-0.5">
-                        {Object.entries(category.subcategories).map(([subcategoryKey, subcategory]) => (
-                          <button
-                            key={subcategoryKey}
-                            onClick={() => selectSubcategory(subcategoryKey)}
-                            className={classNames(
-                              'w-full flex items-center justify-between px-3 py-1.5 rounded-md text-sm',
-                              'text-bolt-elements-item-contentDefault/60 hover:text-bolt-elements-item-contentDefault',
-                              'bg-transparent hover:bg-[#1D1D1D]',
-                              'transition-all duration-150 ease-in-out will-change-transform',
-                              selectedSubcategory === subcategoryKey &&
-                                'bg-[#1D1D1D] text-bolt-elements-item-contentDefault',
-                            )}
-                          >
-                            <span>{subcategory.name}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+                      {expandedCategories[categoryKey] && (
+                        <div className="ml-2 space-y-0.5">
+                          {Object.entries(category.subcategories).map(([subcategoryKey, subcategory]) => (
+                            <button
+                              key={subcategoryKey}
+                              onClick={() => selectSubcategory(subcategoryKey)}
+                              className={classNames(
+                                'w-full flex items-center justify-between px-3 py-1.5 rounded-md text-sm',
+                                'text-bolt-elements-item-contentDefault/60 hover:text-bolt-elements-item-contentDefault',
+                                'bg-transparent hover:bg-[#1D1D1D]',
+                                'transition-all duration-150 ease-in-out will-change-transform',
+                                { 'bg-[#1D1D1D] text-bolt-elements-item-contentDefault': selectedSubcategory === subcategoryKey }
+                              )}
+                            >
+                              <span>{subcategory.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Grid de componentes */}
             <div className="flex-1 p-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto max-h-[460px] pr-4">
-                {filteredComponents.map((component) =>
-                  component && typeof component === 'object' ? (
+              {loadingComponents ? (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="w-6 h-6 animate-spin text-bolt-elements-item-contentDefault/60" />
+                </div>
+              ) : error ? (
+                <div className="flex items-center justify-center h-full text-red-500 p-4 text-center">
+                  {error}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto max-h-[460px] pr-4">
+                  {filteredComponents.map((component) => (
                     <div
-                      key={component.id || component.name}
+                      key={component.id}
                       className={classNames(
                         'group relative rounded-lg overflow-hidden',
                         'bg-bolt-elements-background-depth-1',
@@ -318,16 +333,16 @@ ${finalPrompt}
                         'hover:translate-y-[-2px] hover:shadow-lg min-h-[280px]',
                         selectedComponent?.id === component.id
                           ? 'border-[#548BE4] ring-2 ring-[#548BE4]/30'
-                          : 'border-bolt-elements-borderColor hover:border-[#548BE4]/30',
+                          : 'border-bolt-elements-borderColor hover:border-[#548BE4]/30'
                       )}
                       onClick={() => setSelectedComponent(component)}
                     >
                       {/* Preview */}
                       <div className="relative aspect-video w-full overflow-hidden bg-black/20">
-                        {component.preview && (
+                        {component.preview_url && (
                           <img
-                            src={component.preview}
-                            alt={component.name || ''}
+                            src={getProxiedImageUrl(component.preview_url)}
+                            alt={component.name}
                             loading="lazy"
                             className="w-full h-full object-cover transition-transform duration-300 ease-in-out will-change-transform group-hover:scale-105"
                           />
@@ -339,10 +354,10 @@ ${finalPrompt}
                       <div className="p-4 relative">
                         <div className="flex items-center justify-between mb-2">
                           <h3 className="font-medium text-bolt-elements-item-contentDefault text-base">
-                            {component.name || 'No name'}
+                            {component.name}
                           </h3>
                           <div className="flex items-center gap-2">
-                            {component.isNew && (
+                            {component.is_new && (
                               <span className="px-2 py-1 text-xs font-medium rounded-full bg-[#86efac] text-[#052e16]">
                                 New
                               </span>
@@ -351,7 +366,7 @@ ${finalPrompt}
                               onClick={(e) => handleCopyPrompt(e, component)}
                               className={classNames(
                                 'p-1.5 rounded-md transition-all duration-200',
-                                'bg-[#548BE4]/10 hover:bg-[#548BE4]/20 text-[#548BE4]',
+                                'bg-[#548BE4]/10 hover:bg-[#548BE4]/20 text-[#548BE4]'
                               )}
                               title="Copy prompt"
                             >
@@ -360,13 +375,13 @@ ${finalPrompt}
                           </div>
                         </div>
                         <p className="text-sm text-bolt-elements-item-contentDefault/60">
-                          {component.description || 'No description'}
+                          {component.description}
                         </p>
                       </div>
                     </div>
-                  ) : null,
-                )}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -390,7 +405,7 @@ ${finalPrompt}
                   'px-4 py-2 rounded-md text-sm',
                   'text-bolt-elements-item-contentDefault',
                   'bg-[#1D1D1D] hover:bg-[#202020]',
-                  'transition-colors duration-200',
+                  'transition-colors duration-200'
                 )}
               >
                 Cancel
@@ -406,7 +421,7 @@ ${finalPrompt}
                   'bg-[#1D1D1D] hover:bg-[#202020]',
                   'text-bolt-elements-item-contentDefault',
                   'transition-colors duration-200',
-                  !selectedComponent && 'opacity-50 cursor-not-allowed',
+                  { 'opacity-50 cursor-not-allowed': !selectedComponent }
                 )}
                 disabled={!selectedComponent}
               >
@@ -456,7 +471,7 @@ ${finalPrompt}
                       'px-4 py-2 rounded-md text-sm',
                       'text-bolt-elements-item-contentDefault',
                       'bg-[#1D1D1D] hover:bg-[#202020]',
-                      'transition-colors duration-200',
+                      'transition-colors duration-200'
                     )}
                   >
                     Cancel

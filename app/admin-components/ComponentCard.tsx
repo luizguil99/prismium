@@ -1,5 +1,11 @@
-import { Edit2, Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import type { Database } from '~/types/supabase';
+
+// Função auxiliar para criar URL proxy segura
+const getProxiedImageUrl = (url: string) => {
+  if (!url) return '';
+  return `/api/image-proxy?url=${encodeURIComponent(url)}`;
+};
 
 type SupabaseComponent = Database['public']['Tables']['components']['Row'];
 
@@ -18,9 +24,10 @@ export function ComponentCard({ component, onEdit, onDelete }: ComponentCardProp
       <div className="relative aspect-video w-full overflow-hidden bg-black/20">
         {component.preview_url ? (
           <img
-            src={component.preview_url}
+            src={getProxiedImageUrl(component.preview_url)}
             alt={component.name}
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            crossOrigin="anonymous"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-zinc-600">
@@ -55,7 +62,7 @@ export function ComponentCard({ component, onEdit, onDelete }: ComponentCardProp
             className="p-2 text-zinc-400 hover:text-white transition-colors"
             title="Editar"
           >
-            <Edit2 className="w-4 h-4" />
+            <Pencil className="w-4 h-4" />
           </button>
           <button
             onClick={() => onDelete(component.id)}

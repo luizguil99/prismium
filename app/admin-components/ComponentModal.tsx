@@ -23,6 +23,12 @@ interface ComponentModalProps {
   initialData?: ComponentFormData;
 }
 
+// Função auxiliar para criar URL proxy segura
+const getProxiedImageUrl = (url: string) => {
+  if (!url) return '';
+  return `/api/image-proxy?url=${encodeURIComponent(url)}`;
+};
+
 export function ComponentModal({ isOpen, onClose, onSave, initialData }: ComponentModalProps) {
   const supabase = getOrCreateClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -74,20 +80,22 @@ export function ComponentModal({ isOpen, onClose, onSave, initialData }: Compone
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     try {
-      const finalCategory = formData.category === 'new' ? newCategory : formData.category;
-      const finalSubcategory = formData.subcategory === 'new' ? newSubcategory : formData.subcategory;
-
       const componentData = {
-        ...formData,
-        category: finalCategory,
-        subcategory: finalSubcategory,
-        preview_url: formData.preview_url || null
+        name: formData.name,
+        description: formData.description,
+        preview_url: formData.preview_url,
+        is_new: formData.is_new,
+        prompt: formData.prompt,
+        category: formData.category,
+        subcategory: formData.subcategory
       };
 
-      let error;
+      let error = null;
+      
       if (formData.id) {
         const { error: updateError } = await supabase
           .from('components')
@@ -95,6 +103,7 @@ export function ComponentModal({ isOpen, onClose, onSave, initialData }: Compone
           .eq('id', formData.id);
         error = updateError;
       } else {
+        // Ao criar novo, não enviamos o id - deixamos o Supabase gerar
         const { error: insertError } = await supabase
           .from('components')
           .insert([componentData]);
@@ -132,7 +141,7 @@ export function ComponentModal({ isOpen, onClose, onSave, initialData }: Compone
 
           <form 
             id="component-form"
-            onSubmit={handleSubmit} 
+            onSubmit={handleSave} 
             className="p-6 space-y-4"
           >
             <div className="grid grid-cols-2 gap-4">
@@ -247,9 +256,10 @@ export function ComponentModal({ isOpen, onClose, onSave, initialData }: Compone
                     {formData.preview_url ? (
                       <div className="relative group">
                         <img
-                          src={formData.preview_url}
+                          src={getProxiedImageUrl(formData.preview_url)}
                           alt="Preview"
                           className="max-h-48 mx-auto rounded"
+                          crossOrigin="anonymous"
                         />
                         <button
                           type="button"
