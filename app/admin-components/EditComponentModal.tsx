@@ -14,6 +14,54 @@ interface EditComponentModalProps {
   component: SupabaseComponent;
 }
 
+// Componente para o campo de entrada
+const FormField = ({ 
+  label, 
+  children 
+}: { 
+  label: string; 
+  children: React.ReactNode;
+}) => (
+  <div>
+    <label className="block text-sm font-medium text-zinc-400 mb-1">
+      {label}
+    </label>
+    {children}
+  </div>
+);
+
+// Componente para o botão de ação
+const ActionButton = ({
+  onClick,
+  disabled,
+  variant = 'primary',
+  children,
+  type = 'button'
+}: {
+  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  disabled?: boolean;
+  variant?: 'primary' | 'secondary';
+  children: React.ReactNode;
+  type?: 'button' | 'submit';
+}) => {
+  const baseClasses = "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors";
+  const variantClasses = variant === 'primary' 
+    ? "bg-[#548BE4] hover:bg-[#4A7CCF] text-white" 
+    : "text-zinc-400 hover:text-white";
+  const disabledClasses = disabled ? "opacity-50 cursor-not-allowed" : "";
+
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      className={`${baseClasses} ${variantClasses} ${disabledClasses}`}
+    >
+      {children}
+    </button>
+  );
+};
+
 // Função auxiliar para criar URL proxy segura
 const getProxiedImageUrl = (url: string) => {
   if (!url) return '';
@@ -98,7 +146,7 @@ export function EditComponentModal({ isOpen, onClose, onSave, component }: EditC
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" />
       <div className="relative min-h-screen flex items-center justify-center p-4">
         <div
-          className="relative bg-[#1D1D1D] rounded-lg w-full max-w-2xl shadow-xl"
+          className="relative bg-[#1D1D1D] rounded-lg w-full max-w-3xl shadow-xl"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -115,128 +163,112 @@ export function EditComponentModal({ isOpen, onClose, onSave, component }: EditC
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            {/* Preview da imagem */}
-            <div className="relative aspect-video w-full overflow-hidden bg-black/20 rounded-lg">
-              {formData.preview_url ? (
-                <img
-                  src={getProxiedImageUrl(formData.preview_url)}
-                  alt={formData.name}
-                  className="w-full h-full object-cover"
-                  crossOrigin="anonymous"
-                />
-              ) : (
-                <div className="absolute inset-0 flex items-center justify-center text-zinc-600">
-                  <Image className="w-8 h-8" />
+          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Coluna da esquerda */}
+              <div className="space-y-4">
+                {/* Preview da imagem */}
+                <div className="space-y-2">
+                  <div className="relative aspect-video w-full overflow-hidden bg-black/20 rounded-lg">
+                    {formData.preview_url ? (
+                      <img
+                        src={getProxiedImageUrl(formData.preview_url)}
+                        alt={formData.name}
+                        className="w-full h-full object-cover"
+                        crossOrigin="anonymous"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center text-zinc-600">
+                        <Image className="w-8 h-8" />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept="image/*"
+                    onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])}
+                  />
+                  
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className={`w-full px-3 py-2 rounded-md text-sm font-medium bg-[#2D2D2D] hover:bg-[#3D3D3D] text-white transition-colors flex items-center justify-center gap-2 ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {isUploading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Enviando imagem...
+                      </>
+                    ) : (
+                      <>
+                        <Image className="w-4 h-4" />
+                        {formData.preview_url ? 'Alterar imagem' : 'Adicionar imagem'}
+                      </>
+                    )}
+                  </button>
                 </div>
-              )}
-              
-              <input
-                type="file"
-                ref={fileInputRef}
-                className="hidden"
-                accept="image/*"
-                onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])}
-              />
-              
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-                className={classNames(
-                  "absolute bottom-4 right-4 px-3 py-2 rounded-md text-sm font-medium",
-                  "bg-white/10 hover:bg-white/20 backdrop-blur-sm",
-                  "text-white transition-colors",
-                  "flex items-center gap-2",
-                  isUploading && "opacity-50 cursor-not-allowed"
-                )}
-              >
-                {isUploading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Enviando...
-                  </>
-                ) : (
-                  <>
-                    <Image className="w-4 h-4" />
-                    Alterar imagem
-                  </>
-                )}
-              </button>
-            </div>
 
-            {/* Nome */}
-            <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-1">
-                Nome
-              </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                className="w-full px-3 py-2 bg-[#2D2D2D] border border-zinc-700 rounded-md text-white"
-                required
-              />
-            </div>
+                {/* Nome e Descrição */}
+                <FormField label="Nome">
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full px-3 py-2 bg-[#2D2D2D] border border-zinc-700 rounded-md text-white"
+                    required
+                  />
+                </FormField>
 
-            {/* Descrição */}
-            <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-1">
-                Descrição
-              </label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                className="w-full px-3 py-2 bg-[#2D2D2D] border border-zinc-700 rounded-md text-white resize-none h-24"
-              />
-            </div>
+                <FormField label="Descrição">
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                    className="w-full px-3 py-2 bg-[#2D2D2D] border border-zinc-700 rounded-md text-white resize-none h-24"
+                  />
+                </FormField>
+              </div>
 
-            {/* Prompt */}
-            <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-1">
-                Prompt
-              </label>
-              <textarea
-                value={formData.prompt}
-                onChange={(e) => setFormData(prev => ({ ...prev, prompt: e.target.value }))}
-                className="w-full px-3 py-2 bg-[#2D2D2D] border border-zinc-700 rounded-md text-white resize-none h-32"
-                required
-              />
-            </div>
+              {/* Coluna da direita */}
+              <div className="space-y-6">
+                <FormField label="Prompt">
+                  <textarea
+                    value={formData.prompt}
+                    onChange={(e) => setFormData(prev => ({ ...prev, prompt: e.target.value }))}
+                    className="w-full px-3 py-2 bg-[#2D2D2D] border border-zinc-700 rounded-md text-white resize-none h-[300px]"
+                    required
+                  />
+                </FormField>
 
-            {/* Is New */}
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="is_new"
-                checked={formData.is_new}
-                onChange={(e) => setFormData(prev => ({ ...prev, is_new: e.target.checked }))}
-                className="w-4 h-4 text-[#548BE4] bg-[#2D2D2D] border-zinc-700 rounded focus:ring-[#548BE4] focus:ring-2"
-              />
-              <label htmlFor="is_new" className="ml-2 text-sm text-zinc-400">
-                Marcar como novo
-              </label>
+                {/* Is New */}
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="is_new"
+                    checked={formData.is_new}
+                    onChange={(e) => setFormData(prev => ({ ...prev, is_new: e.target.checked }))}
+                    className="w-4 h-4 text-[#548BE4] bg-[#2D2D2D] border-zinc-700 rounded focus:ring-[#548BE4] focus:ring-2"
+                  />
+                  <label htmlFor="is_new" className="ml-2 text-sm text-zinc-400">
+                    Marcar como novo
+                  </label>
+                </div>
+              </div>
             </div>
           </form>
 
           {/* Footer */}
           <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-zinc-800">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors"
-            >
+            <ActionButton variant="secondary" onClick={onClose}>
               Cancelar
-            </button>
-            <button
+            </ActionButton>
+            <ActionButton
+              variant="primary"
               type="submit"
-              form="component-form"
               disabled={isSaving}
-              className={classNames(
-                "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium",
-                "bg-[#548BE4] hover:bg-[#4A7CCF] text-white transition-colors",
-                isSaving && "opacity-50 cursor-not-allowed"
-              )}
             >
               {isSaving ? (
                 <>
@@ -249,7 +281,7 @@ export function EditComponentModal({ isOpen, onClose, onSave, component }: EditC
                   Salvar alterações
                 </>
               )}
-            </button>
+            </ActionButton>
           </div>
         </div>
       </div>
