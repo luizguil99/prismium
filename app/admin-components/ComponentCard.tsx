@@ -59,14 +59,14 @@ export function ComponentCard({ component, onEdit, onDelete }: ComponentCardProp
         <div className="flex items-center justify-end gap-2 mt-4 pt-4 border-t border-zinc-800">
           <button
             onClick={() => onEdit(component)}
-            className="p-2 text-zinc-400 hover:text-white transition-colors"
+            className="p-2 text-zinc-400 hover:text-white transition-colors bg-transparent"
             title="Editar"
           >
             <Pencil className="w-4 h-4" />
           </button>
           <button
             onClick={() => onDelete(component.id)}
-            className="p-2 text-zinc-400 hover:text-red-500 transition-colors"
+            className="p-2 text-zinc-400 hover:text-red-500 transition-colors bg-transparent"
             title="Excluir"
           >
             <Trash2 className="w-4 h-4" />
