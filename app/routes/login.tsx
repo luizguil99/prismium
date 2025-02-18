@@ -3,13 +3,11 @@ import * as Tabs from '@radix-ui/react-tabs';
 import * as Label from '@radix-ui/react-label';
 import { useNavigate } from '@remix-run/react';
 import { useSupabaseAuth } from '~/components/supabase';
-import { toast } from 'react-toastify';
 import { redirect, type LoaderFunctionArgs, json } from '@remix-run/cloudflare';
 import { createServerClient } from '@supabase/auth-helpers-remix';
+import { Notification } from '~/components/ui/Notification';
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  console.log('🔍 Login Route: Verificando autenticação...');
-  
   const response = new Response();
   const supabase = createServerClient(
     import.meta.env.SUPABASE_URL ?? '',
@@ -20,8 +18,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { data: { user }, error: userError } = await supabase.auth.getUser();
 
   if (user) {
-    console.log('🔄 Login Route: Usuário já logado, verificando se é admin...');
-    
     const { data: profile } = await supabase
       .from("profiles")
       .select("is_admin")
@@ -53,36 +49,73 @@ export default function Login() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'info', message: string } | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('🔑 Tentando fazer login com email:', email);
 
+    if (!email || !password) {
+      setNotification({ type: 'error', message: 'Please fill in all fields' });
+      return;
+    }
+
+    setNotification({ type: 'info', message: 'Attempting to login...' });
     const { error, data } = await signIn(email, password);
     
     if (error) {
-      console.error('❌ Erro no login:', error.message);
-      toast.error(error.message || 'Error during login');
+      switch (error.message) {
+        case 'Invalid login credentials':
+          setNotification({ type: 'error', message: 'Invalid email or password' });
+          break;
+        case 'Email not confirmed':
+          setNotification({ type: 'error', message: 'Please verify your email before logging in' });
+          break;
+        case 'Too many requests':
+          setNotification({ type: 'error', message: 'Too many login attempts. Please try again later' });
+          break;
+        default:
+          setNotification({ type: 'error', message: 'Login failed. Please try again' });
+      }
     } else {
-      console.log('✅ Login bem sucedido! Dados:', data);
-      toast.success('Login successful!');
+      setNotification({ type: 'success', message: 'Login successful!' });
       navigate('/');
     }
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password !== confirmPassword) {
-      toast.error('Passwords do not match');
+
+    if (!email || !password || !confirmPassword || !name) {
+      setNotification({ type: 'error', message: 'Please fill in all fields' });
       return;
     }
 
+    if (password.length < 6) {
+      setNotification({ type: 'error', message: 'Password must be at least 6 characters long' });
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setNotification({ type: 'error', message: 'Passwords do not match' });
+      return;
+    }
+
+    setNotification({ type: 'info', message: 'Creating your account...' });
     const { error } = await signUp(email, password, { name });
 
     if (error) {
-      toast.error(error.message || 'Error during sign up');
+      switch (error.message) {
+        case 'User already registered':
+          setNotification({ type: 'error', message: 'This email is already registered' });
+          break;
+        case 'Invalid email':
+          setNotification({ type: 'error', message: 'Please enter a valid email' });
+          break;
+        default:
+          setNotification({ type: 'error', message: 'Failed to create account. Please try again' });
+      }
     } else {
-      toast.success('Account created successfully!');
+      setNotification({ type: 'success', message: 'Account created successfully! Please check your email.' });
       navigate('/verify-email');
     }
   };
@@ -92,6 +125,12 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-[#09090B]">
+      <Notification
+        show={notification !== null}
+        type={notification?.type || 'info'}
+        message={notification?.message || ''}
+        onClose={() => setNotification(null)}
+      />
       <div className="grid grid-cols-1 lg:grid-cols-2 h-screen">
         {/* Left Column - Form */}
         <div className="flex items-center justify-center p-8 bg-[#09090B]">
