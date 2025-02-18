@@ -1,53 +1,92 @@
-import { createContext, useContext, useEffect, useState } from 'react';
-import type { User } from '@supabase/supabase-js';
-import { createBrowserClient } from './client';
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
+import type { Session, User } from '@supabase/auth-helpers-remix';
+import { getOrCreateClient } from './client';
 
 interface AuthContextType {
+  session: Session | null;
   user: User | null;
-  loading: boolean;
+  signOut: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType>({ user: null, loading: true });
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [supabase] = useState(() => createBrowserClient());
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  useEffect(() => {
-    console.log(' AuthProvider: Inicializando...');
+  // Memoize supabase client
+  const supabase = useMemo(() => getOrCreateClient(), []);
 
-    // Verificar sessão atual
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log(' AuthProvider: Sessão inicial:', session ? 'Encontrada' : 'Não encontrada');
-      if (session?.user) {
-        console.log(' AuthProvider: Usuário:', session.user.email);
-      }
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    // Escutar mudanças de autenticação
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log(' AuthProvider: Mudança de estado de autenticação:', _event);
-      console.log(' AuthProvider: Nova sessão:', session ? 'Existe' : 'Não existe');
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
+  // Memoize signOut function
+  const signOut = useCallback(async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) console.error('Erro ao fazer logout:', error);
   }, [supabase]);
 
+  useEffect(() => {
+    if (isInitialized) return;
+
+    // Função para atualizar o estado da autenticação
+    const updateAuthState = (session: Session | null) => {
+      if (!session?.user?.id) {
+        setSession(null);
+        setUser(null);
+        return;
+      }
+
+      // Só atualiza se realmente houver mudança
+      setSession((prev) => {
+        if (prev?.user?.id === session.user.id) return prev;
+        return session;
+      });
+      
+      setUser((prev) => {
+        if (prev?.id === session.user.id) return prev;
+        return session.user;
+      });
+    };
+
+    // Verificar sessão inicial
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      updateAuthState(session);
+      setIsInitialized(true);
+    });
+
+    // Inscrever para mudanças de autenticação
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        updateAuthState(session);
+      }
+    );
+
+    // Cleanup
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabase, isInitialized]);
+
+  // Memoize context value
+  const value = useMemo(
+    () => ({
+      session,
+      user,
+      signOut,
+    }),
+    [session, user, signOut]
+  );
+
   return (
-    <AuthContext.Provider value={{ user, loading }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-export const useAuth = () => {
+export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth deve ser usado dentro de um AuthProvider');
   }
   return context;
-};
+}
