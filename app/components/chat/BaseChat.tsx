@@ -54,6 +54,7 @@ import { ChevronRight, ChevronLeft, Search, ArrowRight, Github, X, Menu as MenuI
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/ui/dialog';
 import { Button } from '@/components/ui/ui/button';
+import { CHAT_COMMANDS } from './commands';
 
 const TEXTAREA_MIN_HEIGHT = 76;
 
@@ -81,69 +82,6 @@ const IGNORE_PATTERNS = [
 ];
 
 const ig = ignore().add(IGNORE_PATTERNS);
-
-interface ChatCommand {
-  description: string;
-  handler: (supabase?: any) => Promise<string[] | string | void>;
-}
-
-const CHAT_COMMANDS: Record<string, ChatCommand> = {
-  '/addfiles': {
-    description: 'Fazer upload de arquivos para o Supabase',
-    handler: async (supabase: any): Promise<string[]> => {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.multiple = true;
-      input.accept = 'image/*';
-      
-      return new Promise((resolve) => {
-        input.onchange = async (e) => {
-          const files = Array.from((e.target as HTMLInputElement).files || []);
-          const uploadedUrls: string[] = [];
-          
-          for (const file of files) {
-            try {
-              const fileExt = file.name.split('.').pop();
-              const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
-              const filePath = `project-images/${fileName}`;
-
-              const { data, error } = await supabase.storage
-                .from('components-previews')
-                .upload(filePath, file);
-
-              if (error) throw error;
-
-              const { data: { publicUrl } } = supabase.storage
-                .from('components-previews')
-                .getPublicUrl(filePath);
-
-              uploadedUrls.push(publicUrl);
-              
-            } catch (error) {
-              console.error('Erro ao fazer upload:', error);
-              toast.error(`Erro ao fazer upload de ${file.name}`);
-            }
-          }
-          
-          if (uploadedUrls.length > 0) {
-            toast.success(`${uploadedUrls.length} arquivo(s) enviado(s) com sucesso!`);
-          }
-          
-          resolve(uploadedUrls);
-        };
-        input.click();
-      });
-    }
-  },
-  '/help': {
-    description: 'Mostra a lista de comandos disponíveis',
-    handler: async (): Promise<string> => {
-      return Object.entries(CHAT_COMMANDS).map(([cmd, info]) => 
-        `${cmd} - ${info.description}`
-      ).join('\n');
-    }
-  }
-};
 
 interface BaseChatProps {
   textareaRef?: React.RefObject<HTMLTextAreaElement> | undefined;
@@ -220,6 +158,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     const [transcript, setTranscript] = useState('');
     const [isModelLoading, setIsModelLoading] = useState<string | undefined>('all');
     const [imageContexts, setImageContexts] = useState<string[]>([]);
+    const [showImageContext, setShowImageContext] = useState(false);
 
     useEffect(() => {
       if (data) {
@@ -433,33 +372,28 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
           if (cmd) {
             event.preventDefault();
             try {
-              if (command === '/addfiles') {
-                const supabase = getOrCreateClient();
-                const urls = await cmd.handler(supabase);
-                
-                if (urls && Array.isArray(urls) && urls.length > 0) {
-                  // Adiciona cada URL como contexto
-                  const contexts = urls.map((url: string) => JSON.stringify({
-                    type: 'image_context',
-                    url,
-                    filename: url.split('/').pop(),
-                    timestamp: new Date().toISOString(),
-                    size: 0 // Tamanho não disponível neste caso
-                  }));
-                  
-                  setImageContexts(prev => [...prev, ...contexts]);
+              const supabase = getOrCreateClient();
+              const result = await cmd.handler({ 
+                supabase,
+                setImageContexts: (contexts) => setImageContexts(prev => [...prev, ...contexts]),
+                handleInputChange: (value) => {
+                  if (handleInputChange) {
+                    const syntheticEvent = {
+                      target: { value },
+                    } as React.ChangeEvent<HTMLTextAreaElement>;
+                    handleInputChange(syntheticEvent);
+                  }
                 }
-              } else {
-                const result = await cmd.handler();
-                if (result) {
-                  // Envia o resultado como mensagem do assistente
-                  const syntheticEvent = {
-                    ...event,
-                    type: 'synthetic',
-                    bubbles: true
-                  } as React.UIEvent;
-                  sendMessage(syntheticEvent, result.toString());
-                }
+              });
+              
+              if (result) {
+                // Envia o resultado como mensagem do assistente
+                const syntheticEvent = {
+                  ...event,
+                  type: 'synthetic',
+                  bubbles: true
+                } as React.UIEvent;
+                sendMessage(syntheticEvent, result.toString());
               }
               
               // Limpa o input após executar o comando
@@ -480,9 +414,13 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
         }
 
         // Se não for um comando, processa normalmente
-        const messageWithContext = [...imageContexts, fullMessage].join('\n');
+        const messageWithContext = showImageContext 
+          ? [...imageContexts, fullMessage].join('\n')
+          : fullMessage;
+          
         processMessage(event, messageWithContext);
         setImageContexts([]);
+        setShowImageContext(false);
 
         if (recognition) {
           console.log('[BaseChat] Limpando reconhecimento de voz');
