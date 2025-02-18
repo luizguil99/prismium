@@ -56,6 +56,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import { Button } from '@/components/ui/ui/button';
 import { AddImageToYourProject } from './Addimagetoyourproject';
 import { handleChatCommand } from './ChatCommands';
+import { CommandCard } from './CommandCard';
 
 const TEXTAREA_MIN_HEIGHT = 76;
 
@@ -159,6 +160,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     const [transcript, setTranscript] = useState('');
     const [isModelLoading, setIsModelLoading] = useState<string | undefined>('all');
     const [imageContexts, setImageContexts] = useState<string[]>([]);
+    const [showCommands, setShowCommands] = useState(false);
 
     useEffect(() => {
       if (data) {
@@ -451,6 +453,35 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       }
     };
 
+    const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (event.key === '@') {
+        setShowCommands(true);
+      } else if (event.key === 'Escape') {
+        setShowCommands(false);
+      }
+    };
+
+    const handleCommandSelect = (command: string) => {
+      if (textareaRef?.current) {
+        textareaRef.current.value = command + ' ';
+        textareaRef.current.focus();
+      }
+      setShowCommands(false);
+      if (handleInputChange) {
+        const syntheticEvent = {
+          target: { value: command + ' ' },
+        } as React.ChangeEvent<HTMLTextAreaElement>;
+        handleInputChange(syntheticEvent);
+      }
+    };
+
+    const handleLocalInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+      if (!event.target.value.includes('@')) {
+        setShowCommands(false);
+      }
+      handleInputChange?.(event);
+    };
+
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const SettingsModal = () => {
@@ -575,6 +606,10 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                     'transition-all duration-300 hover:border-blue-500/30 hover:shadow-blue-500/5',
                   )}
                 >
+                  <CommandCard
+                    isVisible={showCommands}
+                    onSelect={handleCommandSelect}
+                  />
                   {imageDataList.length > 0 && (
                     <div className="flex flex-wrap gap-2 p-2 max-h-32 overflow-y-auto">
                       {imageDataList.map((image, index) => (
@@ -641,6 +676,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                       });
                     }}
                     onKeyDown={(event) => {
+                      handleKeyDown(event);
                       if (event.key === 'Enter') {
                         if (event.shiftKey) {
                           return;
@@ -663,7 +699,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                     }}
                     value={input}
                     onChange={(event) => {
-                      handleInputChange?.(event);
+                      handleLocalInputChange(event);
                     }}
                     onPaste={handlePaste}
                     style={{

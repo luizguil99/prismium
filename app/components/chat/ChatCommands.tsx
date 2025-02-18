@@ -8,7 +8,7 @@ interface ChatCommand {
 
 export const CHAT_COMMANDS: Record<string, ChatCommand> = {
   '@addfiles': {
-    description: 'Fazer upload de arquivos para o Supabase',
+    description: 'Upload files to Supabase',
     handler: async (supabase: any): Promise<string[]> => {
       const input = document.createElement('input');
       input.type = 'file';
@@ -55,7 +55,7 @@ export const CHAT_COMMANDS: Record<string, ChatCommand> = {
     }
   },
   '@help': {
-    description: 'Mostra a lista de comandos disponíveis',
+    description: 'Show available commands',
     handler: async (): Promise<string> => {
       return Object.entries(CHAT_COMMANDS).map(([cmd, info]) => 
         `${cmd} - ${info.description}`
