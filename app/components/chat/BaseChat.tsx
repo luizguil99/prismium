@@ -628,6 +628,12 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                               const newFiles = [...uploadedFiles];
                               newFiles.splice(index, 1);
                               setUploadedFiles?.(newFiles);
+
+                              setImageContexts(prev => {
+                                const newContexts = [...prev];
+                                newContexts.splice(index, 1);
+                                return newContexts;
+                              });
                             }}
                             className="absolute top-1 right-1 p-1 bg-[#09090B]/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                           >
