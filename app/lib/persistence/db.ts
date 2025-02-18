@@ -4,15 +4,64 @@ import type { ChatHistoryItem } from './useChatHistory';
 
 // Usando Supabase em vez de IndexedDB
 export async function openDatabase(): Promise<any> {
-  // Retorna o cliente Supabase
-  return getOrCreateClient();
+  console.log('🔄 Initializing database connection...');
+  const client = getOrCreateClient();
+  console.log('✅ Database connection initialized');
+  return client;
+}
+
+// Cache system
+interface CacheItem<T> {
+  data: T;
+  timestamp: number;
+}
+
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutos em milissegundos
+const messageCache = new Map<string, CacheItem<ChatHistoryItem>>();
+const allChatsCache = new Map<string, CacheItem<ChatHistoryItem[]>>();
+
+function getCachedItem<T>(cache: Map<string, CacheItem<T>>, key: string): T | null {
+  const item = cache.get(key);
+  if (!item) return null;
+
+  const now = Date.now();
+  if (now - item.timestamp > CACHE_TTL) {
+    cache.delete(key);
+    return null;
+  }
+
+  return item.data;
+}
+
+function setCacheItem<T>(cache: Map<string, CacheItem<T>>, key: string, data: T) {
+  cache.set(key, { data, timestamp: Date.now() });
+}
+
+function invalidateCache() {
+  messageCache.clear();
+  allChatsCache.clear();
 }
 
 export async function getAll(_db: any): Promise<ChatHistoryItem[]> {
+  const cacheKey = 'all_chats';
+  const cachedData = getCachedItem(allChatsCache, cacheKey);
+  if (cachedData) {
+    console.log('📦 Returning cached chats');
+    return cachedData;
+  }
+
+  console.log('📥 Fetching all chats...');
   const supabase = getOrCreateClient();
   const { data, error } = await supabase.from('chats').select('*');
-  if (error) throw error;
-  return data as unknown as ChatHistoryItem[];
+  if (error) {
+    console.error('❌ Error fetching chats:', error);
+    throw error;
+  }
+
+  const chats = data as unknown as ChatHistoryItem[];
+  setCacheItem(allChatsCache, cacheKey, chats);
+  console.log(`✅ Successfully fetched ${chats.length} chats`);
+  return chats;
 }
 
 export async function setMessages(
@@ -38,20 +87,41 @@ export async function setMessages(
 
   const { error } = await supabase.from('chats').upsert(payload);
   if (error) throw error;
+
+  // Invalidate cache after mutation
+  invalidateCache();
 }
 
 export async function getMessagesById(_db: any, id: string): Promise<ChatHistoryItem> {
+  const cachedData = getCachedItem(messageCache, id);
+  if (cachedData) {
+    console.log('📦 Returning cached message by id');
+    return cachedData;
+  }
+
   const supabase = getOrCreateClient();
   const { data, error } = await supabase.from('chats').select('*').eq('id', id).single();
   if (error) throw error;
-  return data as unknown as ChatHistoryItem;
+
+  const chat = data as unknown as ChatHistoryItem;
+  setCacheItem(messageCache, id, chat);
+  return chat;
 }
 
 export async function getMessagesByUrlId(_db: any, id: string): Promise<ChatHistoryItem> {
+  const cachedData = getCachedItem(messageCache, `url_${id}`);
+  if (cachedData) {
+    console.log('📦 Returning cached message by urlId');
+    return cachedData;
+  }
+
   const supabase = getOrCreateClient();
   const { data, error } = await supabase.from('chats').select('*').eq('urlId', id).single();
   if (error) throw error;
-  return data as unknown as ChatHistoryItem;
+
+  const chat = data as unknown as ChatHistoryItem;
+  setCacheItem(messageCache, `url_${id}`, chat);
+  return chat;
 }
 
 export async function getMessages(_db: any, id: string): Promise<ChatHistoryItem> {
@@ -66,6 +136,9 @@ export async function deleteById(_db: any, id: string): Promise<void> {
   const supabase = getOrCreateClient();
   const { error } = await supabase.from('chats').delete().eq('id', id);
   if (error) throw error;
+
+  // Invalidate cache after deletion
+  invalidateCache();
 }
 
 export async function createChatFromMessages(
