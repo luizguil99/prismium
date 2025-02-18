@@ -7,7 +7,7 @@ interface ChatCommand {
 }
 
 export const CHAT_COMMANDS: Record<string, ChatCommand> = {
-  '/addfiles': {
+  '@addfiles': {
     description: 'Fazer upload de arquivos para o Supabase',
     handler: async (supabase: any): Promise<string[]> => {
       const input = document.createElement('input');
@@ -54,7 +54,7 @@ export const CHAT_COMMANDS: Record<string, ChatCommand> = {
       });
     }
   },
-  '/help': {
+  '@help': {
     description: 'Mostra a lista de comandos disponíveis',
     handler: async (): Promise<string> => {
       return Object.entries(CHAT_COMMANDS).map(([cmd, info]) => 
@@ -79,7 +79,7 @@ export const handleChatCommand = async (
 
   if (chatCommand) {
     try {
-      if (cmd === '/addfiles') {
+      if (cmd === '@addfiles') {
         const supabase = getOrCreateClient();
         const urls = await chatCommand.handler(supabase);
         

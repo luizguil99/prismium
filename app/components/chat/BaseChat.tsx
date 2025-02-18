@@ -365,7 +365,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
         const fullMessage = messageInput || input;
         
         // Verifica se é um comando
-        if (fullMessage.startsWith('/')) {
+        if (fullMessage.startsWith('@')) {
           event.preventDefault();
           const wasCommandHandled = await handleChatCommand(fullMessage, {
             input: fullMessage,
@@ -608,7 +608,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                       'w-full pl-6 pt-4 pr-16 outline-none resize-none text-gray-300 placeholder-gray-500 bg-transparent text-sm',
                       'transition-all duration-200',
                       'focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/30',
-                      input.startsWith('/') ? styles.commandInput : ''
+                      input.startsWith('@') ? styles.commandInput : ''
                     )}
                     onDragEnter={(e) => {
                       e.preventDefault();

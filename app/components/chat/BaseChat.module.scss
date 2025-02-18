@@ -76,7 +76,9 @@
 }
 
 .commandInput {
- 
+  &[data-command="true"] {
+    color: #548BE4;
+  }
   
   &::first-line {
     color: #548BE4 !important;
