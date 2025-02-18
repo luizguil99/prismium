@@ -74,3 +74,12 @@
   fill: url(#shine-gradient);
   mix-blend-mode: overlay;
 }
+
+.commandInput {
+ 
+  
+  &::first-line {
+    color: #548BE4 !important;
+    font-weight: 500 !important;
+  }
+}

@@ -82,6 +82,69 @@ const IGNORE_PATTERNS = [
 
 const ig = ignore().add(IGNORE_PATTERNS);
 
+interface ChatCommand {
+  description: string;
+  handler: (supabase?: any) => Promise<string[] | string | void>;
+}
+
+const CHAT_COMMANDS: Record<string, ChatCommand> = {
+  '/addfiles': {
+    description: 'Fazer upload de arquivos para o Supabase',
+    handler: async (supabase: any): Promise<string[]> => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.multiple = true;
+      input.accept = 'image/*';
+      
+      return new Promise((resolve) => {
+        input.onchange = async (e) => {
+          const files = Array.from((e.target as HTMLInputElement).files || []);
+          const uploadedUrls: string[] = [];
+          
+          for (const file of files) {
+            try {
+              const fileExt = file.name.split('.').pop();
+              const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+              const filePath = `project-images/${fileName}`;
+
+              const { data, error } = await supabase.storage
+                .from('components-previews')
+                .upload(filePath, file);
+
+              if (error) throw error;
+
+              const { data: { publicUrl } } = supabase.storage
+                .from('components-previews')
+                .getPublicUrl(filePath);
+
+              uploadedUrls.push(publicUrl);
+              
+            } catch (error) {
+              console.error('Erro ao fazer upload:', error);
+              toast.error(`Erro ao fazer upload de ${file.name}`);
+            }
+          }
+          
+          if (uploadedUrls.length > 0) {
+            toast.success(`${uploadedUrls.length} arquivo(s) enviado(s) com sucesso!`);
+          }
+          
+          resolve(uploadedUrls);
+        };
+        input.click();
+      });
+    }
+  },
+  '/help': {
+    description: 'Mostra a lista de comandos disponíveis',
+    handler: async (): Promise<string> => {
+      return Object.entries(CHAT_COMMANDS).map(([cmd, info]) => 
+        `${cmd} - ${info.description}`
+      ).join('\n');
+    }
+  }
+};
+
 interface BaseChatProps {
   textareaRef?: React.RefObject<HTMLTextAreaElement> | undefined;
   messageRef?: RefCallback<HTMLDivElement> | undefined;
@@ -156,6 +219,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
     const [transcript, setTranscript] = useState('');
     const [isModelLoading, setIsModelLoading] = useState<string | undefined>('all');
+    const [imageContexts, setImageContexts] = useState<string[]>([]);
 
     useEffect(() => {
       if (data) {
@@ -356,18 +420,76 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       }
     };
 
-    const handleSendMessage = (event: React.UIEvent, messageInput?: string) => {
+    const handleSendMessage = async (event: React.UIEvent, messageInput?: string) => {
       console.log('[BaseChat] handleSendMessage chamado');
       if (sendMessage) {
-        processMessage(event, messageInput);
+        const fullMessage = messageInput || input;
+        
+        // Verifica se é um comando
+        if (fullMessage.startsWith('/')) {
+          const [command] = fullMessage.split(' ');
+          const cmd = CHAT_COMMANDS[command as keyof typeof CHAT_COMMANDS];
+          
+          if (cmd) {
+            event.preventDefault();
+            try {
+              if (command === '/addfiles') {
+                const supabase = getOrCreateClient();
+                const urls = await cmd.handler(supabase);
+                
+                if (urls && Array.isArray(urls) && urls.length > 0) {
+                  // Adiciona cada URL como contexto
+                  const contexts = urls.map((url: string) => JSON.stringify({
+                    type: 'image_context',
+                    url,
+                    filename: url.split('/').pop(),
+                    timestamp: new Date().toISOString(),
+                    size: 0 // Tamanho não disponível neste caso
+                  }));
+                  
+                  setImageContexts(prev => [...prev, ...contexts]);
+                }
+              } else {
+                const result = await cmd.handler();
+                if (result) {
+                  // Envia o resultado como mensagem do assistente
+                  const syntheticEvent = {
+                    ...event,
+                    type: 'synthetic',
+                    bubbles: true
+                  } as React.UIEvent;
+                  sendMessage(syntheticEvent, result.toString());
+                }
+              }
+              
+              // Limpa o input após executar o comando
+              if (handleInputChange) {
+                const syntheticEvent = {
+                  target: { value: '' },
+                } as React.ChangeEvent<HTMLTextAreaElement>;
+                handleInputChange(syntheticEvent);
+              }
+              
+              return;
+            } catch (error) {
+              console.error('Erro ao executar comando:', error);
+              toast.error('Erro ao executar comando');
+            }
+            return;
+          }
+        }
+
+        // Se não for um comando, processa normalmente
+        const messageWithContext = [...imageContexts, fullMessage].join('\n');
+        processMessage(event, messageWithContext);
+        setImageContexts([]);
 
         if (recognition) {
           console.log('[BaseChat] Limpando reconhecimento de voz');
-          recognition.abort(); // Stop current recognition
-          setTranscript(''); // Clear transcript
+          recognition.abort();
+          setTranscript('');
           setIsListening(false);
 
-          // Clear the input by triggering handleInputChange with empty value
           if (handleInputChange) {
             const syntheticEvent = {
               target: { value: '' },
@@ -587,6 +709,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                       'w-full pl-6 pt-4 pr-16 outline-none resize-none text-gray-300 placeholder-gray-500 bg-transparent text-sm',
                       'transition-all duration-200',
                       'focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/30',
+                      input.startsWith('/') ? styles.commandInput : ''
                     )}
                     onDragEnter={(e) => {
                       e.preventDefault();
@@ -714,18 +837,10 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                                   .from('components-previews')
                                   .getPublicUrl(filePath);
 
-                                // Insere a URL da imagem no input
-                                const imageMarkdown = `\n![${file.name}](${publicUrl})\n`;
+                                // Armazena o contexto da imagem sem mostrar no input
+                                setImageContexts(prev => [...prev, `Context: Image uploaded to ${publicUrl}`]);
                                 
-                                // Cria um evento sintético para atualizar o input
-                                if (handleInputChange) {
-                                  const syntheticEvent = {
-                                    target: { value: input + imageMarkdown }
-                                  } as React.ChangeEvent<HTMLTextAreaElement>;
-                                  handleInputChange(syntheticEvent);
-                                }
-                                
-                                toast.success('Imagem enviada com sucesso! Agora você pode usar esta imagem no projeto.');
+                                toast.success('Imagem enviada com sucesso! A imagem será incluída no contexto da mensagem.');
                               } catch (error) {
                                 console.error('Erro ao fazer upload:', error);
                                 toast.error('Erro ao fazer upload da imagem');
