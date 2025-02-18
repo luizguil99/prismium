@@ -1,18 +1,8 @@
 import { useNavigate } from '@remix-run/react';
-import { useEffect } from 'react';
 import { toast } from 'react-toastify';
 
 export default function VerifyEmail() {
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      toast.success('Please check your email to verify your account');
-      navigate('/');
-    }, 3000);
-
-    return () => clearTimeout(timer);
-  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-[#09090B] flex items-center justify-center">
@@ -36,9 +26,15 @@ export default function VerifyEmail() {
         <p className="text-zinc-400">
           We've sent you a verification link. Please check your email to verify your account.
         </p>
-        <p className="text-zinc-500 text-sm">
-          You will be redirected to the home page in a few seconds...
-        </p>
+        <button
+          onClick={() => {
+            toast.success('Please check your email to verify your account');
+            navigate('/');
+          }}
+          className="mt-4 px-4 py-2 bg-indigo-500 text-white rounded-md hover:bg-indigo-600 transition-colors"
+        >
+          Return to Home
+        </button>
       </div>
     </div>
   );
