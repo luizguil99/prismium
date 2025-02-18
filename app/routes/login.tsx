@@ -4,21 +4,44 @@ import * as Label from '@radix-ui/react-label';
 import { useNavigate } from '@remix-run/react';
 import { useSupabaseAuth } from '~/components/supabase';
 import { toast } from 'react-toastify';
-import { redirect } from '@remix-run/cloudflare';
-import { getOrCreateClient } from '~/components/supabase/client';
+import { redirect, type LoaderFunctionArgs, json } from '@remix-run/cloudflare';
+import { createServerClient } from '@supabase/auth-helpers-remix';
 
-export const loader = async () => {
+export const loader = async ({ request }: LoaderFunctionArgs) => {
   console.log('🔍 Login Route: Verificando autenticação...');
-  const supabase = getOrCreateClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
+  
+  const response = new Response();
+  const supabase = createServerClient(
+    import.meta.env.SUPABASE_URL ?? '',
+    import.meta.env.SUPABASE_ANON_KEY ?? '',
+    { request, response }
+  );
 
-  console.log('📝 Login Route: Usuário encontrado:', user ? 'Sim' : 'Não');
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+
   if (user) {
-    console.log('🔄 Login Route: Usuário já logado, redirecionando para /', user.email);
-    return redirect('/');
+    console.log('🔄 Login Route: Usuário já logado, verificando se é admin...');
+    
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_admin")
+      .eq("id", user.id)
+      .single();
+
+    if (profile?.is_admin) {
+      return redirect('/admin', {
+        headers: response.headers
+      });
+    }
+    
+    return redirect('/', {
+      headers: response.headers
+    });
   }
 
-  return null;
+  return json(null, {
+    headers: response.headers
+  });
 };
 
 export default function Login() {

@@ -19,12 +19,14 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     { request, response }
   );
 
-  // Verifica autenticação de forma segura usando getUser
+  // Verifica autenticação de forma segura
   const { data: { user }, error: userError } = await supabase.auth.getUser();
 
   if (userError || !user) {
     console.error("❌ Admin: Erro de autenticação:", userError);
-    return redirect("/login");
+    return redirect("/login", {
+      headers: response.headers
+    });
   }
 
   // Busca o perfil do usuário com verificação de admin
@@ -36,17 +38,23 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   if (profileError || !profile) {
     console.error("❌ Admin: Erro ao buscar perfil:", profileError);
-    return redirect("/");
+    return redirect("/", {
+      headers: response.headers
+    });
   }
 
   if (!profile.is_admin) {
     console.log("⚠️ Admin: Usuário não é administrador:", user.email);
-    return redirect("/");
+    return redirect("/", {
+      headers: response.headers
+    });
   }
 
   console.log('✅ Admin: Dados carregados com sucesso');
   
-  return json({ profile });
+  return json({ profile }, {
+    headers: response.headers
+  });
 };
 
 export default function AdminPage() {
