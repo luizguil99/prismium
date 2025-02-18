@@ -803,7 +803,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                         <div className="i-ph:paperclip text-xl"></div>
                       </IconButton>
                       <IconButton
-                        title="Upload image to Supabase"
+                        title="Add Image To Your Project"
                         className="p-2 rounded-lg bg-[#111113] border border-zinc-800/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200"
                         onClick={async () => {
                           const input = document.createElement('input');
