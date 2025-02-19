@@ -355,7 +355,7 @@ export function getVisualEditorScript() {
                 <div class="flex-1" style="flex: 1; position: relative;">
                   <input
                     type="text"
-                    placeholder="Type your changes here..."
+                    placeholder="Digite sua pergunta..."
                     style="
                       width: 100%;
                       padding: 8px 36px 8px 12px;
@@ -372,26 +372,27 @@ export function getVisualEditorScript() {
                     onfocus="this.style.borderColor='#8b5cf6'; this.style.boxShadow='0 0 0 2px rgba(139, 92, 246, 0.2)'"
                     onblur="this.style.borderColor='#45475a'; this.style.boxShadow='none'"
                   />
-                  <button style="
-                    position: absolute;
-                    right: 8px;
-                    top: 50%;
-                    transform: translateY(-50%);
-                    background: none;
-                    border: none;
-                    color: #8b5cf6;
-                    cursor: pointer;
-                    padding: 4px;
-                    border-radius: 4px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    transition: all 0.2s ease;
-                    &:hover {
-                      color: #7c3aed;
-                      background: rgba(139, 92, 246, 0.1);
-                    }
-                  ">
+                  <button 
+                    class="send-button"
+                    style="
+                      position: absolute;
+                      right: 8px;
+                      top: 50%;
+                      transform: translateY(-50%);
+                      background: none;
+                      border: none;
+                      color: #8b5cf6;
+                      cursor: pointer;
+                      padding: 4px;
+                      border-radius: 4px;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      transition: all 0.2s ease;
+                    "
+                    onmouseover="this.style.color='#7c3aed'; this.style.background='rgba(139, 92, 246, 0.1)'"
+                    onmouseout="this.style.color='#8b5cf6'; this.style.background='none'"
+                  >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <line x1="22" y1="2" x2="11" y2="13"></line>
                       <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
@@ -415,11 +416,10 @@ export function getVisualEditorScript() {
                     width: 24px;
                     height: 24px;
                     flex-shrink: 0;
-                    &:hover {
-                      background: #313244;
-                      color: #cdd6f4;
-                    }
-                  ">✕</button>
+                  "
+                  onmouseover="this.style.background='#313244'; this.style.color='#cdd6f4'"
+                  onmouseout="this.style.background='none'; this.style.color='#6c7086'"
+                >✕</button>
               </div>
             \`;
 
@@ -453,28 +453,45 @@ export function getVisualEditorScript() {
               }
             };
 
+            // Função para enviar mensagem
+            const sendMessage = () => {
+              const input = content.querySelector('input');
+              if (input.value) {
+                // Envia mensagem para a IA com o contexto do elemento
+                const message = \`Analisar elemento HTML:
+Tag: \${target.tagName}
+Classes: \${target.className}
+ID: \${target.id}
+Texto: \${target.textContent}
+HTML: \${target.outerHTML}
+
+Usuário pergunta: \${input.value}\`;
+
+                const aiMessage = {
+                  type: 'SEND_AI_MESSAGE',
+                  payload: { message }
+                };
+
+                console.log('[Visual Editor] Enviando mensagem para IA:', aiMessage);
+                window.parent.postMessage(aiMessage, '*');
+                
+                // Limpa o input e fecha o chat
+                input.value = '';
+                removeChat();
+              }
+            };
+
             // Envia mensagem ao pressionar Enter
             const input = content.querySelector('input');
             input.addEventListener('keypress', (e) => {
-              if (e.key === 'Enter' && input.value) {
-                console.log('[Visual Editor] Enviando atualização de texto:', input.value);
-
-                const updateMessage = {
-                  type: 'VISUAL_EDITOR_UPDATE',
-                  payload: {
-                    type: 'text',
-                    sourceFile: window.location.pathname,
-                    elementHtml: target.outerHTML,
-                    newContent: input.value,
-                    originalContent: visibleText
-                  }
-                };
-
-                console.log('[Visual Editor] Enviando mensagem:', JSON.stringify(updateMessage, null, 2));
-                window.parent.postMessage(updateMessage, '*');
-                removeChat();
+              if (e.key === 'Enter') {
+                sendMessage();
               }
             });
+
+            // Envia mensagem ao clicar no botão
+            const sendButton = content.querySelector('.send-button');
+            sendButton.addEventListener('click', sendMessage);
 
             // Adiciona o evento de fechar no botão X
             const closeBtn = content.querySelector('button:last-child');

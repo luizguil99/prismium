@@ -125,11 +125,17 @@ export const Workbench = memo(({ chatStarted, isStreaming, onSendMessage }: Work
     console.log('[Workbench] Editor visual ativado, configurando handler de mensagens');
 
     const handleVisualEditorUpdate = async (event: MessageEvent) => {
-      if (event.data.type !== 'VISUAL_EDITOR_UPDATE') {
+      // Verifica o tipo da mensagem
+      if (!event.data.type?.startsWith('VISUAL_EDITOR_') && event.data.type !== 'SEND_AI_MESSAGE') {
         return;
       }
 
-      console.log('[Workbench] Recebendo atualização do editor visual:', event.data);
+      // Se for uma mensagem para a IA, envia para o chat
+      if (event.data.type === 'SEND_AI_MESSAGE' && onSendMessage) {
+        console.log('[Workbench] Enviando mensagem para IA:', event.data.payload.message);
+        onSendMessage(new Event('click') as unknown as React.UIEvent, event.data.payload.message);
+        return;
+      }
 
       try {
         const { type, sourceFile, elementHtml, newContent, originalContent } = event.data.payload;
