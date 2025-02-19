@@ -276,6 +276,12 @@ export function getVisualEditorScript() {
             e.stopPropagation();
 
             console.log('[Visual Editor] Elemento clicado:', target.tagName);
+            console.log('[Visual Editor] HTML Element:', {
+              html: target.outerHTML,
+              text: target.textContent,
+              classes: target.className,
+              id: target.id
+            });
             
             // Remove chat anterior se existir
             const existingChat = document.querySelector('.prismium-quick-chat');

@@ -163,7 +163,7 @@ export const Workbench = memo(({ chatStarted, isStreaming, onSendMessage }: Work
         console.log('[Workbench] Arquivos disponíveis:', fileEntries.map(([path, file]) => ({
           path,
           previewPath: file.preview?.path,
-          content: file.content?.slice(0, 100) // Mostra apenas os primeiros 100 caracteres
+          content: file.content
         })));
 
         // Tenta encontrar o arquivo que contém o texto original
@@ -210,7 +210,7 @@ export const Workbench = memo(({ chatStarted, isStreaming, onSendMessage }: Work
           targetPath,
           webcontainerPath,
           previewPath: targetFile.preview?.path,
-          content: targetFile.content?.slice(0, 100) // Mostra apenas os primeiros 100 caracteres
+          content: targetFile.content
         });
 
         let fileContent = targetFile.content;
@@ -219,7 +219,7 @@ export const Workbench = memo(({ chatStarted, isStreaming, onSendMessage }: Work
         if (!fileContent) {
           try {
             fileContent = await webcontainer.fs.readFile(webcontainerPath, 'utf-8');
-            console.log('[Workbench] Conteúdo lido do webcontainer:', fileContent.slice(0, 100));
+            console.log('[Workbench] Conteúdo lido do webcontainer:', fileContent);
           } catch (error) {
             console.error('[Workbench] Erro ao ler arquivo do webcontainer:', error);
             return;
@@ -259,8 +259,8 @@ export const Workbench = memo(({ chatStarted, isStreaming, onSendMessage }: Work
         if (updatedContent && updatedContent !== fileContent) {
           console.log('[Workbench] Salvando arquivo atualizado:', {
             webcontainerPath,
-            originalContent: fileContent.slice(0, 100),
-            updatedContent: updatedContent.slice(0, 100)
+            originalContent: fileContent,
+            updatedContent: updatedContent
           });
 
           try {
