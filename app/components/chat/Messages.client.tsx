@@ -27,21 +27,24 @@ export const Messages = React.forwardRef<HTMLDivElement, MessagesProps>((props: 
   const [progressList, setProgressList] = React.useState<ProgressAnnotation[]>([]);
 
   React.useEffect(() => {
-    if (data) {
-      const newProgressList = data.filter(
-        (x) => typeof x === 'object' && x.type === 'progress',
-      ) as ProgressAnnotation[];
-      
-      setProgressList(newProgressList);
-      
-      if (newProgressList.length > 0) {
-        setCurrentProgress(newProgressList[newProgressList.length - 1]);
-      } else {
+    if (!data || data.length === 0) {
+      if (progressList.length > 0) {
+        setProgressList([]);
         setCurrentProgress(null);
       }
+      return;
     }
-  }, [data]);
 
+    const newProgressList = data.filter(
+      (x) => typeof x === 'object' && x.type === 'progress'
+    ) as ProgressAnnotation[];
+
+    // Only update if the progress list has actually changed
+    if (JSON.stringify(newProgressList) !== JSON.stringify(progressList)) {
+      setProgressList(newProgressList);
+      setCurrentProgress(newProgressList.length > 0 ? newProgressList[newProgressList.length - 1] : null);
+    }
+  }, [data, progressList]);
   const handleRewind = (messageId: string) => {
     const searchParams = new URLSearchParams(location.search);
     searchParams.set('rewindTo', messageId);
