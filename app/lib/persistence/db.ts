@@ -64,6 +64,44 @@ export async function getAll(_db: any): Promise<ChatHistoryItem[]> {
   return chats;
 }
 
+// Batch queue para otimizar salvamentos
+const messageQueue = new Map<string, {
+  payload: any,
+  resolve: () => void,
+  reject: (error: any) => void
+}>();
+
+let batchSaveTimeout: NodeJS.Timeout | null = null;
+const BATCH_SAVE_DELAY = 300; // ms
+
+async function processBatchSave() {
+  if (messageQueue.size === 0) return;
+  
+  const supabase = getOrCreateClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    messageQueue.forEach(({reject}) => reject(new Error('Usuário não autenticado')));
+    messageQueue.clear();
+    return;
+  }
+
+  const batchPayload = Array.from(messageQueue.entries()).map(([id, {payload}]) => ({
+    ...payload,
+    user_id: user.id
+  }));
+
+  try {
+    const { error } = await supabase.from('chats').upsert(batchPayload);
+    if (error) throw error;
+    messageQueue.forEach(({resolve}) => resolve());
+  } catch (error) {
+    messageQueue.forEach(({reject}) => reject(error));
+  } finally {
+    messageQueue.clear();
+    invalidateCache();
+  }
+}
+
 export async function setMessages(
   _db: any,
   id: string,
@@ -72,49 +110,23 @@ export async function setMessages(
   description?: string,
   timestamp?: string
 ): Promise<void> {
-  const supabase = getOrCreateClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Usuário não autenticado');
-  const payload = {
-    id,
-    user_id: user.id,
-    messages,
-    urlId: urlId,
-    description,
-    timestamp: timestamp || new Date().toISOString(),
-  };
-  // Calculate payload size
-  const payloadString = JSON.stringify(payload);
-  const payloadSizeBytes = new TextEncoder().encode(payloadString).length;
-  console.log('📦 Saving chat messages...');
-  console.log(`📊 Payload size: ${payloadSizeBytes} bytes`);
-  console.log(`📝 Number of messages: ${messages.length}`);
-  console.log('🔍 Full payload:', payloadString);
-  try {
-    const { error } = await supabase.from('chats').upsert(payload);
-    if (error) {
-      console.error('❌ Error saving messages:', {
-        error,
-        errorMessage: error.message,
-        errorDetails: error.details,
-        errorHint: error.hint,
-        payloadSize: payloadSizeBytes,
-        messagesCount: messages.length
-      });
-      throw error;
+  return new Promise((resolve, reject) => {
+    const payload = {
+      id,
+      messages,
+      urlId,
+      description,
+      timestamp: timestamp ?? new Date().toISOString()
+    };
+
+    messageQueue.set(id, { payload, resolve, reject });
+
+    if (batchSaveTimeout) {
+      clearTimeout(batchSaveTimeout);
     }
-    console.log('✅ Messages saved successfully');
-  } catch (error: any) {
-    console.error('❌ Unexpected error:', {
-      error,
-      errorMessage: error.message,
-      payloadSize: payloadSizeBytes,
-      messagesCount: messages.length
-    });
-    throw error;
-  }
-  // Invalidate cache after mutation
-  invalidateCache();
+
+    batchSaveTimeout = setTimeout(processBatchSave, BATCH_SAVE_DELAY);
+  });
 }
 
 export async function getMessagesById(_db: any, id: string): Promise<ChatHistoryItem> {
