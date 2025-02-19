@@ -4,20 +4,55 @@ export function getVisualEditorScript() {
       console.log('[Visual Editor] Inicializando...');
       let isEditMode = false;
       let selectedElement = null;
-      const editableElements = ['div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'button', 'a'];
+      const editableElements = ['div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'button', 'a', 'img', 'i', 'svg'];
       
       const visualEditor = {
         createOverlay(element) {
           console.log('[Visual Editor] Criando overlay para elemento:', element.tagName);
           const overlay = document.createElement('div');
           overlay.className = 'prismium-editor-overlay';
+          
+          // Define estilos específicos baseado no tipo de elemento
+          let borderColor = '#6366f1'; // cor padrão
+          let backgroundColor = 'rgba(99, 102, 241, 0.1)'; // background padrão
+          
+          if (element instanceof SVGElement || element.tagName.toLowerCase() === 'i') {
+            borderColor = '#22c55e'; // verde para ícones
+            backgroundColor = 'rgba(34, 197, 94, 0.1)';
+          } else if (element.tagName.toLowerCase() === 'img') {
+            borderColor = '#eab308'; // amarelo para imagens
+            backgroundColor = 'rgba(234, 179, 8, 0.1)';
+          } else if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(element.tagName.toLowerCase())) {
+            borderColor = '#ec4899'; // rosa para títulos
+            backgroundColor = 'rgba(236, 72, 153, 0.1)';
+          }
+          
           overlay.style.cssText = \`
             position: fixed;
-            border: 2px solid #6366f1;
-            background: rgba(99, 102, 241, 0.1);
+            border: 2px solid \${borderColor};
+            background: \${backgroundColor};
             pointer-events: none;
             z-index: 9999;
+            transition: all 0.2s ease;
+            box-shadow: 0 0 0 1px \${borderColor}40;
           \`;
+          
+          // Adiciona label com o tipo do elemento
+          const label = document.createElement('div');
+          label.style.cssText = \`
+            position: absolute;
+            top: -20px;
+            left: 0;
+            background: \${borderColor};
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-family: monospace;
+            pointer-events: none;
+          \`;
+          label.textContent = element.tagName.toLowerCase();
+          overlay.appendChild(label);
           
           this.updateOverlayPosition(overlay, element);
           document.body.appendChild(overlay);
@@ -26,10 +61,15 @@ export function getVisualEditorScript() {
 
         updateOverlayPosition(overlay, element) {
           const rect = element.getBoundingClientRect();
-          overlay.style.top = rect.top + window.scrollY + 'px';
-          overlay.style.left = rect.left + window.scrollX + 'px';
-          overlay.style.width = rect.width + 'px';
-          overlay.style.height = rect.height + 'px';
+          const scrollX = window.scrollX || window.pageXOffset;
+          const scrollY = window.scrollY || window.pageYOffset;
+          
+          // Adiciona uma pequena margem ao redor do elemento
+          const margin = 2;
+          overlay.style.top = (rect.top + scrollY - margin) + 'px';
+          overlay.style.left = (rect.left + scrollX - margin) + 'px';
+          overlay.style.width = (rect.width + margin * 2) + 'px';
+          overlay.style.height = (rect.height + margin * 2) + 'px';
         },
 
         updateText(element, newText) {
@@ -242,11 +282,33 @@ export function getVisualEditorScript() {
             if (!isEditMode) return;
             const target = e.target;
             
-            // Ignora elementos do nosso próprio chat
-            if (target.closest('.prismium-quick-chat')) return;
+            // Ignora elementos do nosso próprio editor
+            if (target.closest('.prismium-quick-chat') || 
+                target.closest('.prismium-editor-overlay') || 
+                target.closest('.prismium-style-panel')) return;
             
-            if (editableElements.includes(target.tagName.toLowerCase()) && !target.overlay) {
-              target.overlay = this.createOverlay(target);
+            // Encontra o elemento mais específico para edição
+            let editableTarget = target;
+            
+            // Se for um ícone dentro de um botão ou link, seleciona o container
+            if ((target instanceof SVGElement || target.tagName.toLowerCase() === 'i') && 
+                (target.parentElement?.tagName.toLowerCase() === 'button' || 
+                 target.parentElement?.tagName.toLowerCase() === 'a')) {
+              editableTarget = target.parentElement;
+            }
+            
+            if (editableElements.includes(editableTarget.tagName.toLowerCase()) && !editableTarget.overlay) {
+              editableTarget.overlay = this.createOverlay(editableTarget);
+              
+              // Atualiza posição do overlay ao rolar a página
+              if (!window.overlayScrollHandler) {
+                window.overlayScrollHandler = () => {
+                  if (editableTarget.overlay) {
+                    this.updateOverlayPosition(editableTarget.overlay, editableTarget);
+                  }
+                };
+                window.addEventListener('scroll', window.overlayScrollHandler, { passive: true });
+              }
             }
           };
           
@@ -254,8 +316,10 @@ export function getVisualEditorScript() {
             if (!isEditMode) return;
             const target = e.target;
             
-            // Ignora elementos do nosso próprio chat
-            if (target.closest('.prismium-quick-chat')) return;
+            // Ignora elementos do nosso próprio editor
+            if (target.closest('.prismium-quick-chat') || 
+                target.closest('.prismium-editor-overlay') || 
+                target.closest('.prismium-style-panel')) return;
             
             if (target.overlay) {
               target.overlay.remove();
@@ -267,8 +331,10 @@ export function getVisualEditorScript() {
             if (!isEditMode) return;
             const target = e.target;
             
-            // Ignora cliques em elementos do nosso próprio chat
-            if (target.closest('.prismium-quick-chat')) return;
+            // Ignora cliques em elementos do nosso próprio editor
+            if (target.closest('.prismium-quick-chat') || 
+                target.closest('.prismium-editor-overlay') || 
+                target.closest('.prismium-style-panel')) return;
             
             if (target === document.body) return;
             
