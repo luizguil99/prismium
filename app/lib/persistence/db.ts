@@ -75,7 +75,6 @@ export async function setMessages(
   const supabase = getOrCreateClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Usuário não autenticado');
-
   const payload = {
     id,
     user_id: user.id,
@@ -84,10 +83,36 @@ export async function setMessages(
     description,
     timestamp: timestamp || new Date().toISOString(),
   };
-
-  const { error } = await supabase.from('chats').upsert(payload);
-  if (error) throw error;
-
+  // Calculate payload size
+  const payloadString = JSON.stringify(payload);
+  const payloadSizeBytes = new TextEncoder().encode(payloadString).length;
+  console.log('📦 Saving chat messages...');
+  console.log(`📊 Payload size: ${payloadSizeBytes} bytes`);
+  console.log(`📝 Number of messages: ${messages.length}`);
+  console.log('🔍 Full payload:', payloadString);
+  try {
+    const { error } = await supabase.from('chats').upsert(payload);
+    if (error) {
+      console.error('❌ Error saving messages:', {
+        error,
+        errorMessage: error.message,
+        errorDetails: error.details,
+        errorHint: error.hint,
+        payloadSize: payloadSizeBytes,
+        messagesCount: messages.length
+      });
+      throw error;
+    }
+    console.log('✅ Messages saved successfully');
+  } catch (error: any) {
+    console.error('❌ Unexpected error:', {
+      error,
+      errorMessage: error.message,
+      payloadSize: payloadSizeBytes,
+      messagesCount: messages.length
+    });
+    throw error;
+  }
   // Invalidate cache after mutation
   invalidateCache();
 }
