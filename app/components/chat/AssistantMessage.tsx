@@ -4,6 +4,7 @@ import type { JSONValue } from 'ai';
 import Popover from '~/components/ui/Popover';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { WORK_DIR } from '~/utils/constants';
+import { Fragment } from 'react';
 
 interface AssistantMessageProps {
   content: string;
@@ -78,7 +79,7 @@ export const AssistantMessage = memo(({ content, annotations }: AssistantMessage
                         {codeContext.map((x) => {
                           const normalized = normalizedFilePath(x);
                           return (
-                            <>
+                            <Fragment key={normalized}>
                               <code
                                 className="bg-bolt-elements-artifacts-inlineCode-background text-bolt-elements-artifacts-inlineCode-text px-1.5 py-1 rounded-md text-bolt-elements-item-contentAccent hover:underline cursor-pointer"
                                 onClick={(e) => {
@@ -89,7 +90,7 @@ export const AssistantMessage = memo(({ content, annotations }: AssistantMessage
                               >
                                 {normalized}
                               </code>
-                            </>
+                            </Fragment>
                           );
                         })}
                       </div>
