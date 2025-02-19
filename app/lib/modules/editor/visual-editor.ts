@@ -4,6 +4,7 @@ export function getVisualEditorScript() {
       console.log('[Visual Editor] Inicializando...');
       let isEditMode = false;
       let selectedElement = null;
+      let currentTargetPath = '';
       const editableElements = ['div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'button', 'a', 'img', 'i', 'svg'];
       
       const visualEditor = {
@@ -276,6 +277,15 @@ export function getVisualEditorScript() {
           console.log('[Visual Editor] Ativando modo de edição...');
           if (isEditMode) return;
           isEditMode = true;
+
+          // Adiciona listener para mensagens do Workbench
+          window.addEventListener('message', (event) => {
+            if (event.data.type === 'WORKBENCH_FILE_INFO') {
+              currentTargetPath = event.data.payload.targetPath;
+              console.log('[Visual Editor] Target path atualizado:', currentTargetPath);
+            }
+          });
+
           document.body.style.cursor = 'pointer';
           
           const handleMouseOver = (e) => {
@@ -523,19 +533,42 @@ export function getVisualEditorScript() {
             const sendMessage = () => {
               const input = content.querySelector('input');
               if (input.value) {
-                // Envia mensagem para a IA com o contexto do elemento
-                const message = \`Analisar elemento HTML:
-Tag: \${target.tagName}
-Classes: \${target.className}
-ID: \${target.id}
-Texto: \${target.textContent}
-HTML: \${target.outerHTML}
+                // Log do HTML Element no formato original
+                console.log('[Visual Editor] HTML Element:', {
+                  html: target.outerHTML,
+                  text: target.textContent?.trim() || '',
+                  classes: target.className,
+                  id: target.id
+                });
 
-Usuário pergunta: \${input.value}\`;
+                // Envia mensagem para a IA com o contexto do elemento
+                const message = \`Change this:
+HTML Element: \${target.outerHTML}
+Target Path: \${currentTargetPath}
+
+
+\${input.value}\`;
 
                 const aiMessage = {
                   type: 'SEND_AI_MESSAGE',
-                  payload: { message }
+                  payload: { 
+                    message,
+                    context: {
+                      elementHtml: target.outerHTML,
+                      targetPath: currentTargetPath,
+                      query: input.value,
+                      elementInfo: {
+                        tagName: target.tagName,
+                        className: target.className,
+                        id: target.id,
+                        textContent: target.textContent?.trim(),
+                        attributes: Array.from(target.attributes).map(attr => ({
+                          name: attr.name,
+                          value: attr.value
+                        }))
+                      }
+                    }
+                  }
                 };
 
                 console.log('[Visual Editor] Enviando mensagem para IA:', aiMessage);

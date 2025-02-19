@@ -168,12 +168,12 @@ export const Workbench = memo(({ chatStarted, isStreaming, onSendMessage }: Work
         
         console.log('[Workbench] Arquivos disponíveis:', fileEntries.map(([path, file]) => ({
           path,
-          previewPath: file.preview?.path,
-          content: file.content
+          content: file.content,
+          isReactComponent: file.content?.includes('import React') && file.content?.includes('export default')
         })));
 
         // Tenta encontrar o arquivo que contém o texto original
-        const targetFileEntry = fileEntries.find(([_, file]) => {
+        const targetFileEntry = fileEntries.find(([filePath, file]) => {
           // Se tiver conteúdo no arquivo, verifica se contém o texto
           if (file.content) {
             // Procura pelo elemento HTML completo
@@ -187,7 +187,7 @@ export const Workbench = memo(({ chatStarted, isStreaming, onSendMessage }: Work
             const isReactComponent = file.content.includes('import React') && file.content.includes('export default');
             
             console.log('[Workbench] Verificando arquivo:', {
-              path: file.preview?.path,
+              path: filePath,
               hasOriginalContent,
               hasElementHtml,
               isReactComponent
@@ -218,6 +218,18 @@ export const Workbench = memo(({ chatStarted, isStreaming, onSendMessage }: Work
           previewPath: targetFile.preview?.path,
           content: targetFile.content
         });
+
+        // Envia o target path para o Visual Editor
+        const previewFrame = document.querySelector('iframe');
+        if (previewFrame && previewFrame.contentWindow) {
+          previewFrame.contentWindow.postMessage({
+            type: 'WORKBENCH_FILE_INFO',
+            payload: {
+              targetPath,
+              webcontainerPath
+            }
+          }, '*');
+        }
 
         let fileContent = targetFile.content;
 
