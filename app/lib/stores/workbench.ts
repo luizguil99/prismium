@@ -48,6 +48,8 @@ export class WorkbenchStore {
   unsavedFiles: WritableAtom<Set<string>> = import.meta.hot?.data.unsavedFiles ?? atom(new Set<string>());
   actionAlert: WritableAtom<ActionAlert | undefined> =
     import.meta.hot?.data.unsavedFiles ?? atom<ActionAlert | undefined>(undefined);
+  visualEditorEnabled: WritableAtom<boolean> = import.meta.hot?.data.visualEditorEnabled ?? atom(false);
+  previewScript: WritableAtom<string> = import.meta.hot?.data.previewScript ?? atom('');
   modifiedFiles = new Set<string>();
   artifactIdList: string[] = [];
   #globalExecutionQueue = Promise.resolve();
@@ -58,6 +60,8 @@ export class WorkbenchStore {
       import.meta.hot.data.showWorkbench = this.showWorkbench;
       import.meta.hot.data.currentView = this.currentView;
       import.meta.hot.data.actionAlert = this.actionAlert;
+      import.meta.hot.data.visualEditorEnabled = this.visualEditorEnabled;
+      import.meta.hot.data.previewScript = this.previewScript;
     }
   }
 
@@ -541,6 +545,12 @@ export class WorkbenchStore {
       console.error('Error pushing to GitHub:', error);
       throw error; // Rethrow the error for further handling
     }
+  }
+
+  visualEditorEnabled = atom<boolean>(false);
+
+  setVisualEditorEnabled(enabled: boolean) {
+    this.visualEditorEnabled.set(enabled);
   }
 }
 

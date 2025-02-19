@@ -1,9 +1,12 @@
 // Importações necessárias para o componente
 import { useStore } from '@nanostores/react';
 import { motion, type HTMLMotionProps, type Variants } from 'framer-motion';
+import { workbenchStore } from '~/lib/stores/workbench';
 import { computed } from 'nanostores';
 import { memo, useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
+import { getVisualEditorScript } from '~/lib/modules/editor/visual-editor';
+import { reloadPreview } from '@webcontainer/api';
 
 // Tipos para callbacks do editor
 import {
@@ -17,7 +20,6 @@ import { PanelHeaderButton } from '~/components/ui/PanelHeaderButton';
 import { Slider, type SliderOptions } from '~/components/ui/Slider';
 
 // Stores e utilitários
-import { workbenchStore, type WorkbenchViewType } from '~/lib/stores/workbench';
 import { supabaseStore } from '~/lib/stores/supabase';
 import { SupabaseConfigModal } from '../supabase/SupabaseConfigModal';
 import { classNames } from '~/utils/classNames';
@@ -31,6 +33,7 @@ import { ComponentsModal } from './ComponentsModal';
 import useViewport from '~/lib/hooks';
 import Cookies from 'js-cookie';
 import { WorkbenchSidebar } from './WorkbenchSidebar';
+import { webcontainer } from '~/lib/webcontainer';
 
 // Interface de props do Workbench
 interface WorkspaceProps {
@@ -89,6 +92,7 @@ export const Workbench = memo(({ chatStarted, isStreaming, onSendMessage }: Work
   const unsavedFiles = useStore(workbenchStore.unsavedFiles);
   const files = useStore(workbenchStore.files);
   const selectedView = useStore(workbenchStore.currentView);
+  const visualEditorEnabled = useStore(workbenchStore.visualEditorEnabled);
 
   // Hook para viewport responsivo
   const isSmallViewport = useViewport(1024);
@@ -148,6 +152,42 @@ export const Workbench = memo(({ chatStarted, isStreaming, onSendMessage }: Work
     }
   }, []);
 
+  const handleVisualEditorToggle = async () => {
+    try {
+      console.log('[Visual Editor] Iniciando toggle...');
+      const container = await webcontainer;
+      console.log('[Visual Editor] WebContainer pronto');
+      
+      const script = getVisualEditorScript();
+      console.log('[Visual Editor] Script gerado:', script.length, 'caracteres');
+      
+      // Injetar o script diretamente no WebContainer
+      if (visualEditorEnabled) {
+        console.log('[Visual Editor] Desativando...');
+        await container.setPreviewScript('');
+        workbenchStore.setVisualEditorEnabled(false);
+        toast.info('Editor Visual desativado');
+      } else {
+        console.log('[Visual Editor] Ativando...');
+        await container.setPreviewScript(script);
+        workbenchStore.setVisualEditorEnabled(true);
+        toast.info('Editor Visual ativado');
+      }
+
+      // Recarregar o preview usando a função oficial do WebContainers
+      const previewIframe = document.querySelector('iframe[src*="webcontainer-api.io"]') as HTMLIFrameElement;
+      if (previewIframe) {
+        console.log('[Visual Editor] Recarregando preview...');
+        await reloadPreview(previewIframe);
+        console.log('[Visual Editor] Preview recarregado');
+      }
+
+    } catch (error) {
+      console.error('[Visual Editor] Error:', error);
+      toast.error('Falha ao alternar Editor Visual');
+    }
+  };
+
   // Renderização do componente
   return (
     chatStarted && (
@@ -174,6 +214,13 @@ export const Workbench = memo(({ chatStarted, isStreaming, onSendMessage }: Work
             <div className="h-full flex flex-col bg-bolt-elements-background-depth-2 border-l border-bolt-elements-borderColor overflow-hidden rounded-tl-xl rounded-bl-xl">
               <div className="flex items-center px-3 py-2 border-b border-bolt-elements-borderColor">
                 <Slider selected={selectedView} options={sliderOptions} setSelected={setSelectedView} />
+                <div className="ml-2">
+                  <IconButton
+                    icon="i-ph-pencil-simple"
+                    tooltip={visualEditorEnabled ? 'Disable Visual Editor' : 'Enable Visual Editor'}
+                    onClick={handleVisualEditorToggle}
+                  />
+                </div>
                 <div className="ml-auto" />
                 <IconButton
                   icon="i-ph:x-circle"
