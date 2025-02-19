@@ -546,9 +546,6 @@ export class WorkbenchStore {
       throw error; // Rethrow the error for further handling
     }
   }
-
-  visualEditorEnabled = atom<boolean>(false);
-
   setVisualEditorEnabled(enabled: boolean) {
     this.visualEditorEnabled.set(enabled);
   }
