@@ -1,12 +1,14 @@
 export function getVisualEditorScript() {
   return `
     (function() {
+      console.log('[Visual Editor] Inicializando...');
       let isEditMode = false;
       let selectedElement = null;
       const editableElements = ['div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'button', 'a'];
       
       const visualEditor = {
         createOverlay(element) {
+          console.log('[Visual Editor] Criando overlay para elemento:', element.tagName);
           const overlay = document.createElement('div');
           overlay.className = 'prismium-editor-overlay';
           overlay.style.cssText = \`
@@ -30,67 +32,57 @@ export function getVisualEditorScript() {
           overlay.style.height = rect.height + 'px';
         },
 
-        createToolbar(element) {
-          const toolbar = document.createElement('div');
-          toolbar.className = 'prismium-editor-toolbar';
-          toolbar.style.cssText = \`
-            position: fixed;
-            background: #1f2937;
-            border: 1px solid #374151;
-            border-radius: 4px;
-            padding: 4px;
-            display: flex;
-            gap: 4px;
-            z-index: 10000;
-          \`;
-          
-          const rect = element.getBoundingClientRect();
-          toolbar.style.top = rect.top + window.scrollY - 40 + 'px';
-          toolbar.style.left = rect.left + window.scrollX + 'px';
-          
-          const buttons = [
-            { icon: '✏️', title: 'Edit Text', action: () => this.editText(element) },
-            { icon: '🎨', title: 'Edit Style', action: () => this.editStyle(element) },
-            { icon: '🗑️', title: 'Delete', action: () => element.remove() }
-          ];
-          
-          buttons.forEach(btn => {
-            const button = document.createElement('button');
-            button.innerHTML = btn.icon;
-            button.title = btn.title;
-            button.style.cssText = \`
-              background: #374151;
-              border: none;
-              border-radius: 4px;
-              padding: 4px 8px;
-              color: white;
-              cursor: pointer;
-              font-size: 12px;
-            \`;
-            button.addEventListener('click', (e) => {
-              e.stopPropagation();
-              btn.action();
-            });
-            toolbar.appendChild(button);
-          });
-          
-          document.body.appendChild(toolbar);
-          return toolbar;
+        updateText(element, newText) {
+          console.log('[Visual Editor] Atualizando texto do elemento:', element.tagName);
+          const originalText = element.textContent;
+          element.textContent = newText;
+          const message = {
+            type: 'VISUAL_EDITOR_UPDATE',
+            payload: {
+              type: 'text',
+              sourceFile: window.location.pathname,
+              elementHtml: element.outerHTML,
+              newContent: newText,
+              originalContent: originalText
+            }
+          };
+          console.log('[Visual Editor] Enviando mensagem:', JSON.stringify(message, null, 2));
+          window.parent.postMessage(message, '*');
         },
 
-        editText(element) {
-          element.contentEditable = true;
-          element.focus();
+        deleteElement(element) {
+          console.log('[Visual Editor] Tentando deletar elemento:', {
+            tagName: element.tagName,
+            id: element.id,
+            classes: element.className,
+            html: element.outerHTML
+          });
           
-          const save = () => {
-            element.contentEditable = false;
-            element.removeEventListener('blur', save);
-          };
-          
-          element.addEventListener('blur', save);
+          if (confirm('Are you sure you want to delete this element?')) {
+            const elementHtml = element.outerHTML;
+            
+            console.log('[Visual Editor] Elemento a ser removido:', {
+              html: elementHtml,
+              path: window.location.pathname
+            });
+
+            const message = {
+              type: 'VISUAL_EDITOR_UPDATE',
+              payload: {
+                type: 'delete',
+                sourceFile: window.location.pathname,
+                elementHtml: elementHtml
+              }
+            };
+
+            console.log('[Visual Editor] Enviando mensagem de delete:', JSON.stringify(message, null, 2));
+            window.parent.postMessage(message, '*');
+            element.remove();
+          }
         },
 
         createStylePanel(element) {
+          console.log('[Visual Editor] Criando painel de estilo para elemento:', element.tagName);
           const panel = document.createElement('div');
           panel.className = 'prismium-style-panel';
           panel.style.cssText = \`
@@ -231,6 +223,7 @@ export function getVisualEditorScript() {
         },
 
         editStyle(element) {
+          console.log('[Visual Editor] Editando estilo do elemento:', element.tagName);
           if (element.stylePanel) {
             element.stylePanel.remove();
             element.stylePanel = null;
@@ -240,8 +233,8 @@ export function getVisualEditorScript() {
         },
 
         enable() {
-          if (isEditMode) return;
           console.log('[Visual Editor] Ativando modo de edição...');
+          if (isEditMode) return;
           isEditMode = true;
           document.body.style.cursor = 'pointer';
           
@@ -264,39 +257,137 @@ export function getVisualEditorScript() {
             }
           };
           
-          const handleClick = (e) => {
+          const handleElementClick = (e) => {
             if (!isEditMode) return;
             const target = e.target;
             
-            if (editableElements.includes(target.tagName.toLowerCase())) {
-              e.preventDefault();
-              e.stopPropagation();
-              
-              if (selectedElement && selectedElement !== target) {
-                selectedElement.toolbar?.remove();
-                selectedElement.toolbar = null;
-                selectedElement.stylePanel?.remove();
-                selectedElement.stylePanel = null;
-              }
-              
-              selectedElement = target;
-              if (!selectedElement.toolbar) {
-                selectedElement.toolbar = this.createToolbar(target);
-              }
-            } else if (!target.closest('.prismium-editor-toolbar') && !target.closest('.prismium-style-panel')) {
-              if (selectedElement) {
-                selectedElement.toolbar?.remove();
-                selectedElement.toolbar = null;
-                selectedElement.stylePanel?.remove();
-                selectedElement.stylePanel = null;
-                selectedElement = null;
-              }
+            if (target === document.body) return;
+            
+            e.preventDefault();
+            e.stopPropagation();
+
+            console.log('[Visual Editor] Elemento clicado:', target.tagName);
+            
+            // Remove chat anterior se existir
+            const existingChat = document.querySelector('.prismium-quick-chat');
+            if (existingChat) {
+              existingChat.remove();
             }
+
+            // Função auxiliar para extrair apenas o texto visível
+            const getVisibleText = (el) => {
+              let text = '';
+              for (let node of el.childNodes) {
+                if (node.nodeType === 3) { // Nó de texto
+                  text += node.textContent?.trim() || '';
+                } else if (node.nodeType === 1) { // Elemento
+                  // Ignora elementos SVG
+                  if (!(node instanceof SVGElement)) {
+                    text += getVisibleText(node);
+                  }
+                }
+              }
+              return text.trim();
+            };
+
+            const visibleText = getVisibleText(target);
+
+            // Envia mensagem inicial para o Workbench buscar o arquivo
+            const initialMessage = {
+              type: 'VISUAL_EDITOR_UPDATE',
+              payload: {
+                type: 'text',
+                sourceFile: window.location.pathname,
+                elementHtml: target.outerHTML,
+                newContent: visibleText,
+                originalContent: visibleText
+              }
+            };
+
+            console.log('[Visual Editor] Enviando mensagem inicial:', JSON.stringify(initialMessage, null, 2));
+            window.parent.postMessage(initialMessage, '*');
+
+            const rect = target.getBoundingClientRect();
+
+            // Cria o chat
+            const chat = document.createElement('div');
+            chat.className = 'prismium-quick-chat';
+            chat.style.cssText = \`
+              position: fixed;
+              top: \${rect.bottom + window.scrollY + 10}px;
+              left: \${rect.left + window.scrollX}px;
+              background: white;
+              border: 1px solid #e5e7eb;
+              border-radius: 8px;
+              padding: 8px;
+              width: 400px;
+              z-index: 10000;
+              box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            \`;
+
+            // Conteúdo do chat simplificado
+            const content = document.createElement('div');
+            content.innerHTML = \`
+              <div class="flex items-center gap-2">
+                <div class="flex-1">
+                  <input
+                    type="text"
+                    placeholder="Apply quick changes here..."
+                    class="w-full px-3 py-2 text-sm text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+                <button class="text-gray-400 hover:text-gray-600">✕</button>
+              </div>
+            \`;
+
+            // Adiciona eventos
+            chat.appendChild(content);
+
+            // Fecha o chat ao clicar no X
+            const closeBtn = content.querySelector('button');
+            closeBtn.addEventListener('click', () => {
+              console.log('[Visual Editor] Chat fechado');
+              chat.remove();
+            });
+
+            // Envia mensagem ao pressionar Enter
+            const input = content.querySelector('input');
+            input.addEventListener('keypress', (e) => {
+              if (e.key === 'Enter' && input.value) {
+                console.log('[Visual Editor] Enviando atualização de texto:', input.value);
+
+                const updateMessage = {
+                  type: 'VISUAL_EDITOR_UPDATE',
+                  payload: {
+                    type: 'text',
+                    sourceFile: window.location.pathname,
+                    elementHtml: target.outerHTML,
+                    newContent: input.value,
+                    originalContent: visibleText
+                  }
+                };
+
+                console.log('[Visual Editor] Enviando mensagem:', JSON.stringify(updateMessage, null, 2));
+                window.parent.postMessage(updateMessage, '*');
+                chat.remove();
+              }
+            });
+
+            // Adiciona o chat ao DOM e foca no input
+            document.body.appendChild(chat);
+            input.focus();
+            
+            if (selectedElement && selectedElement !== target) {
+              selectedElement.stylePanel?.remove();
+              selectedElement.stylePanel = null;
+            }
+            
+            selectedElement = target;
           };
 
           document.addEventListener('mouseover', handleMouseOver);
           document.addEventListener('mouseout', handleMouseOut);
-          document.addEventListener('click', handleClick);
+          document.addEventListener('click', handleElementClick);
           
           document.addEventListener('scroll', () => {
             document.querySelectorAll('.prismium-editor-overlay').forEach(overlay => {
@@ -310,13 +401,57 @@ export function getVisualEditorScript() {
           window._visualEditorCleanup = () => {
             document.removeEventListener('mouseover', handleMouseOver);
             document.removeEventListener('mouseout', handleMouseOut);
-            document.removeEventListener('click', handleClick);
-            document.querySelectorAll('.prismium-editor-overlay, .prismium-editor-toolbar, .prismium-style-panel').forEach(el => el.remove());
+            document.removeEventListener('click', handleElementClick);
+            document.querySelectorAll('.prismium-editor-overlay, .prismium-style-panel').forEach(el => el.remove());
             isEditMode = false;
             document.body.style.cursor = '';
           };
         }
       };
+
+      window.addEventListener('message', (event) => {
+        console.log('[Visual Editor] Mensagem recebida:', event.data);
+        
+        if (event.data.type === 'TOGGLE_VISUAL_EDITOR') {
+          isEditMode = !isEditMode;
+          console.log('[Visual Editor] Modo de edição:', isEditMode ? 'ATIVADO' : 'DESATIVADO');
+          document.body.style.cursor = isEditMode ? 'pointer' : 'default';
+          
+          if (!isEditMode && selectedElement) {
+            selectedElement.overlay?.remove();
+            selectedElement = null;
+          }
+        } else if (event.data.type === 'UPDATE_PREVIEW') {
+          console.log('[Visual Editor] Atualizando conteúdo do preview');
+          const { content } = event.data.payload;
+          
+          // Salva os elementos que estavam sendo editados
+          const editingElements = document.querySelectorAll('[contenteditable="true"]');
+          const editingStates = Array.from(editingElements).map(el => ({
+            element: el,
+            selection: window.getSelection()?.getRangeAt(0)
+          }));
+          
+          // Atualiza o conteúdo
+          document.body.innerHTML = content;
+          
+          // Restaura o estado de edição
+          editingStates.forEach(({ element, selection }) => {
+            const newElement = document.querySelector(\`[data-id="\${element.getAttribute('data-id')}"]\`);
+            if (newElement) {
+              newElement.contentEditable = 'true';
+              if (selection) {
+                const range = document.createRange();
+                range.setStart(selection.startContainer, selection.startOffset);
+                range.setEnd(selection.endContainer, selection.endOffset);
+                const sel = window.getSelection();
+                sel?.removeAllRanges();
+                sel?.addRange(range);
+              }
+            }
+          });
+        }
+      });
 
       // Espera o DOM carregar completamente antes de inicializar
       if (document.readyState === 'loading') {

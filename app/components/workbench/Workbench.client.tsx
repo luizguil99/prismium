@@ -97,6 +97,200 @@ export const Workbench = memo(({ chatStarted, isStreaming, onSendMessage }: Work
   // Hook para viewport responsivo
   const isSmallViewport = useViewport(1024);
 
+  // Efeito para sincronizar alterações do editor com o preview
+  useEffect(() => {
+    if (!currentDocument || !visualEditorEnabled) return;
+
+    console.log('[Workbench] Atualizando preview com alterações do editor');
+    
+    // Envia a atualização para o preview
+    const previewFrame = document.querySelector('iframe');
+    if (previewFrame && previewFrame.contentWindow) {
+      previewFrame.contentWindow.postMessage({
+        type: 'UPDATE_PREVIEW',
+        payload: {
+          content: currentDocument.content
+        }
+      }, '*');
+    }
+  }, [currentDocument?.content, visualEditorEnabled]);
+
+  // Handler para alterações do editor visual
+  useEffect(() => {
+    if (!visualEditorEnabled) {
+      console.log('[Workbench] Editor visual desativado');
+      return;
+    }
+
+    console.log('[Workbench] Editor visual ativado, configurando handler de mensagens');
+
+    const handleVisualEditorUpdate = async (event: MessageEvent) => {
+      if (event.data.type !== 'VISUAL_EDITOR_UPDATE') {
+        return;
+      }
+
+      console.log('[Workbench] Recebendo atualização do editor visual:', event.data);
+
+      try {
+        const { type, sourceFile, elementHtml, newContent, originalContent } = event.data.payload;
+
+        if (!webcontainer) {
+          console.error('[Workbench] WebContainer não inicializado');
+          return;
+        }
+
+        // Tenta listar arquivos do webcontainer para debug
+        try {
+          const rootDir = await webcontainer.fs.readdir('/');
+          console.log('[Workbench] Arquivos na raiz:', rootDir);
+          
+          if (rootDir.includes('src')) {
+            const srcDir = await webcontainer.fs.readdir('/src');
+            console.log('[Workbench] Arquivos em /src:', srcDir);
+            
+            if (srcDir.includes('components')) {
+              const componentsDir = await webcontainer.fs.readdir('/src/components');
+              console.log('[Workbench] Arquivos em /src/components:', componentsDir);
+            }
+          }
+        } catch (error) {
+          console.error('[Workbench] Erro ao listar diretórios:', error);
+        }
+
+        // Encontra o arquivo correto baseado no caminho
+        const fileEntries = Object.entries(files);
+        
+        console.log('[Workbench] Arquivos disponíveis:', fileEntries.map(([path, file]) => ({
+          path,
+          previewPath: file.preview?.path,
+          content: file.content?.slice(0, 100) // Mostra apenas os primeiros 100 caracteres
+        })));
+
+        // Tenta encontrar o arquivo que contém o texto original
+        const targetFileEntry = fileEntries.find(([_, file]) => {
+          // Se tiver conteúdo no arquivo, verifica se contém o texto
+          if (file.content) {
+            // Procura pelo elemento HTML completo
+            const hasElementHtml = file.content.includes(elementHtml);
+            
+            // Se não encontrar o elemento completo, procura pelo texto original
+            // mas verifica se está dentro de um elemento JSX/HTML
+            const hasOriginalContent = !hasElementHtml && new RegExp(`>[^<]*${originalContent}[^>]*<`).test(file.content);
+            
+            // Também verifica se o arquivo é um componente React
+            const isReactComponent = file.content.includes('import React') && file.content.includes('export default');
+            
+            console.log('[Workbench] Verificando arquivo:', {
+              path: file.preview?.path,
+              hasOriginalContent,
+              hasElementHtml,
+              isReactComponent
+            });
+            
+            return (hasOriginalContent || hasElementHtml) && isReactComponent;
+          }
+          return false;
+        });
+
+        if (!targetFileEntry) {
+          console.error('[Workbench] Arquivo não encontrado com o conteúdo:', {
+            originalContent,
+            elementHtml,
+            sourceFile
+          });
+          return;
+        }
+
+        const [targetPath, targetFile] = targetFileEntry;
+
+        // Ajusta o caminho para o formato do webcontainer
+        const webcontainerPath = targetPath.replace('/home/project/', '/');
+
+        console.log('[Workbench] Arquivo encontrado:', {
+          targetPath,
+          webcontainerPath,
+          previewPath: targetFile.preview?.path,
+          content: targetFile.content?.slice(0, 100) // Mostra apenas os primeiros 100 caracteres
+        });
+
+        let fileContent = targetFile.content;
+
+        // Se não tiver conteúdo no objeto files, tenta ler do webcontainer
+        if (!fileContent) {
+          try {
+            fileContent = await webcontainer.fs.readFile(webcontainerPath, 'utf-8');
+            console.log('[Workbench] Conteúdo lido do webcontainer:', fileContent.slice(0, 100));
+          } catch (error) {
+            console.error('[Workbench] Erro ao ler arquivo do webcontainer:', error);
+            return;
+          }
+        }
+
+        if (!fileContent) {
+          console.error('[Workbench] Não foi possível ler o conteúdo do arquivo:', webcontainerPath);
+          return;
+        }
+
+        let updatedContent;
+        if (type === 'text') {
+          // Escapa caracteres especiais para regex
+          const escapedOriginal = originalContent.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const escapedHtml = elementHtml.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          
+          // Primeiro tenta substituir pelo HTML completo
+          const htmlRegex = new RegExp(escapedHtml, 'g');
+          updatedContent = fileContent.replace(htmlRegex, (match) => {
+            return match.replace(new RegExp(`>${escapedOriginal}<`), `>${newContent}<`);
+          });
+          
+          // Se não encontrou o HTML completo, tenta substituir o texto dentro de tags
+          if (updatedContent === fileContent) {
+            const textRegex = new RegExp(`(>)([^<]*${escapedOriginal}[^>]*)(<)`, 'g');
+            updatedContent = fileContent.replace(textRegex, (_, start, text, end) => {
+              return start + text.replace(escapedOriginal, newContent) + end;
+            });
+          }
+        } else if (type === 'delete') {
+          // Escapa caracteres especiais para regex
+          const escapedHtml = elementHtml.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          updatedContent = fileContent.replace(escapedHtml, '');
+        }
+
+        if (updatedContent && updatedContent !== fileContent) {
+          console.log('[Workbench] Salvando arquivo atualizado:', {
+            webcontainerPath,
+            originalContent: fileContent.slice(0, 100),
+            updatedContent: updatedContent.slice(0, 100)
+          });
+
+          try {
+            await webcontainer.fs.writeFile(webcontainerPath, updatedContent);
+            console.log('[Workbench] Arquivo salvo com sucesso!');
+            
+            // Atualiza o objeto files
+            const updatedFile = { ...targetFile, content: updatedContent };
+            const updatedFiles = { ...files, [targetPath]: updatedFile };
+            workbenchStore.setFiles(updatedFiles);
+            
+            reloadPreview();
+          } catch (error) {
+            console.error('[Workbench] Erro ao salvar arquivo:', error);
+          }
+        } else {
+          console.log('[Workbench] Nenhuma alteração necessária no arquivo');
+        }
+      } catch (error) {
+        console.error('[Workbench] Erro ao atualizar arquivo:', error);
+      }
+    };
+
+    window.addEventListener('message', handleVisualEditorUpdate);
+    return () => {
+      console.log('[Workbench] Removendo handler de mensagens do editor visual');
+      window.removeEventListener('message', handleVisualEditorUpdate);
+    };
+  }, [visualEditorEnabled, files]);
+
   // Função para alterar a visualização (code/preview)
   const setSelectedView = (view: WorkbenchViewType) => {
     workbenchStore.currentView.set(view);
