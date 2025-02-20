@@ -540,14 +540,14 @@ export function getVisualEditorScript() {
                   classes: target.className,
                   id: target.id
                 });
-
                 // Envia mensagem para a IA com o contexto do elemento
-                const message = \`Change this:
+                const message = \`\${input.value}
+
+\\\`\\\`\\\`promptfiles
+change only this:
 HTML Element: \${target.outerHTML}
 Target Path: \${currentTargetPath}
-
-
-\${input.value}\`;
+\\\`\\\`\\\`\`;
 
                 const aiMessage = {
                   type: 'SEND_AI_MESSAGE',
