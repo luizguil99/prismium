@@ -7,6 +7,8 @@ import { createFilesContext, extractCurrentContext, extractPropertiesFromMessage
 import { createScopedLogger } from '~/utils/logger';
 import { LLMManager } from '~/lib/modules/llm/manager';
 
+const contextCache = new Map<string, FileMap>();
+
 // Common patterns to ignore, similar to .gitignore
 
 const ig = ignore().add(IGNORE_PATTERNS);
@@ -24,6 +26,9 @@ export async function selectContext(props: {
   onFinish?: (resp: GenerateTextResult<Record<string, CoreTool<any, any>>, never>) => void;
 }) {
   const { messages, env: serverEnv, apiKeys, files, providerSettings, summary, onFinish } = props;
+  console.log('Cache size:', contextCache.size);
+  const cacheKey = JSON.stringify({ messages, files, summary });
+
   let currentModel = DEFAULT_MODEL;
   let currentProvider = DEFAULT_PROVIDER.name;
   const processedMessages = messages.map((message) => {
@@ -170,10 +175,10 @@ export async function selectContext(props: {
         `,
     model: provider.getModelInstance({
       model: currentModel,
-      serverEnv: serverEnv || {} as Env,
+      serverEnv: serverEnv || ({} as Env),
       apiKeys,
       providerSettings,
-    }),
+    }) as any,
   });
 
   const response = resp.text;
@@ -218,6 +223,8 @@ export async function selectContext(props: {
     onFinish(resp);
   }
 
+  contextCache.set(cacheKey, filteredFiles);
+
   return filteredFiles;
 
   // generateText({
@@ -231,4 +238,8 @@ export function getFilePaths(files: FileMap) {
   });
 
   return filePaths;
+}
+
+export function getCacheSize() {
+  return contextCache.size;
 }
