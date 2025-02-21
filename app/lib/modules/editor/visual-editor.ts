@@ -5,13 +5,22 @@ export function getVisualEditorScript() {
       let isEditMode = false;
       let selectedElement = null;
       let currentTargetPath = '';
+      let currentOverlay = null;
+      let lastScrollPosition = window.scrollY;
+      
       const editableElements = ['div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'button', 'a', 'img', 'i', 'svg'];
       
       const visualEditor = {
         createOverlay(element) {
+          // Remove overlay anterior se existir
+          if (currentOverlay) {
+            currentOverlay.remove();
+          }
+          
           console.log('[Visual Editor] Criando overlay para elemento:', element.tagName);
           const overlay = document.createElement('div');
           overlay.className = 'prismium-editor-overlay';
+          currentOverlay = overlay;
           
           // Define estilos específicos baseado no tipo de elemento
           let borderColor = '#6366f1'; // cor padrão
@@ -61,16 +70,25 @@ export function getVisualEditorScript() {
         },
 
         updateOverlayPosition(overlay, element) {
+          if (!element || !overlay) return;
+          
           const rect = element.getBoundingClientRect();
           const scrollX = window.scrollX || window.pageXOffset;
           const scrollY = window.scrollY || window.pageYOffset;
           
           // Adiciona uma pequena margem ao redor do elemento
           const margin = 2;
-          overlay.style.top = (rect.top + scrollY - margin) + 'px';
-          overlay.style.left = (rect.left + scrollX - margin) + 'px';
-          overlay.style.width = (rect.width + margin * 2) + 'px';
-          overlay.style.height = (rect.height + margin * 2) + 'px';
+          
+          // Calcula posição fixa baseada na viewport
+          const top = rect.top + margin;
+          const left = rect.left + margin;
+          
+          overlay.style.position = 'fixed';
+          overlay.style.top = top + 'px';
+          overlay.style.left = left + 'px';
+          overlay.style.width = (rect.width - margin * 2) + 'px';
+          overlay.style.height = (rect.height - margin * 2) + 'px';
+          overlay.style.pointerEvents = 'none';
         },
 
         updateText(element, newText) {
@@ -276,8 +294,8 @@ export function getVisualEditorScript() {
         enable() {
           console.log('[Visual Editor] Ativando modo de edição...');
           if (isEditMode) return;
+          
           isEditMode = true;
-
           // Adiciona listener para mensagens do Workbench
           window.addEventListener('message', (event) => {
             if (event.data.type === 'WORKBENCH_FILE_INFO') {
@@ -285,6 +303,15 @@ export function getVisualEditorScript() {
               console.log('[Visual Editor] Target path atualizado:', currentTargetPath);
             }
           });
+          
+          // Limpa overlays existentes
+          document.querySelectorAll('.prismium-editor-overlay').forEach(el => el.remove());
+          currentOverlay = null;
+          
+          // Reseta estado
+          selectedElement = null;
+          currentTargetPath = '';
+          lastScrollPosition = window.scrollY;
 
           document.body.style.cursor = 'pointer';
           
@@ -307,18 +334,16 @@ export function getVisualEditorScript() {
               editableTarget = target.parentElement;
             }
             
-            if (editableElements.includes(editableTarget.tagName.toLowerCase()) && !editableTarget.overlay) {
-              editableTarget.overlay = this.createOverlay(editableTarget);
-              
-              // Atualiza posição do overlay ao rolar a página
-              if (!window.overlayScrollHandler) {
-                window.overlayScrollHandler = () => {
-                  if (editableTarget.overlay) {
-                    this.updateOverlayPosition(editableTarget.overlay, editableTarget);
-                  }
-                };
-                window.addEventListener('scroll', window.overlayScrollHandler, { passive: true });
+            // Verifica se é um elemento editável
+            if (editableElements.includes(editableTarget.tagName.toLowerCase())) {
+              // Remove overlay anterior
+              if (currentOverlay) {
+                currentOverlay.remove();
               }
+              
+              // Cria novo overlay
+              currentOverlay = this.createOverlay(editableTarget);
+              selectedElement = editableTarget;
             }
           };
           
@@ -331,9 +356,10 @@ export function getVisualEditorScript() {
                 target.closest('.prismium-editor-overlay') || 
                 target.closest('.prismium-style-panel')) return;
             
-            if (target.overlay) {
-              target.overlay.remove();
-              target.overlay = null;
+            // Remove overlay apenas se o mouse saiu do elemento selecionado
+            if (currentOverlay && !e.relatedTarget?.closest(target.tagName)) {
+              currentOverlay.remove();
+              currentOverlay = null;
             }
           };
           
@@ -608,23 +634,26 @@ Target Path: \${currentTargetPath}
             selectedElement = target;
           };
 
-          document.addEventListener('mouseover', handleMouseOver);
-          document.addEventListener('mouseout', handleMouseOut);
+          document.addEventListener('mouseover', handleMouseOver, { passive: true });
+          document.addEventListener('mouseout', handleMouseOut, { passive: true });
           document.addEventListener('click', handleElementClick);
           
-          document.addEventListener('scroll', () => {
-            document.querySelectorAll('.prismium-editor-overlay').forEach(overlay => {
-              const element = Array.from(document.querySelectorAll('*')).find(el => el.overlay === overlay);
-              if (element) {
-                this.updateOverlayPosition(overlay, element);
-              }
-            });
-          });
+          // Atualiza posição do overlay durante a rolagem
+          const handleScroll = () => {
+            if (currentOverlay && selectedElement) {
+              requestAnimationFrame(() => {
+                this.updateOverlayPosition(currentOverlay, selectedElement);
+              });
+            }
+          };
+
+          document.addEventListener('scroll', handleScroll, { passive: true });
 
           window._visualEditorCleanup = () => {
             document.removeEventListener('mouseover', handleMouseOver);
             document.removeEventListener('mouseout', handleMouseOut);
             document.removeEventListener('click', handleElementClick);
+            document.removeEventListener('scroll', handleScroll);
             document.querySelectorAll('.prismium-editor-overlay, .prismium-style-panel, .prismium-quick-chat').forEach(el => el.remove());
             // Limpa as referências de overlay
             document.querySelectorAll('*').forEach(el => {
