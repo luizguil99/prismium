@@ -16,8 +16,10 @@ export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProp
       
       // Gera um estado para segurança
       const state = crypto.randomUUID();
-      localStorage.setItem('supabase_oauth_state', state);
-      console.log("[Modal] Estado gerado:", state);
+      
+      // Salva o estado em um cookie que expira em 5 minutos
+      document.cookie = `supabase_oauth_state=${state}; max-age=300; path=/; SameSite=Lax`;
+      console.log("[Modal] Estado gerado e salvo em cookie:", state);
       
       // Lista de todos os escopos necessários
       const scopes = [

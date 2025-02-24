@@ -176,13 +176,25 @@ export default function SupabaseCallback() {
         setStatus('Verificando estado...');
         console.log("[Callback] Iniciando processamento com:", { code, state });
         
-        const savedState = localStorage.getItem('supabase_oauth_state');
-        console.log("[Callback] Estado salvo:", savedState);
-        console.log("[Callback] Estado recebido:", state);
+        // Função para obter valor de um cookie
+        const getCookie = (name: string) => {
+          const value = `; ${document.cookie}`;
+          const parts = value.split(`; ${name}=`);
+          if (parts.length === 2) return parts.pop()?.split(';').shift();
+          return null;
+        };
 
-        if (state !== savedState) {
+        const savedState = getCookie('supabase_oauth_state');
+        console.log("[Callback] Estado salvo em cookie:", savedState);
+        console.log("[Callback] Estado recebido na URL:", state);
+
+        if (!savedState || state !== savedState) {
+          console.error("[Callback] Estado inválido. Esperado:", savedState, "Recebido:", state);
           throw new Error('Estado OAuth inválido');
         }
+
+        // Limpa o cookie após validação
+        document.cookie = 'supabase_oauth_state=; max-age=0; path=/; SameSite=Lax';
 
         setStatus('Trocando código por token...');
         console.log("[Callback] Iniciando troca de token...");
