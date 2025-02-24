@@ -24,21 +24,47 @@ export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProp
   const [anonKey, setAnonKey] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  // Função para gerar o code verifier PKCE
+  const generateCodeVerifier = () => {
+    const array = new Uint8Array(32);
+    crypto.getRandomValues(array);
+    return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+  };
+
+  // Função para gerar o code challenge
+  const generateCodeChallenge = async (verifier: string) => {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(verifier);
+    const hash = await crypto.subtle.digest('SHA-256', data);
+    return btoa(String.fromCharCode(...new Uint8Array(hash)))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+  };
+
   const handleSupabaseAuth = async () => {
     try {
       setIsLoading(true);
+      
+      // Gera o code verifier e challenge para PKCE
+      const codeVerifier = generateCodeVerifier();
+      const codeChallenge = await generateCodeChallenge(codeVerifier);
+      
+      // Salva o code verifier para usar depois
+      localStorage.setItem('supabase_code_verifier', codeVerifier);
       
       // Gera um estado para segurança
       const state = crypto.randomUUID();
       localStorage.setItem('supabase_oauth_state', state);
       
-      // Constrói a URL de autorização
+      // Constrói a URL de autorização com PKCE
       const authUrl = new URL('https://api.supabase.com/v1/oauth/authorize');
       authUrl.searchParams.append('client_id', SUPABASE_CLIENT_ID);
       authUrl.searchParams.append('response_type', 'code');
       authUrl.searchParams.append('state', state);
       authUrl.searchParams.append('redirect_uri', SUPABASE_REDIRECT_URI);
-      authUrl.searchParams.append('scope', 'all');
+      authUrl.searchParams.append('code_challenge', codeChallenge);
+      authUrl.searchParams.append('code_challenge_method', 'S256');
 
       // Abre a janela de autorização
       const authWindow = window.open(
@@ -64,18 +90,26 @@ export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProp
               throw new Error('Código de autorização não recebido');
             }
 
-            // Troca o código por um token de acesso
+            // Recupera o code verifier
+            const codeVerifier = localStorage.getItem('supabase_code_verifier');
+            if (!codeVerifier) {
+              throw new Error('Code verifier não encontrado');
+            }
+
+            // Troca o código por um token de acesso usando PKCE
             const tokenResponse = await fetch('https://api.supabase.com/v1/oauth/token', {
               method: 'POST',
               headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Accept': 'application/json',
               },
-              body: JSON.stringify({
+              body: new URLSearchParams({
                 grant_type: 'authorization_code',
                 code,
+                code_verifier: codeVerifier,
                 client_id: SUPABASE_CLIENT_ID,
                 redirect_uri: SUPABASE_REDIRECT_URI,
-              }),
+              }).toString(),
             });
 
             if (!tokenResponse.ok) {
@@ -97,6 +131,10 @@ export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProp
 
             const { project_url, anon_key } = await projectResponse.json() as ProjectResponse;
 
+            // Limpa os dados temporários
+            localStorage.removeItem('supabase_code_verifier');
+            localStorage.removeItem('supabase_oauth_state');
+
             // Conecta ao Supabase
             await supabaseStore.connectToSupabase(project_url, anon_key);
             authWindow?.close();
@@ -107,7 +145,6 @@ export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProp
             console.error('Erro ao processar autorização:', error);
             toast.error('Erro ao conectar com o Supabase');
           } finally {
-            localStorage.removeItem('supabase_oauth_state');
             window.removeEventListener('message', handleMessage);
           }
         }
