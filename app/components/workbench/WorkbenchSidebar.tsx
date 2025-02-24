@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { supabaseStore } from '~/lib/stores/supabase';
 import Cookies from 'js-cookie';
 import { toast } from 'react-toastify';
+import { GitHubModal } from './GitHubModal';
 
 interface WorkbenchSidebarProps {
   isSyncing: boolean;
@@ -44,30 +46,7 @@ export const WorkbenchSidebar = ({
   onOpenComponents,
   onOpenSupabase
 }: WorkbenchSidebarProps) => {
-  const handleGitHubPush = () => {
-    const repoName = prompt('Please enter a name for your new GitHub repository:', 'bolt-generated-project');
-    if (!repoName) {
-      toast.error('Repository name is required');
-      return;
-    }
-
-    const githubUsername = Cookies.get('githubUsername');
-    const githubToken = Cookies.get('githubToken');
-
-    if (!githubUsername || !githubToken) {
-      const usernameInput = prompt('Please enter your GitHub username:');
-      const tokenInput = prompt('Please enter your GitHub personal access token:');
-
-      if (!usernameInput || !tokenInput) {
-        toast.error('GitHub credentials required');
-        return;
-      }
-
-      workbenchStore.pushToGitHub(repoName, usernameInput, tokenInput);
-    } else {
-      workbenchStore.pushToGitHub(repoName, githubUsername, githubToken);
-    }
-  };
+  const [isGitHubModalOpen, setIsGitHubModalOpen] = useState(false);
 
   return (
     <div className="h-full w-16 bg-[#000000] border-r border-zinc-800 flex flex-col">
@@ -109,7 +88,11 @@ export const WorkbenchSidebar = ({
         <SidebarButton
           icon="i-ph-github-logo-bold"
           label="GitHub"
-          onClick={handleGitHubPush}
+          onClick={() => setIsGitHubModalOpen(true)}
+        />
+        <GitHubModal 
+          isOpen={isGitHubModalOpen}
+          onClose={() => setIsGitHubModalOpen(false)}
         />
       </div>
     </div>
