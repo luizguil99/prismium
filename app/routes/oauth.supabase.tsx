@@ -230,28 +230,48 @@ export default function SupabaseCallback() {
             return;
           }
 
-          const { projectUrl, anonKey, projectDetails } = fetcher.data;
-          if (!projectUrl || !anonKey) {
-            throw new Error('Dados do projeto incompletos');
-          }
+          const projectUrl = fetcher.data.projectUrl;
+          const anonKey = fetcher.data.anonKey;
+          const projectDetails = fetcher.data.projectDetails;
 
-          setStatus('Conectando ao Supabase...');
-          console.log("[Callback] Tentando conectar com:", {
-            url: projectUrl,
-            hasKey: !!anonKey
-          });
+          // Salva as informações em cookies
+          const cookieOptions = 'max-age=31536000; path=/; SameSite=Lax'; // 1 ano
+          document.cookie = `supabase_project_url=${projectUrl}; ${cookieOptions}`;
+          document.cookie = `supabase_anon_key=${anonKey}; ${cookieOptions}`;
+          document.cookie = `supabase_project_ref=${projectDetails.id}; ${cookieOptions}`;
+          document.cookie = `supabase_project_name=${projectDetails.name}; ${cookieOptions}`;
+          document.cookie = `supabase_org_id=${projectDetails.organization}; ${cookieOptions}`;
 
-          const { success, error: connectError } = await supabaseStore.connectToSupabase(projectUrl, anonKey);
+          // Conecta ao Supabase
+          const result = await supabaseStore.connectToSupabase(projectUrl, anonKey);
           
-          if (!success) {
-            throw connectError || new Error('Falha ao conectar ao Supabase');
+          if (!result.success) {
+            throw new Error('Falha ao conectar com o Supabase');
           }
 
-          console.log("[Callback] Conectado com sucesso!");
+          // Garante que a janela pai ainda está aberta
+          if (window.opener) {
+            // Envia a mensagem várias vezes para garantir
+            for (let i = 0; i < 3; i++) {
+              window.opener.postMessage({
+                type: 'supabase_connection_success',
+                projectDetails: projectDetails
+              }, '*');
+              await new Promise(resolve => setTimeout(resolve, 500)); // Espera 500ms
+            }
+          }
+
           setStatus('Conexão estabelecida!');
           setSuccess(true);
           setProjectInfo(projectDetails);
-          localStorage.removeItem('supabase_oauth_state');
+          
+          // Limpa o cookie de estado
+          document.cookie = 'supabase_oauth_state=; max-age=0; path=/; SameSite=Lax';
+
+          // Fecha a janela após 2 segundos
+          setTimeout(() => {
+            window.close();
+          }, 2000);
 
         } catch (error) {
           console.error("[Callback] Erro:", error);

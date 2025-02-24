@@ -1,13 +1,101 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
+import { supabaseStore } from '~/lib/stores/supabase';
+import { SupabaseProjectModal } from './SupabaseProjectModal';
 
 interface SupabaseConfigModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+function getCookie(name: string): string | null {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
+  return null;
+}
+
 export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [showProjectModal, setShowProjectModal] = useState(false);
+  const [projectDetails, setProjectDetails] = useState<any>(null);
+
+  // Tenta conectar usando cookies ao montar o componente
+  useEffect(() => {
+    const connectFromCookies = async () => {
+      const projectUrl = getCookie('supabase_project_url');
+      const anonKey = getCookie('supabase_anon_key');
+      const projectRef = getCookie('supabase_project_ref');
+      const projectName = getCookie('supabase_project_name');
+
+      if (projectUrl && anonKey && projectRef && projectName) {
+        setIsLoading(true);
+        try {
+          const result = await supabaseStore.connectToSupabase(projectUrl, anonKey);
+          if (result.success) {
+            console.log("[Modal] Conectado via cookies");
+            setProjectDetails({
+              name: projectName,
+              ref: projectRef,
+              anon_key: anonKey
+            });
+            setShowProjectModal(true);
+            setIsLoading(false);
+          }
+        } catch (error) {
+          console.error("[Modal] Erro ao conectar via cookies:", error);
+          setIsLoading(false);
+        }
+      }
+    };
+
+    if (isOpen) {
+      connectFromCookies();
+    }
+  }, [isOpen]);
+
+  // Monitora mensagens da janela de autenticação
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+
+    const handleMessage = async (event: MessageEvent) => {
+      if (event.data?.type === 'supabase_connection_success') {
+        console.log("[Modal] Conexão estabelecida:", event.data);
+        
+        // Limpa qualquer timeout anterior
+        if (timeoutId) clearTimeout(timeoutId);
+        
+        // Espera um pouco para garantir que o store foi atualizado
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        setIsLoading(false);
+        setProjectDetails(event.data.projectDetails);
+        toast.success('Successfully connected to Supabase!');
+        setShowProjectModal(true);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+
+    // Timeout após 30 segundos
+    timeoutId = setTimeout(() => {
+      if (isLoading) {
+        console.log("[Modal] Timeout de conexão");
+        setIsLoading(false);
+        toast.error('Connection timeout. Please try again.');
+      }
+    }, 30000);
+
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [isLoading]);
+
+  const handleProjectModalClose = () => {
+    setShowProjectModal(false);
+    onClose();
+  };
 
   const handleSupabaseAuth = async () => {
     try {
@@ -57,47 +145,57 @@ export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProp
         `width=${width},height=${height},left=${left},top=${top}`
       );
 
-      onClose();
-
     } catch (error) {
       console.error("[Modal] Erro ao iniciar autorização:", error);
-      toast.error(error instanceof Error ? error.message : 'Erro ao iniciar autorização do Supabase');
+      toast.error('Error starting Supabase authorization');
       setIsLoading(false);
     }
   };
 
   if (!isOpen) return null;
 
+  if (showProjectModal) {
+    return (
+      <SupabaseProjectModal
+        isOpen={showProjectModal}
+        onClose={handleProjectModalClose}
+        projectDetails={projectDetails}
+      />
+    );
+  }
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-zinc-900 rounded-lg p-6 w-[450px] border border-zinc-700">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-white">Configuração do Supabase</h2>
-          <button
-            onClick={onClose}
-            className="text-zinc-400 hover:text-white transition-colors"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          <h2 className="text-xl font-semibold text-white">Supabase Configuration</h2>
+          {!isLoading && (
+            <button
+              onClick={onClose}
+              className="text-zinc-400 hover:text-white transition-colors"
             >
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          )}
         </div>
 
         <p className="text-zinc-300 mb-6">
-          Conecte sua aplicação ao Supabase para começar a usar o banco de dados. 
-          Você precisará autorizar acesso para gerenciar configurações de autenticação, 
-          banco de dados, funções e armazenamento.
+          Connect your application to Supabase to start using the database.
+          You will need to authorize access to manage authentication settings,
+          database, functions and storage.
         </p>
 
         <button
@@ -124,7 +222,7 @@ export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProp
               />
             )}
           </svg>
-          {isLoading ? 'Conectando...' : 'Conectar com Supabase'}
+          {isLoading ? 'Connecting...' : 'Connect with Supabase'}
         </button>
       </div>
     </div>
