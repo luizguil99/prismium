@@ -1,70 +1,132 @@
 import { useState, useEffect } from 'react';
 import { supabaseStore } from '~/lib/stores/supabase';
 import { toast } from 'react-toastify';
+import { createClient } from '@supabase/supabase-js';
 
 interface SupabaseConfigModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-interface TokenResponse {
-  access_token: string;
-}
-
-interface ProjectResponse {
-  project_url: string;
-  anon_key: string;
-}
-
-const SUPABASE_CLIENT_ID = import.meta.env.VITE_SUPABASE_CLIENT_ID;
-const SUPABASE_REDIRECT_URI = import.meta.env.VITE_SUPABASE_REDIRECT_URI;
-
 export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProps) {
   const [projectUrl, setProjectUrl] = useState('');
   const [anonKey, setAnonKey] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Função para gerar o code verifier PKCE
-  const generateCodeVerifier = () => {
-    const array = new Uint8Array(32);
-    crypto.getRandomValues(array);
-    return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
-  };
+  useEffect(() => {
+    console.log("[Modal] Configurando listener de mensagens");
+    
+    const handleMessage = async (event: MessageEvent) => {
+      console.log("[Modal] Mensagem recebida:", event);
+      
+      if (event.origin === window.location.origin) {
+        try {
+          console.log("[Modal] Origem da mensagem validada");
+          const params = new URLSearchParams(event.data);
+          const receivedState = params.get('state');
+          const code = params.get('code');
+          
+          console.log("[Modal] Parâmetros extraídos:", { state: receivedState, code });
+          
+          const savedState = localStorage.getItem('supabase_oauth_state');
+          console.log("[Modal] Estado salvo:", savedState);
 
-  // Função para gerar o code challenge
-  const generateCodeChallenge = async (verifier: string) => {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(verifier);
-    const hash = await crypto.subtle.digest('SHA-256', data);
-    return btoa(String.fromCharCode(...new Uint8Array(hash)))
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=+$/, '');
-  };
+          if (receivedState !== savedState) {
+            throw new Error('Estado OAuth inválido');
+          }
+
+          if (!code) {
+            throw new Error('Código de autorização não recebido');
+          }
+
+          setIsLoading(true);
+          console.log("[Modal] Iniciando troca de token...");
+
+          // Troca o código por um token de acesso
+          const tokenResponse = await fetch('https://api.supabase.com/v1/oauth/token', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+            },
+            body: new URLSearchParams({
+              grant_type: 'authorization_code',
+              code,
+              client_id: import.meta.env.VITE_SUPABASE_CLIENT_ID,
+              redirect_uri: import.meta.env.VITE_SUPABASE_REDIRECT_URI,
+            }).toString(),
+          });
+
+          console.log("[Modal] Resposta do token:", tokenResponse);
+
+          if (!tokenResponse.ok) {
+            const errorText = await tokenResponse.text();
+            console.error("[Modal] Erro na resposta do token:", errorText);
+            throw new Error('Falha ao obter token de acesso');
+          }
+
+          const { access_token } = await tokenResponse.json();
+          console.log("[Modal] Token obtido com sucesso");
+
+          // Obtém os detalhes do projeto
+          const projectResponse = await fetch('https://api.supabase.com/v1/projects/current', {
+            headers: {
+              Authorization: `Bearer ${access_token}`,
+            },
+          });
+
+          if (!projectResponse.ok) {
+            const errorText = await projectResponse.text();
+            console.error("[Modal] Erro na resposta do projeto:", errorText);
+            throw new Error('Falha ao obter detalhes do projeto');
+          }
+
+          const { project_url, anon_key } = await projectResponse.json();
+          console.log("[Modal] Detalhes do projeto obtidos");
+
+          // Conecta ao Supabase
+          const { success, error } = await supabaseStore.connectToSupabase(project_url, anon_key);
+          
+          if (!success) {
+            throw error || new Error('Falha ao conectar ao Supabase');
+          }
+
+          console.log("[Modal] Conectado com sucesso!");
+          toast.success('Conectado ao Supabase com sucesso!');
+          onClose();
+
+        } catch (error) {
+          console.error("[Modal] Erro ao processar mensagem:", error);
+          toast.error(error instanceof Error ? error.message : 'Erro ao conectar com o Supabase');
+        } finally {
+          setIsLoading(false);
+          localStorage.removeItem('supabase_oauth_state');
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [onClose]);
 
   const handleSupabaseAuth = async () => {
     try {
       setIsLoading(true);
-      
-      // Gera o code verifier e challenge para PKCE
-      const codeVerifier = generateCodeVerifier();
-      const codeChallenge = await generateCodeChallenge(codeVerifier);
-      
-      // Salva o code verifier para usar depois
-      localStorage.setItem('supabase_code_verifier', codeVerifier);
+      console.log("[Modal] Iniciando autenticação OAuth");
       
       // Gera um estado para segurança
       const state = crypto.randomUUID();
       localStorage.setItem('supabase_oauth_state', state);
+      console.log("[Modal] Estado gerado:", state);
       
-      // Constrói a URL de autorização com PKCE
+      // Constrói a URL de autorização
       const authUrl = new URL('https://api.supabase.com/v1/oauth/authorize');
-      authUrl.searchParams.append('client_id', SUPABASE_CLIENT_ID);
+      authUrl.searchParams.append('client_id', import.meta.env.VITE_SUPABASE_CLIENT_ID);
       authUrl.searchParams.append('response_type', 'code');
       authUrl.searchParams.append('state', state);
-      authUrl.searchParams.append('redirect_uri', SUPABASE_REDIRECT_URI);
-      authUrl.searchParams.append('code_challenge', codeChallenge);
-      authUrl.searchParams.append('code_challenge_method', 'S256');
+      authUrl.searchParams.append('redirect_uri', import.meta.env.VITE_SUPABASE_REDIRECT_URI);
+
+      console.log("[Modal] URL de autorização:", authUrl.toString());
 
       // Abre a janela de autorização
       const authWindow = window.open(
@@ -73,98 +135,47 @@ export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProp
         'width=800,height=600'
       );
 
-      // Listener para receber o código de autorização
-      const handleMessage = async (event: MessageEvent) => {
-        if (event.origin === window.location.origin) {
-          try {
-            const params = new URLSearchParams(event.data);
-            const receivedState = params.get('state');
-            const code = params.get('code');
+      if (!authWindow) {
+        throw new Error('Não foi possível abrir a janela de autorização. Por favor, permita popups para este site.');
+      }
 
-            // Verifica o estado para segurança
-            if (receivedState !== state) {
-              throw new Error('Estado OAuth inválido');
-            }
-
-            if (!code) {
-              throw new Error('Código de autorização não recebido');
-            }
-
-            // Recupera o code verifier
-            const codeVerifier = localStorage.getItem('supabase_code_verifier');
-            if (!codeVerifier) {
-              throw new Error('Code verifier não encontrado');
-            }
-
-            // Troca o código por um token de acesso usando PKCE
-            const tokenResponse = await fetch('https://api.supabase.com/v1/oauth/token', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Accept': 'application/json',
-              },
-              body: new URLSearchParams({
-                grant_type: 'authorization_code',
-                code,
-                code_verifier: codeVerifier,
-                client_id: SUPABASE_CLIENT_ID,
-                redirect_uri: SUPABASE_REDIRECT_URI,
-              }).toString(),
-            });
-
-            if (!tokenResponse.ok) {
-              throw new Error('Falha ao obter token de acesso');
-            }
-
-            const { access_token } = await tokenResponse.json() as TokenResponse;
-
-            // Obtém os detalhes do projeto
-            const projectResponse = await fetch('https://api.supabase.com/v1/projects/current', {
-              headers: {
-                Authorization: `Bearer ${access_token}`,
-              },
-            });
-
-            if (!projectResponse.ok) {
-              throw new Error('Falha ao obter detalhes do projeto');
-            }
-
-            const { project_url, anon_key } = await projectResponse.json() as ProjectResponse;
-
-            // Limpa os dados temporários
-            localStorage.removeItem('supabase_code_verifier');
-            localStorage.removeItem('supabase_oauth_state');
-
-            // Conecta ao Supabase
-            await supabaseStore.connectToSupabase(project_url, anon_key);
-            authWindow?.close();
-            onClose();
-            toast.success('Conectado ao Supabase com sucesso!');
-
-          } catch (error) {
-            console.error('Erro ao processar autorização:', error);
-            toast.error('Erro ao conectar com o Supabase');
-          } finally {
-            window.removeEventListener('message', handleMessage);
-          }
+      // Monitora se a janela foi fechada
+      const checkWindow = setInterval(() => {
+        if (authWindow.closed) {
+          console.log("[Modal] Janela de autorização fechada");
+          clearInterval(checkWindow);
+          setIsLoading(false);
         }
-      };
-
-      window.addEventListener('message', handleMessage);
+      }, 500);
 
     } catch (error) {
-      console.error('Erro ao iniciar autorização:', error);
-      toast.error('Erro ao iniciar autorização do Supabase');
-    } finally {
+      console.error("[Modal] Erro ao iniciar autorização:", error);
+      toast.error(error instanceof Error ? error.message : 'Erro ao iniciar autorização do Supabase');
       setIsLoading(false);
     }
   };
 
-  const handleManualSubmit = (e: React.FormEvent) => {
+  const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (projectUrl && anonKey) {
-      supabaseStore.connectToSupabase(projectUrl, anonKey);
-      onClose();
+      setIsLoading(true);
+      try {
+        console.log("[Modal] Tentando conexão manual");
+        const { success, error } = await supabaseStore.connectToSupabase(projectUrl, anonKey);
+        
+        if (success) {
+          console.log("[Modal] Conexão manual bem sucedida");
+          toast.success('Conectado ao Supabase com sucesso!');
+          onClose();
+        } else {
+          throw error || new Error('Falha ao conectar ao Supabase');
+        }
+      } catch (error) {
+        console.error("[Modal] Erro na conexão manual:", error);
+        toast.error('Erro ao conectar com o Supabase. Verifique suas credenciais.');
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -196,21 +207,18 @@ export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProp
           </button>
         </div>
 
-        {/* Botão de autorização do Supabase */}
-        <div className="mb-6">
-          <button
-            onClick={handleSupabaseAuth}
-            disabled={isLoading}
-            className="w-full px-4 py-3 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M21.97 6.27v11.46c0 1.24-1.01 2.25-2.25 2.25H4.28c-1.24 0-2.25-1.01-2.25-2.25V6.27c0-1.24 1.01-2.25 2.25-2.25h15.44c1.24 0 2.25 1.01 2.25 2.25z"/>
-            </svg>
-            {isLoading ? 'Conectando...' : 'Conectar com Supabase'}
-          </button>
-        </div>
+        <button
+          onClick={handleSupabaseAuth}
+          disabled={isLoading}
+          className="w-full px-4 py-3 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+        >
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M21.97 6.27v11.46c0 1.24-1.01 2.25-2.25 2.25H4.28c-1.24 0-2.25-1.01-2.25-2.25V6.27c0-1.24 1.01-2.25 2.25-2.25h15.44c1.24 0 2.25 1.01 2.25 2.25z"/>
+          </svg>
+          {isLoading ? 'Conectando...' : 'Conectar com Supabase'}
+        </button>
 
-        <div className="relative mb-6">
+        <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-zinc-700"></div>
           </div>
@@ -259,7 +267,7 @@ export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProp
             </button>
             <button
               type="submit"
-              disabled={!projectUrl || !anonKey}
+              disabled={!projectUrl || !anonKey || isLoading}
               className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Salvar Configuração

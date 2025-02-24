@@ -21,8 +21,8 @@ export const supabaseStore = {
       // Cria o cliente Supabase
       const client = createClient(projectUrl, anonKey);
       
-      // Testa a conexão tentando acessar os metadados
-      const { data, error } = await client.from('_metadata').select('*').limit(1);
+      // Testa a conexão tentando fazer uma query simples
+      const { error } = await client.auth.getSession();
       
       if (error) throw error;
 
@@ -32,12 +32,9 @@ export const supabaseStore = {
       this.isConnected.set(true);
       this.firstMessageSent.set(false);
       
-      toast.success('Conectado ao Supabase com sucesso!');
-      
       return { success: true };
     } catch (error) {
       console.error('Erro ao conectar com Supabase:', error);
-      toast.error('Erro ao conectar com Supabase. Verifique suas credenciais.');
       this.disconnect();
       return { success: false, error };
     }
