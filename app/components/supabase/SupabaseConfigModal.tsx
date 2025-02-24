@@ -1,24 +1,137 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabaseStore } from '~/lib/stores/supabase';
+import { toast } from 'react-toastify';
 
 interface SupabaseConfigModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+interface TokenResponse {
+  access_token: string;
+}
+
+interface ProjectResponse {
+  project_url: string;
+  anon_key: string;
+}
+
+const SUPABASE_CLIENT_ID = import.meta.env.VITE_SUPABASE_CLIENT_ID;
+const SUPABASE_REDIRECT_URI = import.meta.env.VITE_SUPABASE_REDIRECT_URI;
+
 export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProps) {
   const [projectUrl, setProjectUrl] = useState('');
   const [anonKey, setAnonKey] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  if (!isOpen) return null;
+  const handleSupabaseAuth = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Gera um estado para segurança
+      const state = crypto.randomUUID();
+      localStorage.setItem('supabase_oauth_state', state);
+      
+      // Constrói a URL de autorização
+      const authUrl = new URL('https://api.supabase.com/v1/oauth/authorize');
+      authUrl.searchParams.append('client_id', SUPABASE_CLIENT_ID);
+      authUrl.searchParams.append('response_type', 'code');
+      authUrl.searchParams.append('state', state);
+      authUrl.searchParams.append('redirect_uri', SUPABASE_REDIRECT_URI);
+      authUrl.searchParams.append('scope', 'all');
 
-  const handleSubmit = (e: React.FormEvent) => {
+      // Abre a janela de autorização
+      const authWindow = window.open(
+        authUrl.toString(),
+        'Supabase Authorization',
+        'width=800,height=600'
+      );
+
+      // Listener para receber o código de autorização
+      const handleMessage = async (event: MessageEvent) => {
+        if (event.origin === window.location.origin) {
+          try {
+            const params = new URLSearchParams(event.data);
+            const receivedState = params.get('state');
+            const code = params.get('code');
+
+            // Verifica o estado para segurança
+            if (receivedState !== state) {
+              throw new Error('Estado OAuth inválido');
+            }
+
+            if (!code) {
+              throw new Error('Código de autorização não recebido');
+            }
+
+            // Troca o código por um token de acesso
+            const tokenResponse = await fetch('https://api.supabase.com/v1/oauth/token', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                grant_type: 'authorization_code',
+                code,
+                client_id: SUPABASE_CLIENT_ID,
+                redirect_uri: SUPABASE_REDIRECT_URI,
+              }),
+            });
+
+            if (!tokenResponse.ok) {
+              throw new Error('Falha ao obter token de acesso');
+            }
+
+            const { access_token } = await tokenResponse.json() as TokenResponse;
+
+            // Obtém os detalhes do projeto
+            const projectResponse = await fetch('https://api.supabase.com/v1/projects/current', {
+              headers: {
+                Authorization: `Bearer ${access_token}`,
+              },
+            });
+
+            if (!projectResponse.ok) {
+              throw new Error('Falha ao obter detalhes do projeto');
+            }
+
+            const { project_url, anon_key } = await projectResponse.json() as ProjectResponse;
+
+            // Conecta ao Supabase
+            await supabaseStore.connectToSupabase(project_url, anon_key);
+            authWindow?.close();
+            onClose();
+            toast.success('Conectado ao Supabase com sucesso!');
+
+          } catch (error) {
+            console.error('Erro ao processar autorização:', error);
+            toast.error('Erro ao conectar com o Supabase');
+          } finally {
+            localStorage.removeItem('supabase_oauth_state');
+            window.removeEventListener('message', handleMessage);
+          }
+        }
+      };
+
+      window.addEventListener('message', handleMessage);
+
+    } catch (error) {
+      console.error('Erro ao iniciar autorização:', error);
+      toast.error('Erro ao iniciar autorização do Supabase');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (projectUrl && anonKey) {
       supabaseStore.connectToSupabase(projectUrl, anonKey);
       onClose();
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -46,11 +159,30 @@ export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProp
           </button>
         </div>
 
-        <p className="text-zinc-400 mb-6">
-          Configure sua conexão com o Supabase. Você pode encontrar essas informações em Project Settings {'>'} API.
-        </p>
+        {/* Botão de autorização do Supabase */}
+        <div className="mb-6">
+          <button
+            onClick={handleSupabaseAuth}
+            disabled={isLoading}
+            className="w-full px-4 py-3 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M21.97 6.27v11.46c0 1.24-1.01 2.25-2.25 2.25H4.28c-1.24 0-2.25-1.01-2.25-2.25V6.27c0-1.24 1.01-2.25 2.25-2.25h15.44c1.24 0 2.25 1.01 2.25 2.25z"/>
+            </svg>
+            {isLoading ? 'Conectando...' : 'Conectar com Supabase'}
+          </button>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="relative mb-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-zinc-700"></div>
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-zinc-900 text-zinc-400">ou configure manualmente</span>
+          </div>
+        </div>
+
+        <form onSubmit={handleManualSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-zinc-300 mb-1">
               URL do Projeto

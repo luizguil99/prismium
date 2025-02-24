@@ -1,39 +1,95 @@
 import { atom } from 'nanostores';
 import { toast } from 'react-toastify';
+import { createClient } from '@supabase/supabase-js';
 
 interface SupabaseConfig {
   projectUrl: string;
   anonKey: string;
+  projectRef?: string;
 }
 
 // Estado para armazenar informações do Supabase
 export const supabaseStore = {
   config: atom<SupabaseConfig | null>(null),
   isConnected: atom<boolean>(false),
-  firstMessageSent: atom<boolean>(false), // Controla se a primeira mensagem já foi enviada
+  firstMessageSent: atom<boolean>(false),
+  client: atom<ReturnType<typeof createClient> | null>(null),
 
   // Armazenar configuração do Supabase
   async connectToSupabase(projectUrl: string, anonKey: string) {
     try {
+      // Cria o cliente Supabase
+      const client = createClient(projectUrl, anonKey);
+      
+      // Testa a conexão tentando acessar os metadados
+      const { data, error } = await client.from('_metadata').select('*').limit(1);
+      
+      if (error) throw error;
+
+      // Salva as configurações
       this.config.set({ projectUrl, anonKey });
+      this.client.set(client);
       this.isConnected.set(true);
-      this.firstMessageSent.set(false); // Reseta quando conecta
-      toast.success('Configuração do Supabase salva com sucesso!');
-    } catch (error) {
-      console.error('Erro ao salvar configuração do Supabase:', error);
-      toast.error('Erro ao salvar configuração do Supabase.');
-      this.config.set(null);
-      this.isConnected.set(false);
       this.firstMessageSent.set(false);
+      
+      toast.success('Conectado ao Supabase com sucesso!');
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Erro ao conectar com Supabase:', error);
+      toast.error('Erro ao conectar com Supabase. Verifique suas credenciais.');
+      this.disconnect();
+      return { success: false, error };
     }
   },
 
   // Desconectar do Supabase
   disconnect() {
     this.config.set(null);
+    this.client.set(null);
     this.isConnected.set(false);
     this.firstMessageSent.set(false);
-    toast.info('Configuração do Supabase removida');
+    toast.info('Desconectado do Supabase');
+  },
+
+  // Obter cliente Supabase
+  getClient() {
+    return this.client.get();
+  },
+
+  // Verificar se está conectado
+  isSupabaseConnected() {
+    return this.isConnected.get();
+  },
+
+  // Obter metadados do projeto
+  async getProjectMetadata() {
+    const client = this.getClient();
+    if (!client) {
+      throw new Error('Não conectado ao Supabase');
+    }
+
+    try {
+      // Busca tabelas do schema public
+      const { data: tables } = await client
+        .from('information_schema.tables')
+        .select('table_name')
+        .eq('table_schema', 'public');
+
+      // Busca funções do schema public
+      const { data: functions } = await client
+        .from('information_schema.routines')
+        .select('routine_name')
+        .eq('routine_schema', 'public');
+
+      return {
+        tables: tables?.map(t => t.table_name) || [],
+        functions: functions?.map(f => f.routine_name) || []
+      };
+    } catch (error) {
+      console.error('Erro ao obter metadados:', error);
+      throw error;
+    }
   },
 
   // Obter contexto para a IA
@@ -49,8 +105,43 @@ const supabaseKey = "${config.anonKey}"
 // Instruções para a IA:
 1. Use @supabase/supabase-js para integração
 2. Inicialize o cliente Supabase no início da aplicação
-3. Use as funções do Supabase para auth, database, storage conforme necessário
-4. Mantenha as boas práticas de segurança ao usar o Supabase
+3. Utilize as funções do cliente para operações no banco
+4. Mantenha a segurança das credenciais
+
+// Exemplo de uso:
+import { createClient } from '@supabase/supabase-js'
+const supabase = createClient(supabaseUrl, supabaseKey)
+
+// Operações comuns:
+const { data, error } = await supabase
+  .from('sua_tabela')
+  .select('*')
+
+// Funções disponíveis:
+- getClient(): Obtém o cliente Supabase configurado
+- getProjectMetadata(): Obtém metadados do projeto (tabelas e funções)
+- isSupabaseConnected(): Verifica se está conectado
 `;
   },
+
+  // Verificar se tem permissões necessárias
+  async checkPermissions() {
+    const client = this.getClient();
+    if (!client) return false;
+
+    try {
+      // Tenta acessar algumas funcionalidades básicas para verificar permissões
+      const { error: tablesError } = await client
+        .from('information_schema.tables')
+        .select('table_name')
+        .limit(1);
+
+      if (tablesError) throw tablesError;
+
+      return true;
+    } catch (error) {
+      console.error('Erro ao verificar permissões:', error);
+      return false;
+    }
+  }
 };
