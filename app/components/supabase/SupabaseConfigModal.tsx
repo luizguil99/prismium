@@ -77,14 +77,14 @@ export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProp
 
     window.addEventListener('message', handleMessage);
 
-    // Timeout após 30 segundos
+    // Timeout após 60 segundos
     timeoutId = setTimeout(() => {
       if (isLoading) {
         console.log("[Modal] Timeout de conexão");
         setIsLoading(false);
         toast.error('Connection timeout. Please try again.');
       }
-    }, 30000);
+    }, 60000);
 
     return () => {
       window.removeEventListener('message', handleMessage);
