@@ -151,8 +151,8 @@ export function ProjectDetails({ projectId, onBack }: ProjectDetailsProps) {
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text)
-      .then(() => toast.success(`${label} copiado para a área de transferência`))
-      .catch(() => toast.error('Falha ao copiar para a área de transferência'));
+      .then(() => toast.success(`${label} copied to clipboard`))
+      .catch(() => toast.error('Failed to copy to clipboard'));
   };
 
   // Resolver o erro de comparação de tipo viewMode
@@ -170,7 +170,7 @@ export function ProjectDetails({ projectId, onBack }: ProjectDetailsProps) {
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
         />
-        <p className="mt-2 text-bolt-elements-textSecondary">Carregando detalhes do projeto...</p>
+        <p className="mt-2 text-bolt-elements-textSecondary">Loading project details...</p>
       </div>
     );
   }
@@ -178,13 +178,13 @@ export function ProjectDetails({ projectId, onBack }: ProjectDetailsProps) {
   if (error) {
     return (
       <div className="space-y-4">
-        <ErrorMessage message="Erro ao carregar projeto" details={error} />
+        <ErrorMessage message="Error loading project" details={error} />
         <div className="flex justify-center">
           <button
             onClick={onBack}
             className="px-4 py-2 text-sm font-medium rounded-md bg-bolt-elements-background-depth-1 text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary transition-colors"
           >
-            Voltar para projetos
+            Back to projects
           </button>
         </div>
       </div>
@@ -194,13 +194,13 @@ export function ProjectDetails({ projectId, onBack }: ProjectDetailsProps) {
   if (!projectDetails) {
     return (
       <div className="space-y-4">
-        <ErrorMessage message="Projeto não encontrado" />
+        <ErrorMessage message="Project not found" />
         <div className="flex justify-center">
           <button
             onClick={onBack}
             className="px-4 py-2 text-sm font-medium rounded-md bg-bolt-elements-background-depth-1 text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary transition-colors"
           >
-            Voltar para projetos
+            Back to projects
           </button>
         </div>
       </div>
@@ -234,24 +234,24 @@ export function ProjectDetails({ projectId, onBack }: ProjectDetailsProps) {
           <button
             onClick={() => setViewMode('details')}
             className={classNames(
-              'py-2 px-1 text-sm font-medium border-b-2 -mb-px',
+              'py-2 px-1 text-sm font-medium border-b-2 -mb-px bg-transparent',
               viewMode === 'details'
                 ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
                 : 'border-transparent text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary hover:border-bolt-elements-borderColor'
             )}
           >
-            Detalhes do Projeto
+            Project Details
           </button>
           <button
             onClick={() => setViewMode('database')}
             className={classNames(
-              'py-2 px-1 text-sm font-medium border-b-2 -mb-px',
+              'py-2 px-1 text-sm font-medium border-b-2 -mb-px bg-transparent',
               isDatabaseView
                 ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
                 : 'border-transparent text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary hover:border-bolt-elements-borderColor'
             )}
           >
-            Banco de Dados
+            Database
           </button>
         </nav>
       </div>
@@ -319,9 +319,9 @@ export function ProjectDetails({ projectId, onBack }: ProjectDetailsProps) {
               <h4 className="text-sm font-medium text-bolt-elements-textSecondary">API Keys</h4>
               <button
                 onClick={() => setShowKeys(!showKeys)}
-                className="text-xs text-bolt-elements-textTertiary hover:text-bolt-elements-textSecondary transition-colors"
+                className="text-xs text-bolt-elements-textTertiary hover:text-bolt-elements-textSecondary transition-colors bg-transparent px-2 py-1 rounded-md"
               >
-                {showKeys ? 'Ocultar' : 'Mostrar'} chaves
+                {showKeys ? 'Hide' : 'Show'} keys
               </button>
             </div>
             
@@ -345,10 +345,10 @@ export function ProjectDetails({ projectId, onBack }: ProjectDetailsProps) {
         <div className="pt-4 flex justify-center">
           <button
             onClick={() => setViewMode('database')}
-            className="px-4 py-2 text-sm font-medium rounded-md bg-emerald-600 hover:bg-emerald-700 text-white transition-colors flex items-center gap-2"
+            className="px-4 py-2 text-sm font-medium rounded-md bg-transparent border border-emerald-600 text-emerald-600 hover:text-emerald-700 hover:border-emerald-700 transition-colors flex items-center gap-2"
           >
             <span className="i-ph-database-bold w-4 h-4" />
-            Gerenciar Banco de Dados
+            Manage Database
           </button>
         </div>
       </div>
@@ -378,9 +378,11 @@ function InfoCard({ title, value, icon, canCopy, onCopy }: InfoCardProps) {
       {canCopy && onCopy && (
         <button
           onClick={onCopy}
-          className="text-bolt-elements-textTertiary hover:text-bolt-elements-textSecondary transition-colors"
+          className="text-emerald-500 hover:text-emerald-600 transition-colors bg-transparent p-1 rounded-md"
         >
-          <span className="i-ph-copy-simple-bold w-4 h-4" />
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+            <path fillRule="evenodd" d="M17.663 3.118c.225.015.45.032.673.05C19.876 3.298 21 4.604 21 6.109v9.642c0 1.506-1.124 2.811-2.664 2.94-1.536.128-3.089.265-4.646.384-1.318.102-2.682.102-4 0-1.557-.12-3.11-.256-4.646-.384C3.124 18.561 2 17.256 2 15.75V6.109c0-1.505 1.124-2.811 2.664-2.94.223-.019.448-.035.673-.05 1.582-.104 3.302-.52 4.331-1.26.93-.67 1.797-.671 2.728 0 1.029.74 2.749 1.156 4.331 1.26ZM7.75 8.25a.75.75 0 0 1 .75-.75h7a.75.75 0 0 1 0 1.5h-7a.75.75 0 0 1-.75-.75Zm0 4a.75.75 0 0 1 .75-.75h4a.75.75 0 0 1 0 1.5h-4a.75.75 0 0 1-.75-.75Z" clipRule="evenodd" />
+          </svg>
         </button>
       )}
     </div>
@@ -402,9 +404,11 @@ function EndpointItem({ label, value, onCopy }: EndpointItemProps) {
       </div>
       <button
         onClick={onCopy}
-        className="text-bolt-elements-textTertiary hover:text-bolt-elements-textSecondary transition-colors p-1"
+        className="text-emerald-500 hover:text-emerald-600 transition-colors p-1 bg-transparent rounded-md"
       >
-        <span className="i-ph-copy-bold w-4 h-4" />
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+          <path fillRule="evenodd" d="M17.663 3.118c.225.015.45.032.673.05C19.876 3.298 21 4.604 21 6.109v9.642c0 1.506-1.124 2.811-2.664 2.94-1.536.128-3.089.265-4.646.384-1.318.102-2.682.102-4 0-1.557-.12-3.11-.256-4.646-.384C3.124 18.561 2 17.256 2 15.75V6.109c0-1.505 1.124-2.811 2.664-2.94.223-.019.448-.035.673-.05 1.582-.104 3.302-.52 4.331-1.26.93-.67 1.797-.671 2.728 0 1.029.74 2.749 1.156 4.331 1.26ZM7.75 8.25a.75.75 0 0 1 .75-.75h7a.75.75 0 0 1 0 1.5h-7a.75.75 0 0 1-.75-.75Zm0 4a.75.75 0 0 1 .75-.75h4a.75.75 0 0 1 0 1.5h-4a.75.75 0 0 1-.75-.75Z" clipRule="evenodd" />
+        </svg>
       </button>
     </div>
   );

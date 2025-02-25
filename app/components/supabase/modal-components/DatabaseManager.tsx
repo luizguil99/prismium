@@ -292,7 +292,7 @@ LIMIT 10;
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 bg-transparent">
       {/* Cabeçalho com botão de voltar */}
       <div className="flex items-center space-x-2">
         <button
@@ -307,22 +307,22 @@ LIMIT 10;
       {tables.length === 0 ? (
         <div className="text-center py-8">
           <div className="i-ph-database-bold w-12 h-12 mx-auto text-bolt-elements-textTertiary" />
-          <p className="mt-2 text-bolt-elements-textSecondary">Nenhuma tabela encontrada neste banco de dados.</p>
+          <p className="mt-2 text-bolt-elements-textSecondary">No tables found in this database.</p>
           <p className="mt-1 text-sm text-bolt-elements-textTertiary">
-            Crie tabelas via SQL ou utilizando a interface do Supabase.
+            Create tables via SQL or using the Supabase interface.
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Lista de tabelas */}
-          <div className="border border-bolt-elements-borderColor rounded-md overflow-hidden">
+          <div className="border border-bolt-elements-borderColor rounded-md overflow-hidden bg-transparent">
             <div className="bg-bolt-elements-background-depth-1 p-2 border-b border-bolt-elements-borderColor">
-              <h4 className="text-sm font-medium text-bolt-elements-textSecondary">Tabelas</h4>
+              <h4 className="text-sm font-medium text-bolt-elements-textSecondary">Tables</h4>
             </div>
             <div className="max-h-[300px] overflow-y-auto p-1">
               {tables.map((table) => (
                 <div
-                  key={table.id}
+                  key={`table-${table.id}`}
                   className={classNames(
                     "px-3 py-2 rounded-md cursor-pointer text-sm my-1",
                     selectedTable === table.name 
@@ -346,10 +346,10 @@ LIMIT 10;
           </div>
 
           {/* Detalhes da tabela selecionada */}
-          <div className="md:col-span-2 border border-bolt-elements-borderColor rounded-md overflow-hidden">
+          <div className="md:col-span-2 border border-bolt-elements-borderColor rounded-md overflow-hidden bg-transparent">
             <div className="bg-bolt-elements-background-depth-1 p-2 border-b border-bolt-elements-borderColor">
               <h4 className="text-sm font-medium text-bolt-elements-textSecondary">
-                {selectedTable ? `Estrutura: ${selectedTable}` : 'Selecione uma tabela'}
+                {selectedTable ? `Structure: ${selectedTable}` : 'Select a table'}
               </h4>
             </div>
             
@@ -358,8 +358,8 @@ LIMIT 10;
                 <table className="min-w-full">
                   <thead className="bg-bolt-elements-background-depth-1 border-b border-bolt-elements-borderColor">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-bolt-elements-textSecondary">Nome</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-bolt-elements-textSecondary">Tipo</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-bolt-elements-textSecondary">Name</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-bolt-elements-textSecondary">Type</th>
                       <th className="px-4 py-2 text-left text-xs font-medium text-bolt-elements-textSecondary">Nullable</th>
                       <th className="px-4 py-2 text-left text-xs font-medium text-bolt-elements-textSecondary">Default</th>
                       <th className="px-4 py-2 text-center text-xs font-medium text-bolt-elements-textSecondary">Primary</th>
@@ -370,16 +370,16 @@ LIMIT 10;
                     {columns.length > 0 ? (
                       columns.map((column, index) => (
                         <tr 
-                          key={column.name} 
+                          key={`column-${column.name}-${index}`}
                           className={classNames(
                             index % 2 === 0 ? 'bg-bolt-elements-background-depth-0' : 'bg-bolt-elements-background-depth-1',
                             'border-b border-bolt-elements-borderColor'
                           )}
                         >
-                          <td className="px-4 py-2 text-sm text-bolt-elements-textPrimary font-medium">{column.name || 'Sem nome'}</td>
+                          <td className="px-4 py-2 text-sm text-bolt-elements-textPrimary font-medium">{column.name || 'No name'}</td>
                           <td className="px-4 py-2 text-sm text-bolt-elements-textSecondary">{column.type || 'unknown'}</td>
                           <td className="px-4 py-2 text-sm text-bolt-elements-textSecondary">
-                            {column.is_nullable ? 'Sim' : 'Não'}
+                            {column.is_nullable ? 'Yes' : 'No'}
                           </td>
                           <td className="px-4 py-2 text-sm text-bolt-elements-textSecondary">
                             {column.default_value || '-'}
@@ -397,9 +397,9 @@ LIMIT 10;
                         <td colSpan={6} className="px-4 py-4 text-center text-bolt-elements-textTertiary">
                           <div className="py-6 flex flex-col items-center">
                             <span className="i-ph-warning-circle-bold w-10 h-10 text-amber-500 mb-2"></span>
-                            <p className="text-bolt-elements-textSecondary">Não foi possível obter a estrutura da tabela.</p>
+                            <p className="text-bolt-elements-textSecondary">Could not retrieve the table structure.</p>
                             <p className="text-sm text-bolt-elements-textTertiary mt-1">
-                              Verifique se a tabela '{selectedTable}' existe e se você tem permissões para acessá-la.
+                              Verify that table '{selectedTable}' exists and you have permissions to access it.
                             </p>
                           </div>
                         </td>
@@ -410,7 +410,7 @@ LIMIT 10;
               </div>
             ) : (
               <div className="p-4 text-center text-bolt-elements-textTertiary">
-                Selecione uma tabela para ver sua estrutura
+                Select a table to view its structure
               </div>
             )}
           </div>
