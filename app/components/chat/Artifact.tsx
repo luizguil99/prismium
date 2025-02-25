@@ -8,7 +8,7 @@ import { workbenchStore } from '~/lib/stores/workbench';
 import { classNames } from '~/utils/classNames';
 import { cubicEasingFn } from '~/utils/easings';
 import { WORK_DIR } from '~/utils/constants';
-import { Package, Loader, CheckCircle2, XCircle, Folder, Code, Terminal, ArrowRight, ExternalLink } from 'lucide-react';
+import { Package, Loader, CheckCircle2, XCircle, Folder, Code, Terminal, ArrowRight, ExternalLink, Zap, Layers, FileCode2 } from 'lucide-react';
 
 const highlighterOptions = {
   langs: ['shell'],
@@ -65,7 +65,7 @@ export const Artifact = memo(({ messageId }: ArtifactProps) => {
 
   return (
     <div className="artifact relative w-full">
-      {/* Card container with enhanced visual effects */}
+      {/* Card container com efeitos visuais aprimorados */}
       <motion.div 
         className="relative w-full border border-bolt-elements-borderColor rounded-lg overflow-hidden transition-all duration-150"
         initial={{ opacity: 0.9, y: 10 }}
@@ -77,16 +77,19 @@ export const Artifact = memo(({ messageId }: ArtifactProps) => {
           boxShadow: isHovered ? '0 4px 12px rgba(0, 0, 0, 0.1)' : '0 2px 6px rgba(0, 0, 0, 0.05)',
         }}
       >
-        {/* Futuristic hexagon pattern in top left */}
-        <div className="absolute left-0 top-0 w-24 h-24 opacity-10 overflow-hidden pointer-events-none">
-          <div className="absolute w-4 h-4 border border-bolt-elements-borderColor rotate-45 top-2 left-2"></div>
-          <div className="absolute w-3 h-3 border border-bolt-elements-borderColor rotate-45 top-5 left-5"></div>
-          <div className="absolute w-2 h-2 border border-bolt-elements-borderColor rotate-45 top-8 left-8"></div>
-          <div className="absolute w-6 h-6 border border-bolt-elements-borderColor rotate-45 top-1 left-8"></div>
-          <div className="absolute w-5 h-5 border border-bolt-elements-borderColor rotate-45 top-6 left-1"></div>
+        {/* Padrão de circuitos no canto superior esquerdo */}
+        <div className="absolute left-0 top-0 w-32 h-32 opacity-10 overflow-hidden pointer-events-none">
+          <div className="absolute w-[1px] h-16 bg-bolt-elements-borderColor top-2 left-6"></div>
+          <div className="absolute w-[1px] h-12 bg-bolt-elements-borderColor top-8 left-12"></div>
+          <div className="absolute w-[1px] h-8 bg-bolt-elements-borderColor top-4 left-18"></div>
+          <div className="absolute w-12 h-[1px] bg-bolt-elements-borderColor top-6 left-2"></div>
+          <div className="absolute w-8 h-[1px] bg-bolt-elements-borderColor top-12 left-8"></div>
+          <div className="absolute w-2 h-2 rounded-full border border-bolt-elements-borderColor top-6 left-6"></div>
+          <div className="absolute w-1.5 h-1.5 rounded-full border border-bolt-elements-borderColor top-12 left-12"></div>
+          <div className="absolute w-1 h-1 rounded-full bg-bolt-elements-borderColor top-12 left-18"></div>
         </div>
         
-        {/* Main content area with improved layout */}
+        {/* Área de conteúdo principal com layout aprimorado */}
         <div className="flex relative">
           <button
             className="flex items-stretch bg-bolt-elements-artifacts-background hover:bg-bolt-elements-artifacts-backgroundHover w-full overflow-hidden group"
@@ -98,8 +101,9 @@ export const Artifact = memo(({ messageId }: ArtifactProps) => {
             {artifact.type == 'bundled' && (
               <>
                 <div className="p-4 relative">
-                  {/* Enhanced icon container with pulse effect */}
+                  {/* Contêiner de ícone aprimorado com efeito de pulso */}
                   <div className="relative flex items-center justify-center w-12 h-12">
+                    {/* Círculos concêntricos animados */}
                     <motion.div 
                       className="absolute w-12 h-12 border border-bolt-elements-borderColor rounded-full opacity-30"
                       animate={allActionFinished ? { scale: [1, 1.05, 1] } : { scale: 1 }}
@@ -111,7 +115,7 @@ export const Artifact = memo(({ messageId }: ArtifactProps) => {
                       transition={{ duration: 2, repeat: allActionFinished ? Infinity : 0, repeatType: "reverse", delay: 0.3 }}
                     ></motion.div>
                     
-                    {/* Decorative elements for the icon */}
+                    {/* Elementos decorativos para o ícone */}
                     <motion.div 
                       className="absolute w-14 h-14 opacity-20"
                       style={{ 
@@ -121,7 +125,7 @@ export const Artifact = memo(({ messageId }: ArtifactProps) => {
                       transition={{ duration: 3, repeat: allActionFinished ? Infinity : 0, repeatType: "reverse" }}
                     />
                     
-                    {/* Animated dots around the icon */}
+                    {/* Pontos animados ao redor do ícone */}
                     {allActionFinished && (
                       <>
                         <motion.div 
@@ -160,12 +164,12 @@ export const Artifact = memo(({ messageId }: ArtifactProps) => {
                         <div className="relative flex items-center justify-center">
                           {/* Camada base do ícone */}
                           <div className="absolute -left-1 -top-1 text-bolt-elements-borderColor opacity-20">
-                            <Code className="w-8 h-8" />
+                            <FileCode2 className="w-8 h-8" />
                           </div>
                           
                           {/* Camada principal do ícone */}
                           <div className="relative">
-                            <Folder className="w-8 h-8" />
+                            <Layers className="w-8 h-8" />
                             
                             {/* Efeito de brilho no ícone */}
                             <motion.div 
@@ -173,9 +177,7 @@ export const Artifact = memo(({ messageId }: ArtifactProps) => {
                               animate={{ opacity: [0, 1, 0] }}
                               transition={{ duration: 2, repeat: Infinity, repeatType: "reverse" }}
                             >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M12 3L14.5 8.5L20 11L14.5 13.5L12 19L9.5 13.5L4 11L9.5 8.5L12 3Z" fill="currentColor" className="text-bolt-elements-borderColor" />
-                              </svg>
+                              <Zap className="w-3 h-3 text-bolt-elements-borderColor" />
                             </motion.div>
                           </div>
                           
@@ -239,7 +241,7 @@ export const Artifact = memo(({ messageId }: ArtifactProps) => {
                             animate={{ scale: [0.9, 1.1, 0.9] }}
                             transition={{ duration: 1.5, repeat: Infinity, repeatType: "reverse" }}
                           >
-                            <Folder className="w-5 h-5" />
+                            <Layers className="w-5 h-5" />
                           </motion.div>
                           
                           {/* Pontos de progresso */}
@@ -277,13 +279,13 @@ export const Artifact = memo(({ messageId }: ArtifactProps) => {
             )}
             
             <div className="px-5 p-3.5 w-full text-left">
-              {/* Enhanced content with improved typography */}
+              {/* Conteúdo aprimorado com tipografia melhorada */}
               <div className="w-full text-bolt-elements-textPrimary font-medium leading-5 text-sm pb-2 relative flex items-center">
-                <span className="relative">
+                <span className="relative flex items-center gap-1.5">
                   {artifact?.title}
                   {isHovered && (
                     <motion.span
-                      className="absolute -right-5 top-1/2 transform -translate-y-1/2 text-bolt-elements-textSecondary"
+                      className="text-bolt-elements-textSecondary"
                       initial={{ opacity: 0, x: -5 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.2 }}
@@ -300,8 +302,19 @@ export const Artifact = memo(({ messageId }: ArtifactProps) => {
                   }}>
                 </div>
               </div>
+              
+              {/* Área de "Click to open Workbench" com alinhamento melhorado */}
               <div className="w-full text-bolt-elements-textSecondary text-xs mt-1.5 flex items-center gap-2">
-                <span>Click to open Workbench</span>
+                <div className="flex items-center gap-1.5">
+                  <motion.div 
+                    animate={isHovered ? { x: [0, 2, 0] } : { x: 0 }}
+                    transition={{ duration: 1, repeat: isHovered ? Infinity : 0 }}
+                  >
+                    <ArrowRight className="w-3 h-3" />
+                  </motion.div>
+                  <span>Click to open Workbench</span>
+                </div>
+                
                 {actions.length > 0 && (
                   <div className="flex items-center gap-1.5 ml-auto">
                     <div className="relative w-16 h-1.5 bg-bolt-elements-borderColor bg-opacity-20 rounded-full overflow-hidden">
@@ -319,7 +332,7 @@ export const Artifact = memo(({ messageId }: ArtifactProps) => {
             </div>
           </button>
           
-          {/* Enhanced divider with animated dot pattern */}
+          {/* Divisor aprimorado com padrão de pontos animados */}
           <div className="w-[1px] relative">
             <div className="absolute inset-y-0 left-0 w-[1px] bg-bolt-elements-artifacts-borderColor"></div>
             <motion.div 
@@ -353,7 +366,7 @@ export const Artifact = memo(({ messageId }: ArtifactProps) => {
                 onClick={toggleActions}
               >
                 <div className="p-4">
-                  {/* Enhanced toggle button with improved animation */}
+                  {/* Botão de alternância aprimorado com animação melhorada */}
                   <motion.div
                     animate={{ rotate: showActions ? 180 : 0 }}
                     transition={{ duration: 0.25, ease: "circOut" }}
@@ -372,7 +385,7 @@ export const Artifact = memo(({ messageId }: ArtifactProps) => {
           </AnimatePresence>
         </div>
         
-        {/* Enhanced progress indicator */}
+        {/* Indicador de progresso aprimorado */}
         <div className="absolute left-0 bottom-0 h-[2px] w-full">
           <div className="relative h-full w-full overflow-hidden">
             <motion.div 
@@ -412,7 +425,7 @@ export const Artifact = memo(({ messageId }: ArtifactProps) => {
           >
             <div className="h-[8px]"></div>
             <div className="p-5 text-left bg-bolt-elements-actions-background border border-bolt-elements-borderColor rounded-lg relative">
-              {/* Decorative element for the actions panel */}
+              {/* Elemento decorativo para o painel de ações */}
               <div className="absolute right-0 top-0 w-24 h-24 opacity-5 overflow-hidden pointer-events-none">
                 {actions.some(a => a.status === 'complete') && (
                   <motion.div
