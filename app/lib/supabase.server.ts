@@ -44,4 +44,31 @@ export async function exchangeCodeForToken(code: string, codeVerifier: string) {
   }
   
   return data;
+}
+
+/**
+ * Busca projetos do Supabase usando o token de acesso do usuário
+ */
+export async function fetchSupabaseProjects(accessToken: string) {
+  if (!accessToken) {
+    throw new Error('Token de acesso não fornecido');
+  }
+
+  const projectsUrl = `${SUPABASE_CONFIG.apiUrl}/v1/projects`;
+  
+  const response = await fetch(projectsUrl, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  
+  const data = await response.json();
+  
+  if (!response.ok) {
+    throw new Error(`Erro ao buscar projetos: ${JSON.stringify(data)}`);
+  }
+  
+  return data;
 } 

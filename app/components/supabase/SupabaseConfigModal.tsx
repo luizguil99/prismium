@@ -50,20 +50,28 @@ export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProp
   // Função para buscar projetos do usuário
   const fetchProjects = async (token: string) => {
     try {
-      const response = await fetch('https://api.supabase.com/v1/projects', {
+      console.log('🔍 Buscando projetos do Supabase...');
+      // Usar nosso endpoint de proxy em vez de chamar diretamente a API do Supabase
+      const response = await fetch('/api/supabase-projects', {
+        method: 'GET',
         headers: {
-          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'X-Supabase-Auth': token, // Passar o token para o nosso servidor
         },
       });
       
       if (response.ok) {
         const projects = await response.json() as SupabaseProject[];
+        console.log('✅ Projetos obtidos com sucesso:', projects.length);
         setConnectedProjects(projects);
       } else {
-        console.error('Falha ao buscar projetos:', await response.text());
+        const errorText = await response.text();
+        console.error('❌ Falha ao buscar projetos:', errorText);
+        toast.error('Erro ao buscar projetos do Supabase');
       }
     } catch (error) {
-      console.error('Erro ao buscar projetos:', error);
+      console.error('❌ Erro ao buscar projetos:', error);
+      toast.error('Erro ao comunicar com o servidor');
     }
   };
 
