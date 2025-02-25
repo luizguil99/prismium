@@ -63,6 +63,7 @@ interface ActionResponse {
   projects?: ProjectItem[];
   projectUrl?: string;
   anonKey?: string;
+  secretKey?: string;
   projectDetails?: ProjectDetails;
 }
 
@@ -174,6 +175,7 @@ export const action: ActionFunction = async ({ request }) => {
 
     const keys = await keysResponse.json() as SupabaseKey[];
     const anonKey = keys.find((key) => key.name === 'anon')?.api_key;
+    const secretKey = keys.find((key) => key.name === 'service_role')?.api_key;
 
     if (!anonKey) {
       throw new Error('Chave anon não encontrada');
@@ -187,6 +189,7 @@ export const action: ActionFunction = async ({ request }) => {
       needsProjectSelection: false,
       projectUrl,
       anonKey,
+      secretKey,
       projectDetails: {
         name: project.name,
         id: project.id,
@@ -343,6 +346,7 @@ export default function SupabaseCallback() {
           
           const projectUrl = fetcher.data.projectUrl;
           const anonKey = fetcher.data.anonKey;
+          const secretKey = fetcher.data.secretKey;
           const projectDetails = fetcher.data.projectDetails;
 
           // Salva as informações em cookies
@@ -351,14 +355,15 @@ export default function SupabaseCallback() {
             anonKey,
             projectDetails.id,
             projectDetails.name,
-            projectDetails.organization
+            projectDetails.organization,
+            secretKey
           );
 
           // Conecta ao Supabase
           setConnectionStep('connecting_client');
           setStatus('Conectando ao cliente Supabase...');
           
-          const result = await supabaseStore.connectToSupabase(projectUrl, anonKey);
+          const result = await supabaseStore.connectToSupabase(projectUrl, anonKey, secretKey);
           
           if (!result.success) {
             setConnectionStep('error');

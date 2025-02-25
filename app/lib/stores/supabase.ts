@@ -2,9 +2,13 @@ import { atom } from 'nanostores';
 import { toast } from 'react-toastify';
 import { createClient } from '@supabase/supabase-js';
 
+// Usando any para evitar problemas de tipagem específica
+type SupabaseClient = any;
+
 interface SupabaseConfig {
   projectUrl: string;
   anonKey: string;
+  secretKey?: string;
   projectRef?: string;
 }
 
@@ -13,10 +17,10 @@ export const supabaseStore = {
   config: atom<SupabaseConfig | null>(null),
   isConnected: atom<boolean>(false),
   firstMessageSent: atom<boolean>(false),
-  client: atom<ReturnType<typeof createClient> | null>(null),
+  client: atom<SupabaseClient | null>(null),
 
   // Armazenar configuração do Supabase
-  async connectToSupabase(projectUrl: string, anonKey: string) {
+  async connectToSupabase(projectUrl: string, anonKey: string, secretKey?: string) {
     try {
       // Cria o cliente Supabase
       const client = createClient(projectUrl, anonKey);
@@ -27,7 +31,7 @@ export const supabaseStore = {
       if (error) throw error;
 
       // Salva as configurações
-      this.config.set({ projectUrl, anonKey });
+      this.config.set({ projectUrl, anonKey, secretKey });
       this.client.set(client);
       this.isConnected.set(true);
       this.firstMessageSent.set(false);
@@ -79,8 +83,8 @@ export const supabaseStore = {
         .eq('routine_schema', 'public');
 
       return {
-        tables: tables?.map(t => t.table_name) || [],
-        functions: functions?.map(f => f.routine_name) || []
+        tables: tables?.map((t: { table_name: string }) => t.table_name) || [],
+        functions: functions?.map((f: { routine_name: string }) => f.routine_name) || []
       };
     } catch (error) {
       console.error('Erro ao obter metadados:', error);
@@ -97,6 +101,7 @@ export const supabaseStore = {
 // Configuração do Supabase
 const supabaseUrl = "${config.projectUrl}"
 const supabaseKey = "${config.anonKey}"
+${config.secretKey ? `const supabaseSecretKey = "${config.secretKey}"` : ''}
 
 // Instruções para a IA:
 1. Use @supabase/supabase-js para integração
@@ -107,6 +112,9 @@ const supabaseKey = "${config.anonKey}"
 // Exemplo de uso:
 import { createClient } from '@supabase/supabase-js'
 const supabase = createClient(supabaseUrl, supabaseKey)
+${config.secretKey ? `
+// Para operações administrativas (use com cuidado):
+const adminSupabase = createClient(supabaseUrl, supabaseSecretKey)` : ''}
 
 // Operações comuns:
 const { data, error } = await supabase

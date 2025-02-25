@@ -5,6 +5,7 @@
 const COOKIE_NAMES = {
   PROJECT_URL: 'supabase_project_url',
   ANON_KEY: 'supabase_anon_key',
+  SECRET_KEY: 'supabase_secret_key',
   PROJECT_REF: 'supabase_project_ref',
   PROJECT_NAME: 'supabase_project_name',
   ORG_ID: 'supabase_org_id',
@@ -76,6 +77,7 @@ export function getSupabaseCredentials() {
   return {
     projectUrl: getCookie(COOKIE_NAMES.PROJECT_URL),
     anonKey: getCookie(COOKIE_NAMES.ANON_KEY),
+    secretKey: getCookie(COOKIE_NAMES.SECRET_KEY),
     projectRef: getCookie(COOKIE_NAMES.PROJECT_REF),
     projectName: getCookie(COOKIE_NAMES.PROJECT_NAME),
     orgId: getCookie(COOKIE_NAMES.ORG_ID)
@@ -90,7 +92,8 @@ export function saveSupabaseCredentials(
   anonKey: string,
   projectId: string,
   projectName: string,
-  organizationId?: string
+  organizationId?: string,
+  secretKey?: string
 ): void {
   // 1 ano em segundos
   const ONE_YEAR = 31536000;
@@ -102,6 +105,10 @@ export function saveSupabaseCredentials(
   
   if (organizationId) {
     setCookie(COOKIE_NAMES.ORG_ID, organizationId, ONE_YEAR);
+  }
+  
+  if (secretKey) {
+    setCookie(COOKIE_NAMES.SECRET_KEY, secretKey, ONE_YEAR);
   }
 }
 

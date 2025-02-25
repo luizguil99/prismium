@@ -13,6 +13,7 @@ interface SupabaseProjectModalProps {
     name: string;
     ref?: string;
     anon_key?: string;
+    secret_key?: string;
     organization?: string;
     region?: string;
     status?: string;
@@ -121,7 +122,7 @@ export function SupabaseProjectModal({ isOpen, onClose, projectDetails }: Supaba
                     </div>
                     <div className="flex justify-between">
                       <span className="text-bolt-elements-textSecondary">Project ID:</span>
-                      <span className="text-bolt-elements-textPrimary font-medium font-mono text-sm">{projectDetails.id}</span>
+                      <span className="text-bolt-elements-textPrimary font-mono text-sm">{projectDetails.id}</span>
                     </div>
                     {projectDetails.region && (
                       <div className="flex justify-between">
@@ -148,6 +149,21 @@ export function SupabaseProjectModal({ isOpen, onClose, projectDetails }: Supaba
                         </span>
                       </div>
                     )}
+                    <div className="mt-3 pt-3 border-t border-bolt-elements-borderColor">
+                      <a 
+                        href={`https://app.supabase.com/project/${projectDetails.ref || projectDetails.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2 text-sm text-emerald-500 hover:text-emerald-400 transition-colors"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                          <polyline points="15 3 21 3 21 9"></polyline>
+                          <line x1="10" y1="14" x2="21" y2="3"></line>
+                        </svg>
+                        Open Supabase Dashboard
+                      </a>
+                    </div>
                   </div>
                 </div>
 
@@ -193,6 +209,32 @@ export function SupabaseProjectModal({ isOpen, onClose, projectDetails }: Supaba
                               }}
                               className="text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary p-1 bg-transparent"
                               aria-label="Copy API Key"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {projectDetails.secret_key && (
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center">
+                          <span className="text-bolt-elements-textSecondary">Secret Key:</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-bolt-elements-textPrimary font-mono text-sm truncate max-w-[250px]">
+                              {projectDetails.secret_key.slice(0, 8)}...{projectDetails.secret_key.slice(-8)}
+                            </span>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(projectDetails.secret_key!);
+                                toast.success('Secret key copied to clipboard');
+                              }}
+                              className="text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary p-1 bg-transparent"
+                              aria-label="Copy Secret Key"
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -252,6 +294,16 @@ const { data, error } = await supabase
                     <li><span className="text-emerald-400">getProjectMetadata()</span> - Get tables and functions</li>
                     <li><span className="text-emerald-400">isSupabaseConnected()</span> - Check connection status</li>
                     <li><span className="text-emerald-400">getAIContext()</span> - Get context for AI integration</li>
+                  </ul>
+                </div>
+
+                <div className="rounded-lg p-4 bg-transparent">
+                  <h3 className="text-lg font-medium text-emerald-400 mb-2">Security Notes</h3>
+                  <ul className="space-y-2 text-bolt-elements-textSecondary">
+                    <li>• The anon key is safe to use in client-side code</li>
+                    <li>• The secret key should ONLY be used in server-side code</li>
+                    <li>• Use Row Level Security (RLS) to protect your data</li>
+                    <li>• Set up proper authentication for your users</li>
                   </ul>
                 </div>
               </div>

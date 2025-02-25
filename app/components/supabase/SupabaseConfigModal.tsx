@@ -14,6 +14,7 @@ interface SupabaseProjectDetails {
   name: string;
   ref?: string;
   anon_key?: string;
+  secret_key?: string;
   organization?: string;
   region?: string;
   status?: string;
@@ -89,7 +90,11 @@ export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProp
         }
         
         try {
-          const result = await supabaseStore.connectToSupabase(credentials.projectUrl, credentials.anonKey);
+          const result = await supabaseStore.connectToSupabase(
+            credentials.projectUrl, 
+            credentials.anonKey,
+            credentials.secretKey || undefined
+          );
           if (result.success) {
             console.log("[Modal] Conectado via cookies");
             clearAllTimers();
@@ -99,6 +104,7 @@ export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProp
               name: credentials.projectName,
               ref: credentials.projectRef,
               anon_key: credentials.anonKey,
+              secret_key: credentials.secretKey || undefined,
               organization: credentials.orgId || undefined
             });
             setModalState('success');
