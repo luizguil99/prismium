@@ -3,6 +3,7 @@ import { workbenchStore } from '~/lib/stores/workbench';
 import Cookies from 'js-cookie';
 import { toast } from 'react-toastify';
 import { GitHubModal } from './GitHubModal';
+import { SupabaseConfigModal } from '../supabase/SupabaseConfigModal';
 
 interface WorkbenchSidebarProps {
   isSyncing: boolean;
@@ -44,6 +45,7 @@ export const WorkbenchSidebar = ({
   onOpenComponents,
 }: WorkbenchSidebarProps) => {
   const [isGitHubModalOpen, setIsGitHubModalOpen] = useState(false);
+  const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState(false);
 
   return (
     <div className="h-full w-16 bg-[#000000] border-r border-zinc-800 flex flex-col">
@@ -76,7 +78,7 @@ export const WorkbenchSidebar = ({
         <SidebarButton
           icon="i-ph-database-bold"
           label="Supabase"
-          onClick={() => {}}
+          onClick={() => setIsSupabaseModalOpen(true)}
         />
       </div>
 
@@ -89,6 +91,10 @@ export const WorkbenchSidebar = ({
         <GitHubModal 
           isOpen={isGitHubModalOpen}
           onClose={() => setIsGitHubModalOpen(false)}
+        />
+        <SupabaseConfigModal
+          isOpen={isSupabaseModalOpen}
+          onClose={() => setIsSupabaseModalOpen(false)}
         />
       </div>
     </div>
