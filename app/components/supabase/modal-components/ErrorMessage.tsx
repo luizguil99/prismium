@@ -24,8 +24,8 @@ export function ErrorMessage({ message, details, className }: ErrorMessageProps)
 export function ProjectLimitErrorMessage() {
   return (
     <ErrorMessage 
-      message="Limite de projetos gratuitos atingido"
-      details="Alguns membros da organização atingiram o limite máximo de projetos gratuitos. Para continuar, você precisa excluir, pausar ou fazer upgrade de um ou mais destes projetos."
+message="Free project limit reached"
+details="Some members of the organization have reached the maximum number of free projects. To continue, you need to delete, pause, or upgrade one or more of these projects."
     />
   );
 } 
