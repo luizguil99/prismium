@@ -46,7 +46,6 @@ export const supabaseStore = {
     this.client.set(null);
     this.isConnected.set(false);
     this.firstMessageSent.set(false);
-    toast.info('Desconectado do Supabase');
   },
 
   // Obter cliente Supabase
