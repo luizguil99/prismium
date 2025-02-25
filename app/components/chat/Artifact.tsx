@@ -99,7 +99,7 @@ export const Artifact = memo(({ messageId }: ArtifactProps) => {
               <>
                 <div className="p-4 relative">
                   {/* Enhanced icon container with pulse effect */}
-                  <div className="relative flex items-center justify-center">
+                  <div className="relative flex items-center justify-center w-12 h-12">
                     <motion.div 
                       className="absolute w-12 h-12 border border-bolt-elements-borderColor rounded-full opacity-30"
                       animate={allActionFinished ? { scale: [1, 1.05, 1] } : { scale: 1 }}
@@ -110,20 +110,164 @@ export const Artifact = memo(({ messageId }: ArtifactProps) => {
                       animate={allActionFinished ? { scale: [1, 1.1, 1] } : { scale: 1 }}
                       transition={{ duration: 2, repeat: allActionFinished ? Infinity : 0, repeatType: "reverse", delay: 0.3 }}
                     ></motion.div>
+                    
+                    {/* Decorative elements for the icon */}
+                    <motion.div 
+                      className="absolute w-14 h-14 opacity-20"
+                      style={{ 
+                        background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%)'
+                      }}
+                      animate={allActionFinished ? { scale: [1, 1.2, 1], opacity: [0.1, 0.3, 0.1] } : { scale: 1, opacity: 0.1 }}
+                      transition={{ duration: 3, repeat: allActionFinished ? Infinity : 0, repeatType: "reverse" }}
+                    />
+                    
+                    {/* Animated dots around the icon */}
+                    {allActionFinished && (
+                      <>
+                        <motion.div 
+                          className="absolute w-1 h-1 rounded-full bg-bolt-elements-borderColor"
+                          style={{ top: '0px', left: '50%', transform: 'translateX(-50%)' }}
+                          animate={{ opacity: [0, 1, 0] }}
+                          transition={{ duration: 1.5, repeat: Infinity, delay: 0 }}
+                        />
+                        <motion.div 
+                          className="absolute w-1 h-1 rounded-full bg-bolt-elements-borderColor"
+                          style={{ top: '25%', right: '0px', transform: 'translateY(-50%)' }}
+                          animate={{ opacity: [0, 1, 0] }}
+                          transition={{ duration: 1.5, repeat: Infinity, delay: 0.3 }}
+                        />
+                        <motion.div 
+                          className="absolute w-1 h-1 rounded-full bg-bolt-elements-borderColor"
+                          style={{ bottom: '0px', left: '50%', transform: 'translateX(-50%)' }}
+                          animate={{ opacity: [0, 1, 0] }}
+                          transition={{ duration: 1.5, repeat: Infinity, delay: 0.6 }}
+                        />
+                        <motion.div 
+                          className="absolute w-1 h-1 rounded-full bg-bolt-elements-borderColor"
+                          style={{ top: '25%', left: '0px', transform: 'translateY(-50%)' }}
+                          animate={{ opacity: [0, 1, 0] }}
+                          transition={{ duration: 1.5, repeat: Infinity, delay: 0.9 }}
+                        />
+                      </>
+                    )}
+                    
                     {allActionFinished ? (
                       <motion.div 
-                        className="relative"
+                        className="relative z-10 flex items-center justify-center"
                         whileHover={{ rotate: 10, scale: 1.1 }}
                         transition={{ type: "spring", stiffness: 300 }}
                       >
-                        <div className={'i-ph:files-light'} style={{ fontSize: '2rem' }}></div>
+                        <div className="relative flex items-center justify-center">
+                          {/* Camada base do ícone */}
+                          <div className="absolute -left-1 -top-1 text-bolt-elements-borderColor opacity-20">
+                            <Code className="w-8 h-8" />
+                          </div>
+                          
+                          {/* Camada principal do ícone */}
+                          <div className="relative">
+                            <Folder className="w-8 h-8" />
+                            
+                            {/* Efeito de brilho no ícone */}
+                            <motion.div 
+                              className="absolute -top-1 -right-1 w-3 h-3"
+                              animate={{ opacity: [0, 1, 0] }}
+                              transition={{ duration: 2, repeat: Infinity, repeatType: "reverse" }}
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 3L14.5 8.5L20 11L14.5 13.5L12 19L9.5 13.5L4 11L9.5 8.5L12 3Z" fill="currentColor" className="text-bolt-elements-borderColor" />
+                              </svg>
+                            </motion.div>
+                          </div>
+                          
+                          {/* Camada de destaque */}
+                          <motion.div 
+                            className="absolute -right-1 -bottom-1"
+                            animate={{ rotate: [0, 5, 0] }}
+                            transition={{ duration: 3, repeat: Infinity, repeatType: "reverse" }}
+                          >
+                            <CheckCircle2 className="w-4 h-4 text-green-500" />
+                          </motion.div>
+                          
+                          {/* Efeito de brilho */}
+                          <motion.div 
+                            className="absolute inset-0 rounded-full"
+                            style={{ 
+                              background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%)'
+                            }}
+                            animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.8, 0.5] }}
+                            transition={{ duration: 2, repeat: Infinity, repeatType: "reverse" }}
+                          />
+                        </div>
                       </motion.div>
                     ) : (
                       <motion.div
+                        className="relative z-10 flex items-center justify-center"
                         animate={{ rotate: 360 }}
                         transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
                       >
-                        <div className={'i-svg-spinners:90-ring-with-bg'} style={{ fontSize: '2rem' }}></div>
+                        <div className="relative flex items-center justify-center">
+                          {/* Círculo de carregamento animado */}
+                          <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <motion.circle 
+                              cx="12" 
+                              cy="12" 
+                              r="10" 
+                              stroke="currentColor" 
+                              strokeWidth="2" 
+                              strokeLinecap="round" 
+                              strokeDasharray="50"
+                              strokeDashoffset="0"
+                              className="text-bolt-elements-borderColor opacity-20"
+                            />
+                            <motion.circle 
+                              cx="12" 
+                              cy="12" 
+                              r="10" 
+                              stroke="currentColor" 
+                              strokeWidth="2.5" 
+                              strokeLinecap="round" 
+                              strokeDasharray="50"
+                              animate={{ strokeDashoffset: [0, 100] }}
+                              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                              className="text-bolt-elements-borderColor opacity-70"
+                            />
+                          </svg>
+                          
+                          {/* Ícone central */}
+                          <motion.div 
+                            className="absolute"
+                            animate={{ scale: [0.9, 1.1, 0.9] }}
+                            transition={{ duration: 1.5, repeat: Infinity, repeatType: "reverse" }}
+                          >
+                            <Folder className="w-5 h-5" />
+                          </motion.div>
+                          
+                          {/* Pontos de progresso */}
+                          <motion.div 
+                            className="absolute w-1 h-1 rounded-full bg-bolt-elements-borderColor"
+                            style={{ top: '0px', left: '50%', transform: 'translateX(-50%)' }}
+                            animate={{ opacity: [0, 1, 0] }}
+                            transition={{ duration: 1, repeat: Infinity, delay: 0 }}
+                          />
+                          <motion.div 
+                            className="absolute w-1 h-1 rounded-full bg-bolt-elements-borderColor"
+                            style={{ top: '50%', right: '0px', transform: 'translateY(-50%)' }}
+                            animate={{ opacity: [0, 1, 0] }}
+                            transition={{ duration: 1, repeat: Infinity, delay: 0.25 }}
+                          />
+                          <motion.div 
+                            className="absolute w-1 h-1 rounded-full bg-bolt-elements-borderColor"
+                            style={{ bottom: '0px', left: '50%', transform: 'translateX(-50%)' }}
+                            animate={{ opacity: [0, 1, 0] }}
+                            transition={{ duration: 1, repeat: Infinity, delay: 0.5 }}
+                          />
+                          <motion.div 
+                            className="absolute w-1 h-1 rounded-full bg-bolt-elements-borderColor"
+                            style={{ top: '50%', left: '0px', transform: 'translateY(-50%)' }}
+                            animate={{ opacity: [0, 1, 0] }}
+                            transition={{ duration: 1, repeat: Infinity, delay: 0.75 }}
+                          />
+                        </div>
                       </motion.div>
                     )}
                   </div>
