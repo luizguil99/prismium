@@ -130,10 +130,16 @@ export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProp
       authUrl.searchParams.append('code_challenge_method', 'S256');
       
       console.log('🔗 Authorization URL built:', authUrl.toString());
-      console.log('🌐 Redirecting to Supabase authorization page...');
+      console.log('🌐 Opening Supabase authorization page in new tab...');
       
-      // Redirect to Supabase authorization page
-      window.location.href = authUrl.toString();
+      // Open Supabase authorization page in a new tab instead of redirecting
+      window.open(authUrl.toString(), '_blank');
+      
+      // Set a small timeout before resetting isConnecting
+      // This gives a better UX as the button doesn't flash back immediately
+      setTimeout(() => {
+        setIsConnecting(false);
+      }, 1000);
     } catch (error) {
       console.error('❌ Error starting OAuth flow:', error);
       toast.error('Error connecting to Supabase');
