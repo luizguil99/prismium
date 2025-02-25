@@ -3,15 +3,79 @@ import { json } from "@remix-run/node";
 import { useLoaderData, useFetcher } from "@remix-run/react";
 import { useEffect, useState } from "react";
 import { supabaseStore } from '~/lib/stores/supabase';
+import supabaseCookies from '~/lib/utils/supabase-cookies';
 
 interface TokenResponse {
   access_token: string;
+  token_type: string;
+  expires_in: number;
 }
 
-interface ProjectResponse {
-  project_url: string;
-  anon_key: string;
+interface SupabaseProject {
+  id: string;
+  name: string;
+  region: string;
+  status: string;
+  organization_id: string;
+  created_at: string;
+  database: {
+    postgres_engine: string;
+    version: string;
+  };
 }
+
+interface SupabaseKey {
+  name: string;
+  api_key: string;
+}
+
+interface ProjectDetails {
+  id: string;
+  name: string;
+  organization: string;
+  region: string;
+  status: string;
+  database: {
+    postgres_engine: string;
+    version: string;
+  };
+  createdAt: string;
+  host: string;
+  postgresVersion: string;
+  dbVersion: string;
+}
+
+// Interface para o projeto na lista
+interface ProjectItem {
+  id: string;
+  name: string;
+  region: string;
+  status: string;
+  database: any;
+  createdAt: string;
+}
+
+interface ActionResponse {
+  success: boolean;
+  error?: string;
+  needsProjectSelection?: boolean;
+  accessToken?: string;
+  projects?: ProjectItem[];
+  projectUrl?: string;
+  anonKey?: string;
+  projectDetails?: ProjectDetails;
+}
+
+// Etapas do processo de seleção de projeto
+type ConnectionStep = 
+  | 'initial' 
+  | 'selecting_project'
+  | 'fetching_keys'
+  | 'connecting_client'
+  | 'saving_cookies'
+  | 'notifying_parent'
+  | 'complete'
+  | 'error';
 
 export const action: ActionFunction = async ({ request }) => {
   const formData = await request.formData();
@@ -48,8 +112,8 @@ export const action: ActionFunction = async ({ request }) => {
         throw new Error(`Falha ao obter token de acesso: ${errorText}`);
       }
 
-      const { access_token } = await tokenResponse.json();
-      finalAccessToken = access_token;
+      const tokenData = await tokenResponse.json() as TokenResponse;
+      finalAccessToken = tokenData.access_token;
       console.log("[Action] Token obtido com sucesso");
     }
 
@@ -65,20 +129,20 @@ export const action: ActionFunction = async ({ request }) => {
       throw new Error('Falha ao obter lista de projetos');
     }
 
-    const projects = await projectsResponse.json();
+    const projects = await projectsResponse.json() as SupabaseProject[];
     console.log("[Action] Projetos recebidos:", projects);
 
-    if (!projects || !projects.length) {
+    if (!projects || projects.length === 0) {
       throw new Error('Nenhum projeto encontrado');
     }
 
     // Se não tiver projectId, retorna a lista de projetos
     if (!projectId) {
-      return json({ 
+      return json<ActionResponse>({ 
         success: true,
         needsProjectSelection: true,
         accessToken: finalAccessToken,
-        projects: projects.map((p: any) => ({
+        projects: projects.map((p) => ({
           id: p.id,
           name: p.name,
           region: p.region,
@@ -90,11 +154,12 @@ export const action: ActionFunction = async ({ request }) => {
     }
 
     // Se tiver projectId, busca as chaves desse projeto
-    const project = projects.find((p: any) => p.id === projectId);
+    const project = projects.find((p) => p.id === projectId);
     if (!project) {
       throw new Error('Projeto não encontrado');
     }
 
+    console.log("[Action] Buscando chaves do projeto:", projectId);
     const keysResponse = await fetch(`https://api.supabase.com/v1/projects/${project.id}/api-keys`, {
       headers: {
         Authorization: `Bearer ${finalAccessToken}`,
@@ -107,8 +172,8 @@ export const action: ActionFunction = async ({ request }) => {
       throw new Error('Falha ao obter chaves do projeto');
     }
 
-    const keys = await keysResponse.json();
-    const anonKey = keys.find((key: any) => key.name === 'anon')?.api_key;
+    const keys = await keysResponse.json() as SupabaseKey[];
+    const anonKey = keys.find((key) => key.name === 'anon')?.api_key;
 
     if (!anonKey) {
       throw new Error('Chave anon não encontrada');
@@ -117,7 +182,7 @@ export const action: ActionFunction = async ({ request }) => {
     const projectUrl = `https://${project.id}.supabase.co`;
     console.log("[Action] Configuração pronta:", { projectUrl });
 
-    return json({ 
+    return json<ActionResponse>({ 
       success: true,
       needsProjectSelection: false,
       projectUrl,
@@ -138,12 +203,17 @@ export const action: ActionFunction = async ({ request }) => {
 
   } catch (error) {
     console.error("[Action] Erro:", error);
-    return json({ 
+    return json<ActionResponse>({ 
       success: false, 
       error: error instanceof Error ? error.message : 'Erro desconhecido' 
     }, { status: 400 });
   }
 };
+
+interface LoaderData {
+  code: string;
+  state: string;
+}
 
 export const loader: LoaderFunction = async ({ request }) => {
   const url = new URL(request.url);
@@ -156,35 +226,40 @@ export const loader: LoaderFunction = async ({ request }) => {
     throw new Error("Parâmetros de autenticação ausentes");
   }
 
-  return { code, state };
+  return json<LoaderData>({ code, state });
 }
 
 export default function SupabaseCallback() {
-  const { code, state } = useLoaderData<typeof loader>();
-  const fetcher = useFetcher();
+  const { code, state } = useLoaderData<LoaderData>();
+  const fetcher = useFetcher<ActionResponse>();
   const [error, setError] = useState<string>();
   const [status, setStatus] = useState('Iniciando autenticação...');
+  const [connectionStep, setConnectionStep] = useState<ConnectionStep>('initial');
   const [success, setSuccess] = useState(false);
-  const [projectInfo, setProjectInfo] = useState<any>(null);
-  const [projects, setProjects] = useState<any[]>([]);
+  const [projectInfo, setProjectInfo] = useState<ProjectDetails | null>(null);
+  const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>();
   const [accessToken, setAccessToken] = useState<string>();
+  const [connectionTimeoutId, setConnectionTimeoutId] = useState<NodeJS.Timeout | null>(null);
+
+  // Limpa o timeout quando o componente é desmontado
+  useEffect(() => {
+    return () => {
+      if (connectionTimeoutId) {
+        clearTimeout(connectionTimeoutId);
+      }
+    };
+  }, [connectionTimeoutId]);
 
   useEffect(() => {
     const processOAuth = async () => {
       try {
+        setConnectionStep('initial');
         setStatus('Verificando estado...');
         console.log("[Callback] Iniciando processamento com:", { code, state });
         
-        // Função para obter valor de um cookie
-        const getCookie = (name: string) => {
-          const value = `; ${document.cookie}`;
-          const parts = value.split(`; ${name}=`);
-          if (parts.length === 2) return parts.pop()?.split(';').shift();
-          return null;
-        };
-
-        const savedState = getCookie('supabase_oauth_state');
+        // Verifica o estado OAuth
+        const savedState = supabaseCookies.getCookie(supabaseCookies.COOKIE_NAMES.OAUTH_STATE);
         console.log("[Callback] Estado salvo em cookie:", savedState);
         console.log("[Callback] Estado recebido na URL:", state);
 
@@ -194,7 +269,7 @@ export default function SupabaseCallback() {
         }
 
         // Limpa o cookie após validação
-        document.cookie = 'supabase_oauth_state=; max-age=0; path=/; SameSite=Lax';
+        supabaseCookies.clearOAuthState();
 
         setStatus('Trocando código por token...');
         console.log("[Callback] Iniciando troca de token...");
@@ -206,6 +281,7 @@ export default function SupabaseCallback() {
 
       } catch (error) {
         console.error("[Callback] Erro:", error);
+        setConnectionStep('error');
         setError(error instanceof Error ? error.message : 'Erro desconhecido');
       }
     };
@@ -215,66 +291,113 @@ export default function SupabaseCallback() {
     }
   }, [code, state, fetcher]);
 
+  // Função para notificar a janela principal com garantia de entrega
+  const notifyParentWindow = async (data: any) => {
+    if (!window.opener) {
+      console.error('[Callback] Janela principal não encontrada');
+      return false;
+    }
+
+    console.log('[Callback] Enviando mensagem para janela principal:', data);
+    
+    // Tentativa inicial
+    window.opener.postMessage(data, '*');
+    
+    // Tentativas adicionais com delay crescente para garantir entrega
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, attempt * 500));
+      if (window.opener) {
+        window.opener.postMessage(data, '*');
+      } else {
+        // Janela principal foi fechada
+        break;
+      }
+    }
+    
+    return true;
+  };
+
   useEffect(() => {
     const processResponse = async () => {
       if (fetcher.data) {
         try {
           if (!fetcher.data.success) {
-            throw new Error(fetcher.data.error);
+            setConnectionStep('error');
+            throw new Error(fetcher.data.error || 'Erro desconhecido');
           }
 
-          if (fetcher.data.needsProjectSelection) {
-            setProjects(fetcher.data.projects);
+          if (fetcher.data.needsProjectSelection && fetcher.data.projects) {
+            setProjects(fetcher.data.projects as ProjectItem[]);
             setAccessToken(fetcher.data.accessToken);
             setStatus('Selecione um projeto para conectar');
             return;
           }
 
+          if (!fetcher.data.projectUrl || !fetcher.data.anonKey || !fetcher.data.projectDetails) {
+            setConnectionStep('error');
+            throw new Error('Resposta incompleta do servidor');
+          }
+
+          setConnectionStep('saving_cookies');
+          setStatus('Salvando configurações...');
+          
           const projectUrl = fetcher.data.projectUrl;
           const anonKey = fetcher.data.anonKey;
           const projectDetails = fetcher.data.projectDetails;
 
           // Salva as informações em cookies
-          const cookieOptions = 'max-age=31536000; path=/; SameSite=Lax'; // 1 ano
-          document.cookie = `supabase_project_url=${projectUrl}; ${cookieOptions}`;
-          document.cookie = `supabase_anon_key=${anonKey}; ${cookieOptions}`;
-          document.cookie = `supabase_project_ref=${projectDetails.id}; ${cookieOptions}`;
-          document.cookie = `supabase_project_name=${projectDetails.name}; ${cookieOptions}`;
-          document.cookie = `supabase_org_id=${projectDetails.organization}; ${cookieOptions}`;
+          supabaseCookies.saveSupabaseCredentials(
+            projectUrl,
+            anonKey,
+            projectDetails.id,
+            projectDetails.name,
+            projectDetails.organization
+          );
 
           // Conecta ao Supabase
+          setConnectionStep('connecting_client');
+          setStatus('Conectando ao cliente Supabase...');
+          
           const result = await supabaseStore.connectToSupabase(projectUrl, anonKey);
           
           if (!result.success) {
+            setConnectionStep('error');
             throw new Error('Falha ao conectar com o Supabase');
           }
 
           // Garante que a janela pai ainda está aberta
-          if (window.opener) {
-            // Envia a mensagem várias vezes para garantir
-            for (let i = 0; i < 3; i++) {
-              window.opener.postMessage({
-                type: 'supabase_connection_success',
-                projectDetails: projectDetails
-              }, '*');
-              await new Promise(resolve => setTimeout(resolve, 500)); // Espera 500ms
-            }
+          setConnectionStep('notifying_parent');
+          setStatus('Notificando aplicação principal...');
+          
+          const notified = await notifyParentWindow({
+            type: 'supabase_connection_success',
+            projectDetails: projectDetails
+          });
+
+          if (!notified) {
+            console.warn('[Callback] Não foi possível notificar a janela principal');
           }
 
+          setConnectionStep('complete');
           setStatus('Conexão estabelecida!');
           setSuccess(true);
           setProjectInfo(projectDetails);
-          
-          // Limpa o cookie de estado
-          document.cookie = 'supabase_oauth_state=; max-age=0; path=/; SameSite=Lax';
 
-          // Fecha a janela após 2 segundos
+          // Fecha a janela após 3 segundos para dar tempo à mensagem ser processada
           setTimeout(() => {
+            if (window.opener) {
+              // Envia uma última mensagem de confirmação
+              notifyParentWindow({
+                type: 'supabase_window_closing',
+                projectDetails: projectDetails
+              });
+            }
             window.close();
-          }, 2000);
+          }, 3000);
 
         } catch (error) {
           console.error("[Callback] Erro:", error);
+          setConnectionStep('error');
           setError(error instanceof Error ? error.message : 'Erro desconhecido');
         }
       }
@@ -284,12 +407,58 @@ export default function SupabaseCallback() {
   }, [fetcher.data]);
 
   const handleProjectSelect = (projectId: string) => {
+    // Limpa qualquer timeout existente
+    if (connectionTimeoutId) {
+      clearTimeout(connectionTimeoutId);
+    }
+    
     setSelectedProjectId(projectId);
-    setStatus('Conectando ao projeto...');
+    setConnectionStep('selecting_project');
+    setStatus(`Conectando ao projeto ${projectId}...`);
+    
+    if (!accessToken) {
+      setConnectionStep('error');
+      setError('Token de acesso não disponível');
+      return;
+    }
+    
+    console.log(`[Callback] Selecionando projeto ${projectId}...`);
+    
+    // Define um timeout mais longo (60 segundos)
+    const timeoutId = setTimeout(() => {
+      console.log("[Callback] Timeout de conexão ao selecionar projeto");
+      setConnectionStep('error');
+      setError(`Tempo limite excedido ao se conectar ao projeto ${projectId}. O servidor Supabase pode estar lento ou o projeto pode estar indisponível.`);
+    }, 60000);
+    
+    setConnectionTimeoutId(timeoutId);
+    
     fetcher.submit(
       { projectId, accessToken },
       { method: "post" }
     );
+  };
+
+  // Função para texto de status baseado no passo atual
+  const getStatusText = () => {
+    switch (connectionStep) {
+      case 'selecting_project':
+        return `Conectando ao projeto ${selectedProjectId}...`;
+      case 'fetching_keys':
+        return 'Obtendo chaves de API...';
+      case 'connecting_client':
+        return 'Conectando ao cliente Supabase...';
+      case 'saving_cookies':
+        return 'Salvando configurações...';
+      case 'notifying_parent':
+        return 'Finalizando conexão...';
+      case 'complete':
+        return 'Conexão estabelecida!';
+      case 'error':
+        return 'Erro de conexão';
+      default:
+        return status;
+    }
   };
 
   return (
@@ -391,17 +560,35 @@ export default function SupabaseCallback() {
         ) : projects.length > 0 ? (
           <div>
             <h1 className="text-xl font-semibold text-center mb-6">Selecione um Projeto</h1>
+            
+            {connectionStep === 'selecting_project' && (
+              <div className="bg-emerald-900/30 border border-emerald-700 rounded-md p-3 mb-4 text-emerald-200 text-sm">
+                <div className="flex items-center">
+                  <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>{getStatusText()}</span>
+                </div>
+                <p className="mt-2 text-xs opacity-80">
+                  Esse processo pode levar até 60 segundos dependendo da resposta do servidor Supabase.
+                </p>
+              </div>
+            )}
+            
             <div className="grid grid-cols-1 gap-4">
               {projects.map((project) => (
                 <button
                   key={project.id}
                   onClick={() => handleProjectSelect(project.id)}
-                  disabled={selectedProjectId === project.id}
+                  disabled={selectedProjectId === project.id || connectionStep === 'selecting_project'}
                   className={`p-4 rounded-lg border ${
                     selectedProjectId === project.id
                       ? 'border-emerald-500 bg-emerald-500/10'
                       : 'border-zinc-700 hover:border-zinc-600 bg-zinc-900'
-                  } transition-colors text-left`}
+                  } transition-colors text-left ${
+                    connectionStep === 'selecting_project' && selectedProjectId !== project.id ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
                 >
                   <div className="flex items-center justify-between">
                     <div>
@@ -445,7 +632,7 @@ export default function SupabaseCallback() {
               </svg>
             </div>
             <h1 className="text-xl font-semibold mb-2">Autenticando com Supabase</h1>
-            <p className="text-zinc-400 text-center">{status}</p>
+            <p className="text-zinc-400 text-center">{getStatusText()}</p>
           </div>
         )}
       </div>
