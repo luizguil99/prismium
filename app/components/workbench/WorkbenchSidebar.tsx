@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { workbenchStore } from '~/lib/stores/workbench';
-import { supabaseStore } from '~/lib/stores/supabase';
 import Cookies from 'js-cookie';
 import { toast } from 'react-toastify';
 import { GitHubModal } from './GitHubModal';
@@ -9,7 +8,6 @@ interface WorkbenchSidebarProps {
   isSyncing: boolean;
   onSyncFiles: () => void;
   onOpenComponents: () => void;
-  onOpenSupabase: () => void;
 }
 
 const SidebarButton = ({ 
@@ -44,7 +42,6 @@ export const WorkbenchSidebar = ({
   isSyncing,
   onSyncFiles,
   onOpenComponents,
-  onOpenSupabase
 }: WorkbenchSidebarProps) => {
   const [isGitHubModalOpen, setIsGitHubModalOpen] = useState(false);
 
@@ -79,8 +76,7 @@ export const WorkbenchSidebar = ({
         <SidebarButton
           icon="i-ph-database-bold"
           label="Supabase"
-          onClick={onOpenSupabase}
-          isActive={supabaseStore.isConnected.get()}
+          onClick={() => {}}
         />
       </div>
 

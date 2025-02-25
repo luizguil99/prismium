@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { supabaseStore } from '~/lib/stores/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 import { classNames } from '~/utils/classNames';
 

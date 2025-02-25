@@ -23,7 +23,6 @@ import type { ProviderInfo } from '~/types/model';
 import { useSearchParams } from '@remix-run/react';
 import { createSampler } from '~/utils/sampler';
 import { getTemplates, selectStarterTemplate } from '~/utils/selectStarterTemplate';
-import { supabaseStore } from '~/lib/stores/supabase';
 
 
 const toastAnimation = cssTransition({
@@ -305,24 +304,6 @@ export const ChatImpl = memo(
 
       // Prepara o prompt inicial com a mensagem do usuário
       let finalPrompt = _input;
-
-      // Verifica se o Supabase está conectado e se é a primeira mensagem
-      const isSupabaseConnected = supabaseStore.isConnected.get();
-      const isFirstMessage = !supabaseStore.firstMessageSent.get();
-
-      // Adiciona o contexto do Supabase apenas na primeira mensagem após conectar
-      if (isSupabaseConnected && isFirstMessage) {
-        console.log('[ChatClient] Adicionando contexto do Supabase');
-        const supabaseContext = supabaseStore.getAIContext();
-        finalPrompt = `${_input}
-
-${supabaseContext}
-
-Por favor, use essas configurações do Supabase ao gerar o código da aplicação no webcontainer.`;
-
-        // Marca que a primeira mensagem foi enviada
-        supabaseStore.firstMessageSent.set(true);
-      }
 
       // Salva todos os arquivos abertos no editor
       await workbenchStore.saveAllFiles();

@@ -20,8 +20,6 @@ import { PanelHeaderButton } from '~/components/ui/PanelHeaderButton';
 import { Slider, type SliderOptions } from '~/components/ui/Slider';
 
 // Stores e utilitários
-import { supabaseStore } from '~/lib/stores/supabase';
-import { SupabaseConfigModal } from '../supabase/SupabaseConfigModal';
 import { classNames } from '~/utils/classNames';
 import { cubicEasingFn } from '~/utils/easings';
 import { renderLogger } from '~/utils/logger';
@@ -81,7 +79,6 @@ export const Workbench = memo(({ chatStarted, isStreaming, onSendMessage }: Work
 
   // Estados locais
   const [isSyncing, setIsSyncing] = useState(false); // Estado de sincronização
-  const [supabaseModalOpen, setSupabaseModalOpen] = useState(false); // Estado do modal Supabase
   const [componentsModalOpen, setComponentsModalOpen] = useState(false);
 
   // Estados do store
@@ -454,7 +451,6 @@ export const Workbench = memo(({ chatStarted, isStreaming, onSendMessage }: Work
                         isSyncing={isSyncing}
                         onSyncFiles={handleSyncFiles}
                         onOpenComponents={() => setComponentsModalOpen(true)}
-                        onOpenSupabase={() => setSupabaseModalOpen(true)}
                       />
                     )}
                     <EditorPanel
@@ -481,7 +477,6 @@ export const Workbench = memo(({ chatStarted, isStreaming, onSendMessage }: Work
             </div>
           </div>
         </div>
-        <SupabaseConfigModal isOpen={supabaseModalOpen} onClose={() => setSupabaseModalOpen(false)} />
         <ComponentsModal
           isOpen={componentsModalOpen}
           onClose={() => setComponentsModalOpen(false)}
