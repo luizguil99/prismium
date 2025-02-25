@@ -112,21 +112,42 @@ export function DatabaseManager({ projectId, onBack }: DatabaseManagerProps) {
       });
       
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Resposta de erro:', errorText);
         throw new Error(`Erro ao buscar colunas: ${response.status}`);
       }
       
       const data = await response.json();
+      console.log('✅ Dados de colunas recebidos:', data);
       
       // Adicionar verificação de tipo para os dados retornados
       if (Array.isArray(data)) {
-        setColumns(data as Column[]);
+        // Garantir que cada coluna tenha todas as propriedades necessárias
+        const processedColumns = data.map(col => ({
+          name: col.name || 'Sem nome',
+          type: col.type || 'text',
+          is_nullable: col.is_nullable === true || col.is_nullable === 'YES',
+          is_primary: col.is_primary === true,
+          is_unique: col.is_unique === true,
+          default_value: col.default_value || null
+        }));
+        
+        console.log('✅ Colunas processadas:', processedColumns);
+        setColumns(processedColumns);
+      } else if (data && typeof data === 'object' && 'error' in data) {
+        // Verificamos primeiro se data é um objeto e se tem a propriedade 'error'
+        const errorData = data as { error: string, message?: string };
+        console.error('❌ Erro retornado pela API:', errorData.error, errorData.message);
+        toast.error(`Erro ao buscar colunas: ${errorData.message || 'Erro desconhecido'}`);
+        setColumns([]);
       } else {
-        console.error('Formato inesperado de dados de colunas:', data);
+        console.error('❌ Formato inesperado de dados de colunas:', data);
         setColumns([]);
       }
     } catch (err) {
       console.error('❌ Erro ao carregar colunas:', err);
       toast.error('Falha ao carregar detalhes da tabela');
+      setColumns([]);
     }
   };
 
@@ -248,8 +269,8 @@ export function DatabaseManager({ projectId, onBack }: DatabaseManagerProps) {
                             'border-b border-bolt-elements-borderColor'
                           )}
                         >
-                          <td className="px-4 py-2 text-sm text-bolt-elements-textPrimary font-medium">{column.name}</td>
-                          <td className="px-4 py-2 text-sm text-bolt-elements-textSecondary">{column.type}</td>
+                          <td className="px-4 py-2 text-sm text-bolt-elements-textPrimary font-medium">{column.name || 'Sem nome'}</td>
+                          <td className="px-4 py-2 text-sm text-bolt-elements-textSecondary">{column.type || 'unknown'}</td>
                           <td className="px-4 py-2 text-sm text-bolt-elements-textSecondary">
                             {column.is_nullable ? 'Sim' : 'Não'}
                           </td>
@@ -267,7 +288,13 @@ export function DatabaseManager({ projectId, onBack }: DatabaseManagerProps) {
                     ) : (
                       <tr>
                         <td colSpan={6} className="px-4 py-4 text-center text-bolt-elements-textTertiary">
-                          Carregando estrutura da tabela...
+                          <div className="py-6 flex flex-col items-center">
+                            <span className="i-ph-warning-circle-bold w-10 h-10 text-amber-500 mb-2"></span>
+                            <p className="text-bolt-elements-textSecondary">Não foi possível obter a estrutura da tabela.</p>
+                            <p className="text-sm text-bolt-elements-textTertiary mt-1">
+                              Verifique se a tabela '{selectedTable}' existe e se você tem permissões para acessá-la.
+                            </p>
+                          </div>
                         </td>
                       </tr>
                     )}

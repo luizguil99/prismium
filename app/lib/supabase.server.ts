@@ -165,7 +165,19 @@ export async function fetchSupabaseDatabaseTables(accessToken: string, projectRe
     },
   });
   
-  const data = await response.json();
+  const data = await response.json() as {
+    databases?: Array<{
+      schemas?: Array<{
+        name: string;
+        tables?: Array<{
+          id: string;
+          name: string;
+          schema: string;
+          comment?: string;
+        }>;
+      }>;
+    }>;
+  };
   
   if (!response.ok) {
     throw new Error(`Erro ao buscar contexto do banco de dados: ${JSON.stringify(data)}`);
@@ -190,7 +202,7 @@ export async function fetchSupabaseDatabaseTables(accessToken: string, projectRe
 }
 
 /**
- * Busca as colunas de uma tabela Supabase usando consulta SQL
+ * Busca as colunas de uma tabela Supabase
  */
 export async function fetchSupabaseTableColumns(accessToken: string, projectRef: string, tableName: string) {
   if (!accessToken) {
@@ -205,62 +217,162 @@ export async function fetchSupabaseTableColumns(accessToken: string, projectRef:
     throw new Error('Nome da tabela não fornecido');
   }
 
-  // Consulta SQL para obter informações detalhadas sobre as colunas
-  const sqlQuery = `
-    SELECT 
-      column_name as name,
-      data_type as type,
-      (is_nullable = 'YES') as is_nullable,
-      (
-        EXISTS (
-          SELECT 1 FROM information_schema.table_constraints tc 
-          JOIN information_schema.constraint_column_usage ccu 
-          ON tc.constraint_name = ccu.constraint_name
-          WHERE tc.constraint_type = 'PRIMARY KEY' 
-          AND tc.table_name = '${tableName}'
-          AND ccu.column_name = columns.column_name
-        )
-      ) as is_primary,
-      (
-        EXISTS (
-          SELECT 1 FROM information_schema.table_constraints tc 
-          JOIN information_schema.constraint_column_usage ccu 
-          ON tc.constraint_name = ccu.constraint_name
-          WHERE tc.constraint_type = 'UNIQUE' 
-          AND tc.table_name = '${tableName}'
-          AND ccu.column_name = columns.column_name
-        )
-      ) as is_unique,
-      column_default as default_value
-    FROM 
-      information_schema.columns
-    WHERE 
-      table_schema = 'public'
-      AND table_name = '${tableName}'
-    ORDER BY 
-      ordinal_position;
-  `;
+  console.log(`🔄 Iniciando busca de colunas para tabela ${tableName} no projeto ${projectRef}`);
 
-  // Enviar a consulta SQL usando o endpoint de consulta do banco de dados
-  const queryUrl = `${SUPABASE_CONFIG.apiUrl}/v1/projects/${projectRef}/database/query`;
-  
-  const response = await fetch(queryUrl, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      query: sqlQuery
-    }),
-  });
-  
-  const data = await response.json();
-  
-  if (!response.ok) {
-    throw new Error(`Erro ao buscar colunas da tabela: ${JSON.stringify(data)}`);
+  // MÉTODO PRINCIPAL: Consulta SQL direta usando o endpoint database/query
+  try {
+    console.log('🔍 Buscando colunas via consulta SQL direta');
+    
+    // Usar o endpoint para consulta direta ao banco de dados
+    const queryUrl = `${SUPABASE_CONFIG.apiUrl}/v1/projects/${projectRef}/database/query`;
+    
+    // Consulta SQL melhorada para obter todas as informações necessárias sobre as colunas
+    const sqlQuery = `
+      SELECT 
+        c.column_name as name,
+        c.data_type as type,
+        c.is_nullable,
+        c.column_default as default_value,
+        (
+          SELECT EXISTS (
+            SELECT 1 FROM information_schema.table_constraints tc
+            JOIN information_schema.constraint_column_usage ccu 
+              ON tc.constraint_name = ccu.constraint_name
+            WHERE tc.constraint_type = 'PRIMARY KEY'
+              AND tc.table_name = '${tableName}'
+              AND ccu.column_name = c.column_name
+          )
+        ) as is_primary,
+        (
+          SELECT EXISTS (
+            SELECT 1 FROM information_schema.table_constraints tc
+            JOIN information_schema.constraint_column_usage ccu 
+              ON tc.constraint_name = ccu.constraint_name
+            WHERE tc.constraint_type = 'UNIQUE'
+              AND tc.table_name = '${tableName}'
+              AND ccu.column_name = c.column_name
+          )
+        ) as is_unique
+      FROM information_schema.columns c
+      WHERE c.table_name = '${tableName}'
+      AND c.table_schema = 'public'
+      ORDER BY c.ordinal_position;
+    `;
+    
+    console.log('📝 Executando consulta:', sqlQuery);
+    
+    const response = await fetch(queryUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query: sqlQuery
+      }),
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ Erro na consulta SQL (${response.status}):`, errorText);
+      throw new Error(`Erro na consulta SQL: ${response.status}`);
+    }
+    
+    const queryResult = await response.json() as {
+      result?: Array<{
+        name: string;
+        type: string;
+        is_nullable: string | boolean;
+        default_value: string | null;
+        is_primary: boolean;
+        is_unique: boolean;
+      }>;
+      data?: Array<any>;
+    };
+    
+    const columns = queryResult.result || queryResult.data || [];
+    
+    if (Array.isArray(columns) && columns.length > 0) {
+      console.log(`✅ Encontradas ${columns.length} colunas via SQL para a tabela ${tableName}:`, columns);
+      
+      // Normaliza os dados para o formato esperado
+      return columns.map(col => ({
+        name: col.name || '',
+        type: col.type || 'text',
+        is_nullable: col.is_nullable === 'YES' || col.is_nullable === true,
+        is_primary: !!col.is_primary,
+        is_unique: !!col.is_unique,
+        default_value: col.default_value || null
+      }));
+    } else {
+      console.warn(`⚠️ A consulta foi bem-sucedida, mas não retornou colunas para a tabela ${tableName}`);
+    }
+  } catch (queryError) {
+    console.error('❌ Erro ao executar consulta SQL:', queryError);
   }
+
+  // MÉTODO ALTERNATIVO: Buscar metadados do contexto do banco de dados
+  try {
+    console.log('🔍 Tentando obter metadados via endpoint de contexto do banco de dados');
+    const databaseContextUrl = `${SUPABASE_CONFIG.apiUrl}/v1/projects/${projectRef}/database/context`;
+    
+    const contextResponse = await fetch(databaseContextUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (contextResponse.ok) {
+      const contextData = await contextResponse.json() as {
+        databases?: Array<{
+          schemas?: Array<{
+            name: string;
+            tables?: Array<{
+              name: string;
+              columns?: Array<{
+                name: string;
+                type: string;
+                is_nullable: boolean;
+                is_primary: boolean;
+                is_unique: boolean;
+                default_value: string | null;
+              }>;
+            }>;
+          }>;
+        }>;
+      };
+      
+      if (contextData.databases && Array.isArray(contextData.databases)) {
+        for (const db of contextData.databases) {
+          if (db.schemas && Array.isArray(db.schemas)) {
+            for (const schema of db.schemas) {
+              if (schema.name === 'public' && schema.tables && Array.isArray(schema.tables)) {
+                for (const table of schema.tables) {
+                  if (table.name === tableName && table.columns && Array.isArray(table.columns)) {
+                    console.log(`✅ Encontradas ${table.columns.length} colunas via contexto para a tabela ${tableName}`);
+                    return table.columns;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      console.warn('⚠️ Não foi possível encontrar a tabela nos metadados do contexto');
+    } else {
+      const errorText = await contextResponse.text();
+      console.error(`❌ Erro ao buscar contexto do banco de dados (${contextResponse.status}):`, errorText);
+    }
+  } catch (contextError) {
+    console.error('❌ Erro ao processar contexto do banco de dados:', contextError);
+  }
+
+  // Se chegamos aqui, não conseguimos obter os dados das colunas
+  console.error(`❌ Todos os métodos falharam ao buscar colunas para a tabela ${tableName}`);
   
-  // Retornar os resultados da consulta SQL
-  return data.result || data.data || [];
+  // Retornar um array vazio em vez de dados falsos
+  return [];
 } 
