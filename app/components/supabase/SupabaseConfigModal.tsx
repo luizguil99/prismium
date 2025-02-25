@@ -2,17 +2,22 @@ import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { motion, AnimatePresence } from 'framer-motion';
 import { classNames } from '~/utils/classNames';
-import { Button } from '../ui/button';
+import { 
+  ConnectPage, 
+  ProjectList, 
+  CreateProjectForm, 
+  SupabaseLogo,
+} from './modal-components';
+import type { 
+  SupabaseProject,
+  SupabaseRegion,
+  SupabaseOrganization,
+  OAuthResponse
+} from './modal-components';
 
 interface SupabaseConfigModalProps {
   isOpen: boolean;
   onClose: () => void;
-}
-
-interface SupabaseProject {
-  id: string;
-  name: string;
-  ref: string;
 }
 
 // OAuth flow constants
@@ -25,10 +30,23 @@ const OAUTH_CODE_VERIFIER_KEY = 'supabase_oauth_code_verifier';
 // Check if we're in the browser
 const isBrowser = typeof window !== 'undefined';
 
+// Sample regions - in a real implementation, you would fetch these from Supabase API
+const SAMPLE_REGIONS: SupabaseRegion[] = [
+  { id: 'us-east-1', name: 'North America (N. Virginia)' },
+  { id: 'us-west-1', name: 'North America (California)' },
+  { id: 'eu-central-1', name: 'Europe (Frankfurt)' },
+  { id: 'ap-southeast-2', name: 'Asia Pacific (Sydney)' },
+];
+
+// Pricing plans
+const PRICING_PLANS = ['free', 'pro', 'team', 'enterprise'];
+
 export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectedProjects, setConnectedProjects] = useState<SupabaseProject[]>([]);
   const [isConnected, setIsConnected] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [organizations, setOrganizations] = useState<SupabaseOrganization[]>([]);
 
   // Check if user is already connected to Supabase
   useEffect(() => {
@@ -40,6 +58,8 @@ export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProp
         setIsConnected(true);
         // Here you can load user projects
         fetchProjects(token);
+        // Fetch organizations
+        fetchOrganizations(token);
       }
     };
 
@@ -47,6 +67,33 @@ export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProp
       checkConnection();
     }
   }, [isOpen]);
+
+  // Function to fetch user organizations
+  const fetchOrganizations = async (token: string) => {
+    try {
+      console.log('🔍 Fetching Supabase organizations...');
+      // Use our proxy endpoint
+      const response = await fetch('/api/supabase-organizations', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Supabase-Auth': token,
+        },
+      });
+      
+      if (response.ok) {
+        const orgs = await response.json() as SupabaseOrganization[];
+        console.log('✅ Organizations retrieved successfully:', orgs.length);
+        setOrganizations(orgs);
+      } else {
+        console.error('❌ Failed to fetch organizations');
+        toast.error('Error fetching Supabase organizations');
+      }
+    } catch (error) {
+      console.error('❌ Error fetching organizations:', error);
+      toast.error('Error communicating with server');
+    }
+  };
 
   // Function to fetch user projects
   const fetchProjects = async (token: string) => {
@@ -147,6 +194,15 @@ export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProp
     }
   };
 
+  // Function to handle project creation success
+  const handleProjectCreated = () => {
+    setShowCreateForm(false);
+    const token = localStorage.getItem('supabase_access_token');
+    if (token) {
+      fetchProjects(token);
+    }
+  };
+
   // Function to disconnect from Supabase
   const disconnectSupabase = () => {
     if (!isBrowser) return; // Add protection against SSR
@@ -155,6 +211,7 @@ export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProp
     localStorage.removeItem('supabase_refresh_token');
     setIsConnected(false);
     setConnectedProjects([]);
+    setOrganizations([]);
     toast.success('Successfully disconnected from Supabase');
   };
 
@@ -173,26 +230,12 @@ export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProp
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="bg-bolt-elements-background-depth-2 rounded-lg p-6 w-[400px] border border-bolt-elements-borderColor shadow-xl"
+            className="bg-bolt-elements-background-depth-2 rounded-lg p-6 w-[500px] border border-bolt-elements-borderColor shadow-xl"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold text-bolt-elements-textPrimary flex items-center gap-2">
-                <svg width="24" height="24" viewBox="0 0 109 113" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M63.7076 110.284C60.8481 113.885 55.0502 111.912 54.9813 107.314L53.9738 40.0627L99.1935 40.0627C107.384 40.0627 111.952 49.5228 106.859 55.9374L63.7076 110.284Z" fill="url(#paint0_linear)"/>
-                  <path d="M63.7076 110.284C60.8481 113.885 55.0502 111.912 54.9813 107.314L53.9738 40.0627L99.1935 40.0627C107.384 40.0627 111.952 49.5228 106.859 55.9374L63.7076 110.284Z" fill="url(#paint1_linear)" fillOpacity="0.2"/>
-                  <path d="M45.317 2.07103C48.1765 -1.53037 53.9745 0.442937 54.0434 5.04075L54.4849 72.2922H9.83113C1.64038 72.2922 -2.92775 62.8321 2.1655 56.4175L45.317 2.07103Z" fill="#3ECF8E"/>
-                  <defs>
-                    <linearGradient id="paint0_linear" x1="53.9738" y1="54.974" x2="94.1635" y2="71.8295" gradientUnits="userSpaceOnUse">
-                      <stop stopColor="#249361"/>
-                      <stop offset="1" stopColor="#3ECF8E"/>
-                    </linearGradient>
-                    <linearGradient id="paint1_linear" x1="36.1558" y1="30.578" x2="54.4844" y2="106.916" gradientUnits="userSpaceOnUse">
-                      <stop/>
-                      <stop offset="1" stopOpacity="0"/>
-                    </linearGradient>
-                  </defs>
-                </svg>
+                <SupabaseLogo />
                 Supabase Integration
               </h2>
               <button
@@ -204,108 +247,31 @@ export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProp
             </div>
 
             {isConnected ? (
-              <div className="space-y-4">
-                <div className="bg-green-100 dark:bg-green-900/30 p-4 rounded-md">
-                  <p className="text-green-800 dark:text-green-400 font-medium">Connected to Supabase!</p>
-                  <p className="text-sm text-green-700 dark:text-green-500 mt-1">
-                    Your account is connected and you can manage your Supabase projects.
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  <h3 className="text-lg font-medium text-bolt-elements-textPrimary">Your Projects</h3>
-                  {connectedProjects.length > 0 ? (
-                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                      {connectedProjects.map((project) => (
-                        <div 
-                          key={project.id} 
-                          className="border border-bolt-elements-borderColor rounded-md p-3 hover:bg-bolt-elements-background-depth-1 transition-colors"
-                        >
-                          <h4 className="font-medium text-bolt-elements-textPrimary">{project.name}</h4>
-                          <p className="text-sm text-bolt-elements-textSecondary">{project.ref}</p>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-bolt-elements-textTertiary">No projects found</p>
-                  )}
-                </div>
-
-                <div className="flex justify-end pt-4">
-                  <button
-                    onClick={disconnectSupabase}
-                    className={classNames(
-                      'px-4 py-2 text-sm font-medium rounded-md',
-                      'bg-red-500/10 text-red-500 hover:bg-red-500/20',
-                      'transition-colors'
-                    )}
-                  >
-                    Disconnect
-                  </button>
-                </div>
-              </div>
+              showCreateForm ? (
+                <CreateProjectForm 
+                  regions={SAMPLE_REGIONS}
+                  organizations={organizations}
+                  onCancel={() => setShowCreateForm(false)}
+                  onProjectCreated={handleProjectCreated}
+                />
+              ) : (
+                <ProjectList 
+                  projects={connectedProjects} 
+                  onCreateProject={() => setShowCreateForm(true)}
+                  onDisconnect={disconnectSupabase}
+                />
+              )
             ) : (
-              <div className="space-y-6">
-                <p className="text-bolt-elements-textSecondary">
-                  Connect to Supabase to manage your organizations and projects directly 
-                  from our application. This will allow you to create and manage Supabase resources
-                  for your applications.
-                </p>
-                
-                <div className="space-y-2">
-                  <h3 className="text-sm font-medium text-bolt-elements-textPrimary">What you can do:</h3>
-                  <ul className="list-disc list-inside text-sm text-bolt-elements-textSecondary space-y-1">
-                    <li>Access and manage your existing projects</li>
-                    <li>Create new projects</li>
-                    <li>Configure authentication and databases</li>
-                    <li>Manage access and permissions</li>
-                  </ul>
-                </div>
-
-                <div className="flex justify-center pt-4">
-                  <button
-                    onClick={startOAuthFlow}
-                    disabled={isConnecting}
-                    className={classNames(
-                      'px-4 py-2 text-sm font-medium rounded-md',
-                      'bg-emerald-600 hover:bg-emerald-700 text-white',
-                      'transition-colors flex items-center gap-2',
-                      isConnecting ? 'opacity-70 cursor-not-allowed' : ''
-                    )}
-                  >
-                    {isConnecting ? (
-                      <>
-                        <motion.span 
-                          className="i-ph-spinner-bold w-4 h-4"
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                        />
-                        Connecting...
-                      </>
-                    ) : (
-                      <>
-                        <svg width="16" height="16" viewBox="0 0 109 113" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M63.7076 110.284C60.8481 113.885 55.0502 111.912 54.9813 107.314L53.9738 40.0627L99.1935 40.0627C107.384 40.0627 111.952 49.5228 106.859 55.9374L63.7076 110.284Z" fill="white"/>
-                          <path d="M45.317 2.07103C48.1765 -1.53037 53.9745 0.442937 54.0434 5.04075L54.4849 72.2922H9.83113C1.64038 72.2922 -2.92775 62.8321 2.1655 56.4175L45.317 2.07103Z" fill="white"/>
-                        </svg>
-                        Connect to Supabase
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
+              <ConnectPage 
+                isConnecting={isConnecting}
+                onConnect={startOAuthFlow}
+              />
             )}
           </motion.div>
         </motion.div>
       )}
     </AnimatePresence>
   );
-}
-
-interface OAuthResponse {
-  access_token: string;
-  refresh_token: string;
-  [key: string]: any;
 }
 
 // Function to be called after OAuth redirect

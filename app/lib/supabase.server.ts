@@ -71,4 +71,74 @@ export async function fetchSupabaseProjects(accessToken: string) {
   }
   
   return data;
+}
+
+/**
+ * Busca organizações do Supabase usando o token de acesso do usuário
+ */
+export async function fetchSupabaseOrganizations(accessToken: string) {
+  if (!accessToken) {
+    throw new Error('Access token not provided');
+  }
+
+  const orgsUrl = `${SUPABASE_CONFIG.apiUrl}/v1/organizations`;
+  
+  const response = await fetch(orgsUrl, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  
+  const data = await response.json();
+  
+  if (!response.ok) {
+    throw new Error(`Error fetching organizations: ${JSON.stringify(data)}`);
+  }
+  
+  return data;
+}
+
+/**
+ * Cria um novo projeto no Supabase
+ */
+export async function createSupabaseProject(
+  accessToken: string, 
+  params: {
+    name: string;
+    organization_id: string;
+    region: string;
+    plan?: string;
+    db_pass: string;
+  }
+) {
+  if (!accessToken) {
+    throw new Error('Access token not provided');
+  }
+
+  const createProjectUrl = `${SUPABASE_CONFIG.apiUrl}/v1/projects`;
+  
+  const response = await fetch(createProjectUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      name: params.name,
+      organization_id: params.organization_id,
+      region: params.region,
+      plan: params.plan || 'free',
+      db_pass: params.db_pass,
+    }),
+  });
+  
+  const data = await response.json();
+  
+  if (!response.ok) {
+    throw new Error(`Error creating project: ${JSON.stringify(data)}`);
+  }
+  
+  return data;
 } 
