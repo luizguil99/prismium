@@ -1,5 +1,6 @@
 import { json } from '@remix-run/node';
 import type { LoaderFunctionArgs } from '@remix-run/node';
+import { fetchSupabaseDatabaseTables } from '~/lib/supabase.server';
 
 /**
  * Endpoint para buscar as tabelas de um banco de dados Supabase
@@ -24,36 +25,17 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
     console.log('🔍 Buscando tabelas para o projeto ref:', projectRef);
 
-    // Fazer uma solicitação para a API do Supabase para obter as tabelas
-    const response = await fetch(`https://api.supabase.com/v1/projects/${projectRef}/database/tables`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${authToken}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      // Se a resposta não for bem-sucedida, retorne o erro
-      const errorText = await response.text();
-      let errorMsg;
-      try {
-        const errorData = JSON.parse(errorText);
-        errorMsg = errorData.message || response.statusText;
-      } catch {
-        errorMsg = errorText || response.statusText;
-      }
-      
-      console.error('❌ Erro na resposta da API do Supabase:', errorMsg);
+    // Usar a função de serviço para buscar as tabelas
+    try {
+      const tables = await fetchSupabaseDatabaseTables(authToken, projectRef);
+      return json(tables);
+    } catch (error) {
+      console.error('❌ Erro na resposta da API do Supabase:', error instanceof Error ? error.message : 'Erro desconhecido');
       return json(
-        { error: 'Error fetching database tables', message: errorMsg },
-        { status: response.status }
+        { error: 'Error fetching database tables', message: error instanceof Error ? error.message : 'Unknown error' },
+        { status: 500 }
       );
     }
-
-    // Retorne as tabelas do banco de dados
-    const tablesData = await response.json();
-    return json(tablesData);
     
   } catch (error) {
     console.error('❌ Erro ao processar a solicitação:', error);

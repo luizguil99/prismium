@@ -141,4 +141,126 @@ export async function createSupabaseProject(
   }
   
   return data;
+}
+
+/**
+ * Busca as tabelas de um projeto Supabase usando o endpoint database/context
+ */
+export async function fetchSupabaseDatabaseTables(accessToken: string, projectRef: string) {
+  if (!accessToken) {
+    throw new Error('Token de acesso não fornecido');
+  }
+
+  if (!projectRef) {
+    throw new Error('Referência do projeto não fornecida');
+  }
+
+  const databaseContextUrl = `${SUPABASE_CONFIG.apiUrl}/v1/projects/${projectRef}/database/context`;
+  
+  const response = await fetch(databaseContextUrl, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  
+  const data = await response.json();
+  
+  if (!response.ok) {
+    throw new Error(`Erro ao buscar contexto do banco de dados: ${JSON.stringify(data)}`);
+  }
+  
+  // Extrair tabelas do esquema público
+  const tables = [];
+  
+  if (data.databases && Array.isArray(data.databases)) {
+    for (const db of data.databases) {
+      if (db.schemas && Array.isArray(db.schemas)) {
+        for (const schema of db.schemas) {
+          if (schema.name === 'public' && schema.tables && Array.isArray(schema.tables)) {
+            tables.push(...schema.tables);
+          }
+        }
+      }
+    }
+  }
+  
+  return tables;
+}
+
+/**
+ * Busca as colunas de uma tabela Supabase usando consulta SQL
+ */
+export async function fetchSupabaseTableColumns(accessToken: string, projectRef: string, tableName: string) {
+  if (!accessToken) {
+    throw new Error('Token de acesso não fornecido');
+  }
+
+  if (!projectRef) {
+    throw new Error('Referência do projeto não fornecida');
+  }
+
+  if (!tableName) {
+    throw new Error('Nome da tabela não fornecido');
+  }
+
+  // Consulta SQL para obter informações detalhadas sobre as colunas
+  const sqlQuery = `
+    SELECT 
+      column_name as name,
+      data_type as type,
+      (is_nullable = 'YES') as is_nullable,
+      (
+        EXISTS (
+          SELECT 1 FROM information_schema.table_constraints tc 
+          JOIN information_schema.constraint_column_usage ccu 
+          ON tc.constraint_name = ccu.constraint_name
+          WHERE tc.constraint_type = 'PRIMARY KEY' 
+          AND tc.table_name = '${tableName}'
+          AND ccu.column_name = columns.column_name
+        )
+      ) as is_primary,
+      (
+        EXISTS (
+          SELECT 1 FROM information_schema.table_constraints tc 
+          JOIN information_schema.constraint_column_usage ccu 
+          ON tc.constraint_name = ccu.constraint_name
+          WHERE tc.constraint_type = 'UNIQUE' 
+          AND tc.table_name = '${tableName}'
+          AND ccu.column_name = columns.column_name
+        )
+      ) as is_unique,
+      column_default as default_value
+    FROM 
+      information_schema.columns
+    WHERE 
+      table_schema = 'public'
+      AND table_name = '${tableName}'
+    ORDER BY 
+      ordinal_position;
+  `;
+
+  // Enviar a consulta SQL usando o endpoint de consulta do banco de dados
+  const queryUrl = `${SUPABASE_CONFIG.apiUrl}/v1/projects/${projectRef}/database/query`;
+  
+  const response = await fetch(queryUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      query: sqlQuery
+    }),
+  });
+  
+  const data = await response.json();
+  
+  if (!response.ok) {
+    throw new Error(`Erro ao buscar colunas da tabela: ${JSON.stringify(data)}`);
+  }
+  
+  // Retornar os resultados da consulta SQL
+  return data.result || data.data || [];
 } 

@@ -1,5 +1,6 @@
 import { json } from '@remix-run/node';
 import type { LoaderFunctionArgs } from '@remix-run/node';
+import { fetchSupabaseTableColumns } from '~/lib/supabase.server';
 
 /**
  * Endpoint para buscar as colunas de uma tabela Supabase
@@ -30,47 +31,17 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
     console.log('🔍 Buscando colunas para a tabela:', tableName, 'no projeto ref:', projectRef);
 
-    // Fazer uma solicitação para a API do Supabase para obter as colunas da tabela
-    const response = await fetch(`https://api.supabase.com/v1/projects/${projectRef}/database/tables/${tableName}/columns`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${authToken}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      // Se a resposta não for bem-sucedida, retorne o erro
-      const errorText = await response.text();
-      let errorMsg;
-      try {
-        const errorData = JSON.parse(errorText);
-        errorMsg = errorData.message || response.statusText;
-      } catch {
-        errorMsg = errorText || response.statusText;
-      }
-      
-      console.error('❌ Erro na resposta da API do Supabase:', errorMsg);
+    // Usar a função de serviço para buscar as colunas da tabela
+    try {
+      const columns = await fetchSupabaseTableColumns(authToken, projectRef, tableName);
+      return json(columns);
+    } catch (error) {
+      console.error('❌ Erro na resposta da API do Supabase:', error instanceof Error ? error.message : 'Erro desconhecido');
       return json(
-        { error: 'Error fetching table columns', message: errorMsg },
-        { status: response.status }
+        { error: 'Error fetching table columns', message: error instanceof Error ? error.message : 'Unknown error' },
+        { status: 500 }
       );
     }
-
-    // Processar e simplificar os dados de colunas
-    const columnsData = await response.json();
-    
-    // Transformar os dados para um formato mais fácil de usar no frontend
-    const formattedColumns = Array.isArray(columnsData) ? columnsData.map(column => ({
-      name: column.name,
-      type: column.data_type || column.type,
-      is_nullable: column.is_nullable === 'YES' || column.is_nullable === true,
-      is_primary: column.is_primary_key === true || column.is_primary === true,
-      is_unique: column.is_unique === true,
-      default_value: column.default_value || column.column_default || null
-    })) : [];
-    
-    return json(formattedColumns);
     
   } catch (error) {
     console.error('❌ Erro ao processar a solicitação:', error);
