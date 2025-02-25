@@ -20,15 +20,17 @@ export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProp
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [projectDetails, setProjectDetails] = useState<any>(null);
 
-  // Tenta conectar usando cookies ao montar o componente
+  // Verifica cookies a cada 500ms
   useEffect(() => {
-    const connectFromCookies = async () => {
+    if (!isOpen || showProjectModal) return;
+
+    const checkCookies = async () => {
       const projectUrl = getCookie('supabase_project_url');
       const anonKey = getCookie('supabase_anon_key');
       const projectRef = getCookie('supabase_project_ref');
       const projectName = getCookie('supabase_project_name');
 
-      if (projectUrl && anonKey && projectRef && projectName) {
+      if (projectUrl && anonKey && projectRef && projectName && !isLoading) {
         setIsLoading(true);
         try {
           const result = await supabaseStore.connectToSupabase(projectUrl, anonKey);
@@ -40,19 +42,18 @@ export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProp
               anon_key: anonKey
             });
             setShowProjectModal(true);
-            setIsLoading(false);
           }
         } catch (error) {
           console.error("[Modal] Erro ao conectar via cookies:", error);
+        } finally {
           setIsLoading(false);
         }
       }
     };
 
-    if (isOpen) {
-      connectFromCookies();
-    }
-  }, [isOpen]);
+    const interval = setInterval(checkCookies, 500);
+    return () => clearInterval(interval);
+  }, [isOpen, showProjectModal, isLoading]);
 
   // Monitora mensagens da janela de autenticação
   useEffect(() => {
@@ -62,7 +63,6 @@ export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProp
       if (event.data?.type === 'supabase_connection_success') {
         console.log("[Modal] Conexão estabelecida:", event.data);
         
-        // Limpa qualquer timeout anterior
         if (timeoutId) clearTimeout(timeoutId);
         
         // Espera um pouco para garantir que o store foi atualizado
@@ -77,14 +77,13 @@ export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProp
 
     window.addEventListener('message', handleMessage);
 
-    // Timeout após 60 segundos
     timeoutId = setTimeout(() => {
       if (isLoading) {
         console.log("[Modal] Timeout de conexão");
         setIsLoading(false);
         toast.error('Connection timeout. Please try again.');
       }
-    }, 60000);
+    }, 20000);
 
     return () => {
       window.removeEventListener('message', handleMessage);
