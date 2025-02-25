@@ -34,6 +34,7 @@ export function DatabaseManager({ projectId, onBack }: DatabaseManagerProps) {
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [columns, setColumns] = useState<Column[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [databaseStructure, setDatabaseStructure] = useState<Record<string, Column[]>>({});
 
   useEffect(() => {
     fetchTables();
@@ -44,6 +45,46 @@ export function DatabaseManager({ projectId, onBack }: DatabaseManagerProps) {
       fetchTableColumns(selectedTable);
     }
   }, [selectedTable]);
+
+  // Efeito para gerar representação formatada do esquema do banco de dados
+  useEffect(() => {
+    if (tables.length > 0 && Object.keys(databaseStructure).length > 0) {
+      const schemaRepresentation = {
+        database: "supabase",
+        project_ref: projectRef,
+        tables: tables.map(table => ({
+          name: table.name,
+          schema: table.schema,
+          columns: databaseStructure[table.name] || []
+        }))
+      };
+      
+      console.log('📊 ESQUEMA DO BANCO DE DADOS (Formato para IA):');
+      console.log(JSON.stringify(schemaRepresentation, null, 2));
+      
+      // Formato especial para prompt de IA
+      const aiPrompt = `
+/**
+ * ESQUEMA DO BANCO DE DADOS SUPABASE
+ * Projeto: ${projectRef}
+ * Tabelas: ${tables.length}
+ */
+
+// Definição das tabelas e colunas:
+const databaseSchema = ${JSON.stringify(schemaRepresentation, null, 2)};
+
+// Você pode usar este esquema para gerar consultas SQL ou desenvolver aplicações.
+// Exemplo de consulta para a primeira tabela:
+/*
+SELECT * FROM ${tables.length > 0 ? tables[0].name : 'nome_da_tabela'} 
+LIMIT 10;
+*/
+`;
+      
+      console.log('🤖 PROMPT PARA IA:');
+      console.log(aiPrompt);
+    }
+  }, [tables, databaseStructure, projectRef]);
 
   const fetchTables = async () => {
     setIsLoading(true);
@@ -81,6 +122,31 @@ export function DatabaseManager({ projectId, onBack }: DatabaseManagerProps) {
         if (data.length > 0) {
           setSelectedTable(data[0].name as string);
         }
+        
+        // Iniciar a carga de colunas para todas as tabelas para construir o esquema completo
+        const newDatabaseStructure: Record<string, Column[]> = {};
+        
+        // Definir uma função para buscar colunas para uma tabela específica
+        const loadTableColumns = async (tableName: string) => {
+          try {
+            console.log(`🔄 Carregando estrutura da tabela: ${tableName}`);
+            const columns = await fetchTableColumnsData(tableName);
+            newDatabaseStructure[tableName] = columns;
+            setDatabaseStructure(prevStructure => ({
+              ...prevStructure,
+              [tableName]: columns
+            }));
+            console.log(`✅ Estrutura da tabela ${tableName} carregada com ${columns.length} colunas`);
+          } catch (err) {
+            console.error(`❌ Erro ao carregar colunas para tabela ${tableName}:`, err);
+          }
+        };
+        
+        // Carregar todas as tabelas sem limitação
+        console.log(`🔄 Carregando estrutura de todas as ${data.length} tabelas`);
+        for (const table of data) {
+          loadTableColumns(table.name);
+        }
       } else {
         throw new Error('Formato de dados inesperado');
       }
@@ -91,6 +157,41 @@ export function DatabaseManager({ projectId, onBack }: DatabaseManagerProps) {
     } finally {
       setIsLoading(false);
     }
+  };
+  
+  // Função auxiliar para buscar dados das colunas sem atualizar o estado
+  const fetchTableColumnsData = async (tableName: string): Promise<Column[]> => {
+    const token = localStorage.getItem('supabase_access_token');
+    if (!token) {
+      throw new Error('Não autenticado');
+    }
+    
+    const response = await fetch(`/api/supabase-table-columns?projectRef=${projectRef}&tableName=${tableName}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Supabase-Auth': token,
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Erro ao buscar colunas: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (Array.isArray(data)) {
+      return data.map(col => ({
+        name: col.name || 'Sem nome',
+        type: col.type || 'text',
+        is_nullable: col.is_nullable === true || col.is_nullable === 'YES',
+        is_primary: col.is_primary === true,
+        is_unique: col.is_unique === true,
+        default_value: col.default_value || null
+      }));
+    }
+    
+    return [];
   };
   
   const fetchTableColumns = async (tableName: string) => {
@@ -134,6 +235,12 @@ export function DatabaseManager({ projectId, onBack }: DatabaseManagerProps) {
         
         console.log('✅ Colunas processadas:', processedColumns);
         setColumns(processedColumns);
+        
+        // Atualizar também a estrutura do banco de dados
+        setDatabaseStructure(prevStructure => ({
+          ...prevStructure,
+          [tableName]: processedColumns
+        }));
       } else if (data && typeof data === 'object' && 'error' in data) {
         // Verificamos primeiro se data é um objeto e se tem a propriedade 'error'
         const errorData = data as { error: string, message?: string };
