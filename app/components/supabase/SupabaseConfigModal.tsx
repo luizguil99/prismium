@@ -81,7 +81,7 @@ export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProp
       if (isLoading) {
         console.log("[Modal] Timeout de conexão");
         setIsLoading(false);
-        toast('Connection Success');
+        toast('Successful connection');
       }
     }, 20000);
 
