@@ -1,19 +1,27 @@
 import { json, type LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { useLoaderData } from '@remix-run/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+
 const PREVIEW_CHANNEL = 'preview-updates';
+
 export async function loader({ params }: LoaderFunctionArgs) {
   const previewId = params.id;
   if (!previewId) {
     throw new Response('Preview ID is required', { status: 400 });
   }
-  return json({ previewId });
+  
+  // Decodificar a URL se estiver codificada
+  const decodedId = decodeURIComponent(previewId);
+  
+  return json({ previewId: decodedId });
 }
+
 export default function WebContainerPreview() {
   const { previewId } = useLoaderData<typeof loader>();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const broadcastChannelRef = useRef<BroadcastChannel>();
   const [previewUrl, setPreviewUrl] = useState('');
+
   // Handle preview refresh
   const handleRefresh = useCallback(() => {
     if (iframeRef.current && previewUrl) {
@@ -26,6 +34,7 @@ export default function WebContainerPreview() {
       });
     }
   }, [previewUrl]);
+
   // Notify other tabs that this preview is ready
   const notifyPreviewReady = useCallback(() => {
     if (broadcastChannelRef.current && previewUrl) {
@@ -37,9 +46,11 @@ export default function WebContainerPreview() {
       });
     }
   }, [previewId, previewUrl]);
+
   useEffect(() => {
     // Initialize broadcast channel
     broadcastChannelRef.current = new BroadcastChannel(PREVIEW_CHANNEL);
+
     // Listen for preview updates
     broadcastChannelRef.current.onmessage = (event) => {
       if (event.data.previewId === previewId) {
@@ -49,22 +60,34 @@ export default function WebContainerPreview() {
       }
     };
     
-    // Construct the WebContainer preview URL usando o domínio correto
-    const url = `https://${previewId}.local-corp.webcontainer-api.io`;
+    // Verificar se o previewId já é uma URL completa
+    let url;
+    if (previewId.startsWith('http')) {
+      // Se já for uma URL completa, use-a diretamente
+      url = previewId;
+    } else {
+      // Caso contrário, construa a URL no formato antigo
+      url = `https://${previewId}.local-corp.webcontainer-api.io`;
+    }
+    
     console.log('[Preview] URL do preview:', url);
     
     setPreviewUrl(url);
+    
     // Set the iframe src
     if (iframeRef.current) {
       iframeRef.current.src = url;
     }
+
     // Notify other tabs that this preview is ready
     notifyPreviewReady();
+
     // Cleanup
     return () => {
       broadcastChannelRef.current?.close();
     };
   }, [previewId, handleRefresh, notifyPreviewReady]);
+
   return (
     <div className="w-full h-full">
       <iframe

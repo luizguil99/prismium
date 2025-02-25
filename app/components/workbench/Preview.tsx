@@ -231,12 +231,15 @@ export const Preview = memo(() => {
   const openInNewWindow = (size: WindowSize) => {
     if (activePreview?.baseUrl) {
       try {
-        // Novo regex que aceita o formato completo da URL do WebContainer
-        const match = activePreview.baseUrl.match(/^https?:\/\/([^.]+(?:-+\d+)?(?:-+[a-z0-9]+)*?)\.(?:local-corp\.)?webcontainer-api\.io/);
+        // Regex atualizado para capturar corretamente o ID ou a URL completa
+        const match = activePreview.baseUrl.match(/^https?:\/\/([^.]+(?:-+\d+)?(?:-+[a-z0-9]+)*?)(?:\.(?:local-corp\.)?webcontainer-api\.io)?/);
+        
         if (match) {
           const previewId = match[1];
-          // Usar URL absoluta para garantir que o preview abra corretamente
-          const previewUrl = `${window.location.origin}/webcontainer/preview/${previewId}`;
+          console.log('[Preview] ID extraído:', previewId);
+          
+          // Usar a URL completa para o preview
+          const previewUrl = `${window.location.origin}/webcontainer/preview/${encodeURIComponent(activePreview.baseUrl)}`;
           
           // Adicionar margem para a barra de título da janela
           const windowHeight = size.height + 60;
@@ -258,12 +261,14 @@ export const Preview = memo(() => {
             'scrollbars=yes'
           ].join(',');
 
-          console.log('[Preview] Abrindo preview com ID:', previewId);
+          console.log('[Preview] Abrindo preview com URL completa:', activePreview.baseUrl);
+          console.log('[Preview] URL de redirecionamento:', previewUrl);
+          
           const newWindow = window.open(previewUrl, '_blank', windowFeatures);
           
           if (newWindow) {
             newWindow.focus();
-            console.log('[Preview] Nova janela aberta:', previewUrl);
+            console.log('[Preview] Nova janela aberta');
           } else {
             console.warn('[Preview] Não foi possível abrir a janela. Verifique se o bloqueador de pop-ups está ativado.');
           }
