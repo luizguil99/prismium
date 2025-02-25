@@ -1,11 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { classNames } from '~/utils/classNames';
-
-interface SupabaseProject {
-  id: string;
-  name: string;
-  ref: string;
-}
+import { ProjectDetails } from './ProjectDetails';
+import type { SupabaseProject } from './types';
 
 interface ProjectListProps {
   projects: SupabaseProject[];
@@ -14,6 +10,29 @@ interface ProjectListProps {
 }
 
 export function ProjectList({ projects, onCreateProject, onDisconnect }: ProjectListProps) {
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+
+  // Armazenar a lista de projetos no localStorage para acessar o ref a partir do id
+  useEffect(() => {
+    if (projects && projects.length > 0) {
+      try {
+        localStorage.setItem('supabase_projects', JSON.stringify(projects));
+        console.log('📦 Lista de projetos armazenada no localStorage');
+      } catch (err) {
+        console.error('❌ Erro ao armazenar lista de projetos:', err);
+      }
+    }
+  }, [projects]);
+
+  if (selectedProjectId) {
+    return (
+      <ProjectDetails 
+        projectId={selectedProjectId} 
+        onBack={() => setSelectedProjectId(null)} 
+      />
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="bg-green-100 dark:bg-green-900/30 p-4 rounded-md">
@@ -44,10 +63,16 @@ export function ProjectList({ projects, onCreateProject, onDisconnect }: Project
             {projects.map((project) => (
               <div 
                 key={project.id} 
-                className="border border-bolt-elements-borderColor rounded-md p-3 hover:bg-bolt-elements-background-depth-1 transition-colors"
+                className="border border-bolt-elements-borderColor rounded-md p-3 hover:bg-bolt-elements-background-depth-1 transition-colors cursor-pointer"
+                onClick={() => setSelectedProjectId(project.id)}
               >
-                <h4 className="font-medium text-bolt-elements-textPrimary">{project.name}</h4>
-                <p className="text-sm text-bolt-elements-textSecondary">{project.ref}</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium text-bolt-elements-textPrimary">{project.name}</h4>
+                    <p className="text-sm text-bolt-elements-textSecondary">{project.ref}</p>
+                  </div>
+                  <span className="text-bolt-elements-textTertiary i-ph-arrow-right-bold w-4 h-4" />
+                </div>
               </div>
             ))}
           </div>
