@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Modal } from '../ui/modal';
-import { Button } from '../ui/button';
 import { toast } from 'react-toastify';
+import { motion, AnimatePresence } from 'framer-motion';
+import { classNames } from '~/utils/classNames';
+import { Button } from '../ui/button';
 
 interface SupabaseConfigModalProps {
   isOpen: boolean;
@@ -14,14 +15,14 @@ interface SupabaseProject {
   ref: string;
 }
 
-// Constantes para o fluxo OAuth
+// OAuth flow constants
 const SUPABASE_CLIENT_ID = import.meta.env.VITE_SUPABASE_CLIENT_ID as string;
-// Definir URL de redirecionamento de forma segura para SSR
+// Define redirect URL safely for SSR
 const SUPABASE_REDIRECT_URI = import.meta.env.VITE_SUPABASE_REDIRECT_URI || "http://localhost:5173/oauth/supabase";
 const OAUTH_STATE_KEY = 'supabase_oauth_state';
 const OAUTH_CODE_VERIFIER_KEY = 'supabase_oauth_code_verifier';
 
-// Verificar se estamos no navegador
+// Check if we're in the browser
 const isBrowser = typeof window !== 'undefined';
 
 export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProps) {
@@ -29,15 +30,15 @@ export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProp
   const [connectedProjects, setConnectedProjects] = useState<SupabaseProject[]>([]);
   const [isConnected, setIsConnected] = useState(false);
 
-  // Verificar se o usuário já está conectado ao Supabase
+  // Check if user is already connected to Supabase
   useEffect(() => {
-    if (!isBrowser) return; // Executa apenas no navegador
+    if (!isBrowser) return; // Execute only in browser
     
     const checkConnection = () => {
       const token = localStorage.getItem('supabase_access_token');
       if (token) {
         setIsConnected(true);
-        // Aqui você pode carregar os projetos do usuário
+        // Here you can load user projects
         fetchProjects(token);
       }
     };
@@ -47,46 +48,46 @@ export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProp
     }
   }, [isOpen]);
 
-  // Função para buscar projetos do usuário
+  // Function to fetch user projects
   const fetchProjects = async (token: string) => {
     try {
-      console.log('🔍 Buscando projetos do Supabase...');
-      // Usar nosso endpoint de proxy em vez de chamar diretamente a API do Supabase
+      console.log('🔍 Fetching Supabase projects...');
+      // Use our proxy endpoint instead of calling Supabase API directly
       const response = await fetch('/api/supabase-projects', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'X-Supabase-Auth': token, // Passar o token para o nosso servidor
+          'X-Supabase-Auth': token, // Pass token to our server
         },
       });
       
       if (response.ok) {
         const projects = await response.json() as SupabaseProject[];
-        console.log('✅ Projetos obtidos com sucesso:', projects.length);
+        console.log('✅ Projects retrieved successfully:', projects.length);
         setConnectedProjects(projects);
       } else {
         const errorText = await response.text();
-        console.error('❌ Falha ao buscar projetos:', errorText);
-        toast.error('Erro ao buscar projetos do Supabase');
+        console.error('❌ Failed to fetch projects:', errorText);
+        toast.error('Error fetching Supabase projects');
       }
     } catch (error) {
-      console.error('❌ Erro ao buscar projetos:', error);
-      toast.error('Erro ao comunicar com o servidor');
+      console.error('❌ Error fetching projects:', error);
+      toast.error('Error communicating with server');
     }
   };
 
-  // Função para gerar o code verifier para PKCE
+  // Function to generate code verifier for PKCE
   const generateCodeVerifier = () => {
-    if (!isBrowser) return ''; // Adicionar proteção contra SSR
+    if (!isBrowser) return ''; // Add protection against SSR
     
     const array = new Uint8Array(32);
     window.crypto.getRandomValues(array);
     return Array.from(array, (byte) => ('0' + (byte & 0xFF).toString(16)).slice(-2)).join('');
   };
 
-  // Função para gerar o code challenge a partir do code verifier
+  // Function to generate code challenge from code verifier
   const generateCodeChallenge = async (verifier: string) => {
-    if (!isBrowser) return ''; // Adicionar proteção contra SSR
+    if (!isBrowser) return ''; // Add protection against SSR
     
     const encoder = new TextEncoder();
     const data = encoder.encode(verifier);
@@ -97,29 +98,29 @@ export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProp
       .replace(/=+$/, '');
   };
 
-  // Iniciar o fluxo OAuth
+  // Start OAuth flow
   const startOAuthFlow = async () => {
-    if (!isBrowser) return; // Adicionar proteção contra SSR
+    if (!isBrowser) return; // Add protection against SSR
     
     setIsConnecting(true);
     try {
-      console.log('🚀 Iniciando fluxo OAuth do Supabase...');
+      console.log('🚀 Starting Supabase OAuth flow...');
       
-      // Gerar state aleatório para segurança
+      // Generate random state for security
       const state = Math.random().toString(36).substring(2, 15);
       localStorage.setItem(OAUTH_STATE_KEY, state);
-      console.log('🔐 State gerado e armazenado:', state);
+      console.log('🔐 State generated and stored:', state);
       
-      // Gerar code verifier para PKCE
+      // Generate code verifier for PKCE
       const codeVerifier = generateCodeVerifier();
       localStorage.setItem(OAUTH_CODE_VERIFIER_KEY, codeVerifier);
-      console.log('🔑 Code verifier gerado e armazenado (primeiros 5 caracteres):', codeVerifier.substring(0, 5) + '...');
+      console.log('🔑 Code verifier generated and stored (first 5 chars):', codeVerifier.substring(0, 5) + '...');
       
-      // Gerar code challenge
+      // Generate code challenge
       const codeChallenge = await generateCodeChallenge(codeVerifier);
-      console.log('🧩 Code challenge gerado (primeiros 5 caracteres):', codeChallenge.substring(0, 5) + '...');
+      console.log('🧩 Code challenge generated (first 5 chars):', codeChallenge.substring(0, 5) + '...');
       
-      // Construir URL de autorização
+      // Build authorization URL
       const authUrl = new URL('https://api.supabase.com/v1/oauth/authorize');
       authUrl.searchParams.append('client_id', SUPABASE_CLIENT_ID);
       authUrl.searchParams.append('redirect_uri', SUPABASE_REDIRECT_URI);
@@ -128,110 +129,170 @@ export function SupabaseConfigModal({ isOpen, onClose }: SupabaseConfigModalProp
       authUrl.searchParams.append('code_challenge', codeChallenge);
       authUrl.searchParams.append('code_challenge_method', 'S256');
       
-      console.log('🔗 URL de autorização construída:', authUrl.toString());
-      console.log('🌐 Redirecionando para a página de autorização do Supabase...');
+      console.log('🔗 Authorization URL built:', authUrl.toString());
+      console.log('🌐 Redirecting to Supabase authorization page...');
       
-      // Redirecionar para a página de autorização do Supabase
+      // Redirect to Supabase authorization page
       window.location.href = authUrl.toString();
     } catch (error) {
-      console.error('❌ Erro ao iniciar fluxo OAuth:', error);
-      toast.error('Erro ao conectar com o Supabase');
+      console.error('❌ Error starting OAuth flow:', error);
+      toast.error('Error connecting to Supabase');
       setIsConnecting(false);
     }
   };
 
-  // Função para desconectar do Supabase
+  // Function to disconnect from Supabase
   const disconnectSupabase = () => {
-    if (!isBrowser) return; // Adicionar proteção contra SSR
+    if (!isBrowser) return; // Add protection against SSR
     
     localStorage.removeItem('supabase_access_token');
     localStorage.removeItem('supabase_refresh_token');
     setIsConnected(false);
     setConnectedProjects([]);
-    toast.success('Desconectado do Supabase com sucesso');
+    toast.success('Successfully disconnected from Supabase');
   };
 
   return (
-    <Modal 
-      isOpen={isOpen} 
-      onClose={onClose}
-      title="Integração com Supabase"
-      size="md"
-    >
-      <div className="space-y-6 p-4">
-        <div className="flex items-center justify-center mb-6">
-          <img 
-            src="https://supabase.com/dashboard/img/supabase-logo.svg" 
-            alt="Supabase Logo" 
-            className="h-12" 
-          />
-        </div>
-
-        {isConnected ? (
-          <div className="space-y-6">
-            <div className="bg-green-100 p-4 rounded-md">
-              <p className="text-green-800 font-medium">Conectado ao Supabase!</p>
-              <p className="text-sm text-green-700 mt-1">
-                Sua conta está conectada e você pode gerenciar seus projetos do Supabase.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Seus Projetos</h3>
-              {connectedProjects.length > 0 ? (
-                <div className="space-y-2">
-                  {connectedProjects.map((project) => (
-                    <div 
-                      key={project.id} 
-                      className="border border-gray-200 rounded-md p-3 hover:bg-gray-50"
-                    >
-                      <h4 className="font-medium">{project.name}</h4>
-                      <p className="text-sm text-gray-600">{project.ref}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500">Nenhum projeto encontrado</p>
-              )}
-            </div>
-
-            <div className="flex justify-end pt-4">
-              <Button variant="destructive" onClick={disconnectSupabase}>
-                Desconectar
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <p className="text-gray-700">
-              Conecte-se ao Supabase para gerenciar suas organizações e projetos diretamente 
-              do nosso aplicativo. Isto permitirá que você crie e gerencie recursos do Supabase
-              para suas aplicações.
-            </p>
-            
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium">O que você pode fazer:</h3>
-              <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-                <li>Acessar e gerenciar seus projetos existentes</li>
-                <li>Criar novos projetos</li>
-                <li>Configurar autenticação e bancos de dados</li>
-                <li>Gerenciar acesso e permissões</li>
-              </ul>
-            </div>
-
-            <div className="flex justify-center pt-4">
-              <Button 
-                onClick={startOAuthFlow}
-                disabled={isConnecting}
-                className="bg-emerald-600 hover:bg-emerald-700"
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm"
+          onClick={onClose}
+        >
+          <motion.div 
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="bg-bolt-elements-background-depth-2 rounded-lg p-6 w-[400px] border border-bolt-elements-borderColor shadow-xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-bolt-elements-textPrimary flex items-center gap-2">
+                <svg width="24" height="24" viewBox="0 0 109 113" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M63.7076 110.284C60.8481 113.885 55.0502 111.912 54.9813 107.314L53.9738 40.0627L99.1935 40.0627C107.384 40.0627 111.952 49.5228 106.859 55.9374L63.7076 110.284Z" fill="url(#paint0_linear)"/>
+                  <path d="M63.7076 110.284C60.8481 113.885 55.0502 111.912 54.9813 107.314L53.9738 40.0627L99.1935 40.0627C107.384 40.0627 111.952 49.5228 106.859 55.9374L63.7076 110.284Z" fill="url(#paint1_linear)" fillOpacity="0.2"/>
+                  <path d="M45.317 2.07103C48.1765 -1.53037 53.9745 0.442937 54.0434 5.04075L54.4849 72.2922H9.83113C1.64038 72.2922 -2.92775 62.8321 2.1655 56.4175L45.317 2.07103Z" fill="#3ECF8E"/>
+                  <defs>
+                    <linearGradient id="paint0_linear" x1="53.9738" y1="54.974" x2="94.1635" y2="71.8295" gradientUnits="userSpaceOnUse">
+                      <stop stopColor="#249361"/>
+                      <stop offset="1" stopColor="#3ECF8E"/>
+                    </linearGradient>
+                    <linearGradient id="paint1_linear" x1="36.1558" y1="30.578" x2="54.4844" y2="106.916" gradientUnits="userSpaceOnUse">
+                      <stop/>
+                      <stop offset="1" stopOpacity="0"/>
+                    </linearGradient>
+                  </defs>
+                </svg>
+                Supabase Integration
+              </h2>
+              <button
+                onClick={onClose}
+                className="text-red-500 hover:text-red-400 transition-colors"
               >
-                {isConnecting ? 'Conectando...' : 'Conectar ao Supabase'}
-              </Button>
+                <span className="i-ph-x-bold w-5 h-5" />
+              </button>
             </div>
-          </div>
-        )}
-      </div>
-    </Modal>
+
+            {isConnected ? (
+              <div className="space-y-4">
+                <div className="bg-green-100 dark:bg-green-900/30 p-4 rounded-md">
+                  <p className="text-green-800 dark:text-green-400 font-medium">Connected to Supabase!</p>
+                  <p className="text-sm text-green-700 dark:text-green-500 mt-1">
+                    Your account is connected and you can manage your Supabase projects.
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className="text-lg font-medium text-bolt-elements-textPrimary">Your Projects</h3>
+                  {connectedProjects.length > 0 ? (
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                      {connectedProjects.map((project) => (
+                        <div 
+                          key={project.id} 
+                          className="border border-bolt-elements-borderColor rounded-md p-3 hover:bg-bolt-elements-background-depth-1 transition-colors"
+                        >
+                          <h4 className="font-medium text-bolt-elements-textPrimary">{project.name}</h4>
+                          <p className="text-sm text-bolt-elements-textSecondary">{project.ref}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-bolt-elements-textTertiary">No projects found</p>
+                  )}
+                </div>
+
+                <div className="flex justify-end pt-4">
+                  <button
+                    onClick={disconnectSupabase}
+                    className={classNames(
+                      'px-4 py-2 text-sm font-medium rounded-md',
+                      'bg-red-500/10 text-red-500 hover:bg-red-500/20',
+                      'transition-colors'
+                    )}
+                  >
+                    Disconnect
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <p className="text-bolt-elements-textSecondary">
+                  Connect to Supabase to manage your organizations and projects directly 
+                  from our application. This will allow you to create and manage Supabase resources
+                  for your applications.
+                </p>
+                
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium text-bolt-elements-textPrimary">What you can do:</h3>
+                  <ul className="list-disc list-inside text-sm text-bolt-elements-textSecondary space-y-1">
+                    <li>Access and manage your existing projects</li>
+                    <li>Create new projects</li>
+                    <li>Configure authentication and databases</li>
+                    <li>Manage access and permissions</li>
+                  </ul>
+                </div>
+
+                <div className="flex justify-center pt-4">
+                  <button
+                    onClick={startOAuthFlow}
+                    disabled={isConnecting}
+                    className={classNames(
+                      'px-4 py-2 text-sm font-medium rounded-md',
+                      'bg-emerald-600 hover:bg-emerald-700 text-white',
+                      'transition-colors flex items-center gap-2',
+                      isConnecting ? 'opacity-70 cursor-not-allowed' : ''
+                    )}
+                  >
+                    {isConnecting ? (
+                      <>
+                        <motion.span 
+                          className="i-ph-spinner-bold w-4 h-4"
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        />
+                        Connecting...
+                      </>
+                    ) : (
+                      <>
+                        <svg width="16" height="16" viewBox="0 0 109 113" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M63.7076 110.284C60.8481 113.885 55.0502 111.912 54.9813 107.314L53.9738 40.0627L99.1935 40.0627C107.384 40.0627 111.952 49.5228 106.859 55.9374L63.7076 110.284Z" fill="white"/>
+                          <path d="M45.317 2.07103C48.1765 -1.53037 53.9745 0.442937 54.0434 5.04075L54.4849 72.2922H9.83113C1.64038 72.2922 -2.92775 62.8321 2.1655 56.4175L45.317 2.07103Z" fill="white"/>
+                        </svg>
+                        Connect to Supabase
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -241,28 +302,28 @@ interface OAuthResponse {
   [key: string]: any;
 }
 
-// Função para ser chamada após o redirecionamento do OAuth
+// Function to be called after OAuth redirect
 export async function handleOAuthCallback(code: string, state: string) {
   if (!isBrowser) {
-    throw new Error('A função handleOAuthCallback só pode ser executada no navegador');
+    throw new Error('handleOAuthCallback function can only be executed in browser');
   }
 
-  // Verificar o state para segurança
+  // Verify state for security
   const savedState = localStorage.getItem(OAUTH_STATE_KEY);
   if (state !== savedState) {
-    throw new Error('Estado inválido');
+    throw new Error('Invalid state');
   }
 
-  // Recuperar o code verifier
+  // Retrieve code verifier
   const codeVerifier = localStorage.getItem(OAUTH_CODE_VERIFIER_KEY);
   if (!codeVerifier) {
-    throw new Error('Code verifier não encontrado');
+    throw new Error('Code verifier not found');
   }
 
-  console.log('🔄 Trocando código por token através do servidor...');
+  console.log('🔄 Exchanging code for token through server...');
   
   try {
-    // Chamar o endpoint do servidor para trocar o código por token
+    // Call server endpoint to exchange code for token
     const response = await fetch('/api/supabase-token', {
       method: 'POST',
       headers: {
@@ -276,24 +337,24 @@ export async function handleOAuthCallback(code: string, state: string) {
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error('❌ Erro na resposta do servidor:', errorData);
-      throw new Error(`Erro ao obter token: ${response.status} ${JSON.stringify(errorData)}`);
+      console.error('❌ Error in server response:', errorData);
+      throw new Error(`Error getting token: ${response.status} ${JSON.stringify(errorData)}`);
     }
 
     const data = await response.json() as OAuthResponse;
-    console.log('✅ Tokens obtidos com sucesso através do servidor!');
+    console.log('✅ Tokens successfully obtained through server!');
     
-    // Armazenar os tokens
+    // Store tokens
     localStorage.setItem('supabase_access_token', data.access_token);
     localStorage.setItem('supabase_refresh_token', data.refresh_token);
     
-    // Limpar estado e code verifier
+    // Clear state and code verifier
     localStorage.removeItem(OAUTH_STATE_KEY);
     localStorage.removeItem(OAUTH_CODE_VERIFIER_KEY);
 
     return data;
   } catch (error) {
-    console.error('❌ Erro ao trocar código por token:', error);
+    console.error('❌ Error exchanging code for token:', error);
     throw error;
   }
 }
