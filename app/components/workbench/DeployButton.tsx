@@ -37,7 +37,7 @@ export const DeployButton = memo(() => {
       {({ open }) => (
         <>
           <Popover.Button 
-            className="flex items-center justify-center px-3 h-8 rounded-lg bg-transparent hover:bg-bolt-elements-background-depth-3 transition-colors text-accent-500 group"
+            className="flex items-center justify-center px-3 h-8 rounded-lg bg-transparent hover:bg-bolt-elements-background-depth-3 transition-colors text-accent-500 group focus:outline-none focus:ring-0"
             aria-label="Deployment options"
           >
             <div className="flex items-center gap-1.5">
@@ -66,7 +66,7 @@ export const DeployButton = memo(() => {
                   <button
                     onClick={() => simulateDeploy('Netlify')}
                     disabled={!!deployingTo}
-                    className="w-full flex items-center gap-2 px-3 py-2.5 text-left rounded-md bg-transparent hover:bg-bolt-elements-background-depth-1 hover:scale-[1.02] transition-all text-bolt-elements-textPrimary disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-sm"
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-left rounded-md bg-transparent hover:bg-bolt-elements-background-depth-1 hover:scale-[1.02] transition-all text-bolt-elements-textPrimary disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-sm focus:outline-none focus:ring-0"
                   >
                     <div className="w-5 h-5 flex items-center justify-center">
                       <NetlifySvgLogo width={20} height={20} />
@@ -82,7 +82,7 @@ export const DeployButton = memo(() => {
                   
                   <button
                     disabled={true}
-                    className="w-full flex items-center gap-2 px-3 py-2.5 text-left rounded-md bg-transparent hover:bg-bolt-elements-background-depth-1 hover:scale-[1.02] transition-all text-bolt-elements-textPrimary disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-sm"
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-left rounded-md bg-transparent hover:bg-bolt-elements-background-depth-1 hover:scale-[1.02] transition-all text-bolt-elements-textPrimary disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-sm focus:outline-none focus:ring-0"
                   >
                     <div className="w-5 h-5 text-bolt-elements-textPrimary">
                       <VercelSvgLogo width={20} height={20} />
@@ -95,7 +95,7 @@ export const DeployButton = memo(() => {
                   
                   <button
                     disabled={true}
-                    className="w-full flex items-center gap-2 px-3 py-2.5 text-left rounded-md bg-transparent hover:bg-bolt-elements-background-depth-1 hover:scale-[1.02] transition-all text-bolt-elements-textPrimary disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-sm"
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-left rounded-md bg-transparent hover:bg-bolt-elements-background-depth-1 hover:scale-[1.02] transition-all text-bolt-elements-textPrimary disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-sm focus:outline-none focus:ring-0"
                   >
                     <div className="w-5 h-5 text-orange-500">
                       <CloudflareSvgLogo width={20} height={20} />
