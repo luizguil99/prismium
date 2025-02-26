@@ -71,7 +71,7 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
                   <div className="w-5 h-5 flex items-center justify-center">
                     <NetlifySvgLogo width={20} height={20} />
                   </div>
-                  Netlify Configuration
+                  Netlify Access Token
                 </Dialog.Title>
                 
                 <div className="mt-4">

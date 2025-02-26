@@ -400,21 +400,6 @@ export const DeployButton = memo(() => {
                     </button>
                     
                     <button
-                      onClick={() => setShowNetlifyConfig(true)}
-                      className="w-full flex items-center gap-2 px-3 py-2.5 text-left rounded-md bg-transparent hover:bg-bolt-elements-background-depth-1 hover:scale-[1.02] transition-all text-bolt-elements-textPrimary hover:shadow-sm focus:outline-none focus:ring-0"
-                    >
-                      <div className="w-5 h-5 flex items-center justify-center">
-                        <div className="i-ph:gear-six w-5 h-5" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium">Configure Netlify</span>
-                        <span className="text-xs text-bolt-elements-textTertiary">
-                          {connection.token ? "Update access token" : "Set access token"}
-                        </span>
-                      </div>
-                    </button>
-                    
-                    <button
                       disabled={true}
                       className="w-full flex items-center gap-2 px-3 py-2.5 text-left rounded-md bg-transparent hover:bg-bolt-elements-background-depth-1 hover:scale-[1.02] transition-all text-bolt-elements-textPrimary disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-sm focus:outline-none focus:ring-0"
                     >
@@ -437,6 +422,25 @@ export const DeployButton = memo(() => {
                       <div className="flex flex-col">
                         <span className="text-sm font-medium">Deploy to Cloudflare</span>
                         <span className="text-xs text-bolt-elements-textTertiary">Coming Soon</span>
+                      </div>
+                    </button>
+                    
+                    {/* Divider */}
+                    <div className="h-px bg-bolt-elements-borderColor my-2 mx-2" />
+                    
+                    {/* Netlify Config Button */}
+                    <button
+                      onClick={() => setShowNetlifyConfig(true)}
+                      className="w-full flex items-center gap-2 px-3 py-2.5 text-left rounded-md bg-transparent hover:bg-bolt-elements-background-depth-1 hover:scale-[1.02] transition-all text-bolt-elements-textPrimary hover:shadow-sm focus:outline-none focus:ring-0"
+                    >
+                      <div className="w-5 h-5 flex items-center justify-center">
+                        <div className="i-ph:gear-six w-5 h-5" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium">Configure Netlify Token</span>
+                        <span className="text-xs text-bolt-elements-textTertiary">
+                          {connection.token ? "Update access token" : "Set access token"}
+                        </span>
                       </div>
                     </button>
                   </div>
