@@ -549,7 +549,9 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
         data-chat-visible={showChat}
       >
         {!chatStarted && <Canvas />}
-        <div className="i-ph:sidebar-simple-duotone absolute top-4 left-4 text-xl text-bolt-elements-textPrimary hover:text-blue-500 transition-colors duration-200 cursor-pointer z-50" />
+        {!chatStarted && (
+          <div className="i-ph:sidebar-simple-duotone absolute top-4 left-4 text-xl text-bolt-elements-textPrimary hover:text-blue-500 transition-colors duration-200 cursor-pointer z-50" />
+        )}
         <ClientOnly>{() => <Menu />}</ClientOnly>
         <div className="flex flex-col lg:flex-row w-full h-full">
           <div className={classNames(styles.Chat, 'grid grid-rows-[auto_1fr] flex-grow lg:min-w-[var(--chat-min-width)] h-full')}>
