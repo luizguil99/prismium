@@ -48,7 +48,7 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
 
   // Encontrar sites implantados para o chat atual
   const deployedSites = connection.stats?.sites?.filter((site) => 
-    site.name.includes(`bolt-diy-${currentChatId}`)
+    site.name.includes(`prismium-ai-${currentChatId}`)
   ) || [];
 
   return (
