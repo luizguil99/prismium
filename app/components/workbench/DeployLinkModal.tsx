@@ -12,7 +12,13 @@ interface DeployLinkModalProps {
 
 export const DeployLinkModal = ({ isOpen, onClose, siteUrl, siteName, siteId }: DeployLinkModalProps) => {
   // URL para a página de configurações de domínio do site no Netlify
-  const netlifyDomainSettingsUrl = `https://app.netlify.com/sites/${siteName}/settings/domain`;
+  // Formato correto: https://app.netlify.com/sites/SITE_NAME/domain-management
+  
+  // Garantir que o nome do site não contenha "http://" ou "https://"
+  const cleanSiteName = siteName.replace(/^https?:\/\//, '');
+  
+  // URL para a página de configurações de domínio
+  const netlifyDomainSettingsUrl = `https://app.netlify.com/sites/${cleanSiteName}/domain-management`;
   
   // Estado para controlar o ícone de cópia
   const [copied, setCopied] = useState(false);

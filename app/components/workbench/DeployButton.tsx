@@ -340,10 +340,13 @@ export const DeployButton = memo(() => {
         // Abre o site em uma nova aba
         window.open(data.site.url, '_blank');
         
-        const siteName = data.site.url.replace('https://', '').split('.')[0];
+        // Extrair nome do site da URL (formato: https://prismium-ai-xxxx.netlify.app)
+        // Este é o subdomínio que o Netlify usa para identificar o site
+        const netlifySubdomain = data.site.url.replace(/^https?:\/\//, '').split('.')[0];
+        
         setDeployedSiteInfo({
           url: data.site.url,
-          name: siteName,
+          name: netlifySubdomain,
           id: data.site.id
         });
         setDeployLinkModalOpen(true);
