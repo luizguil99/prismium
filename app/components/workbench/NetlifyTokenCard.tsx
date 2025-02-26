@@ -63,7 +63,7 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-bolt-elements-background-depth-1 p-6 shadow-xl transition-all">
+              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-bolt-elements-background-depth-1 p-6 shadow-xl transition-all border border-bolt-elements-borderColor">
                 <Dialog.Title
                   as="h3"
                   className="text-lg font-medium leading-6 text-bolt-elements-textPrimary flex items-center gap-2"
@@ -110,7 +110,7 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
                 <div className="mt-6 flex items-center justify-end gap-3">
                   <button
                     type="button"
-                    className="inline-flex justify-center rounded-md border border-bolt-elements-borderColor px-4 py-2 text-sm font-medium text-bolt-elements-textPrimary hover:bg-bolt-elements-background-depth-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-accent-500"
+                    className="inline-flex justify-center rounded-md border bg-transparent border-bolt-elements-borderColor px-4 py-2 text-sm font-medium text-bolt-elements-textPrimary hover:bg-bolt-elements-background-depth-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-accent-500"
                     onClick={onClose}
                   >
                     Cancel
