@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useStore } from '@nanostores/react';
 import { workbenchStore } from '~/lib/stores/workbench';
 import Cookies from 'js-cookie';
 import { toast } from 'react-toastify';
@@ -71,6 +72,7 @@ export const WorkbenchSidebar = ({
 }: WorkbenchSidebarProps) => {
   const [isGitHubModalOpen, setIsGitHubModalOpen] = useState(false);
   const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState(false);
+  const selectedView = useStore(workbenchStore.currentView);
 
   return (
     <div className="h-full w-16 bg-[#000000] border-r border-zinc-800 flex flex-col">
@@ -98,6 +100,13 @@ export const WorkbenchSidebar = ({
           icon="i-ph-terminal-bold"
           label="Terminal"
           onClick={() => workbenchStore.toggleTerminal(!workbenchStore.showTerminal.get())}
+        />
+        
+        <SidebarButton
+          icon="i-ph-git-diff-bold"
+          label="Diff View"
+          onClick={() => workbenchStore.currentView.set('diff')}
+          isActive={selectedView === 'diff'}
         />
 
         <SidebarButton
