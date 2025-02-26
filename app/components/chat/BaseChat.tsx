@@ -24,6 +24,7 @@ import ignore from 'ignore';
 import { toast } from 'react-toastify';
 import Canvas from '~/components/ui/canvas';
 import { getOrCreateClient } from '~/components/supabase/client';
+import { NewHeader } from '~/components/header/NewHeader';
 
 import styles from './BaseChat.module.scss';
 import { ExportChatButton } from '~/components/chat/chatExportAndImport/ExportChatButton';
@@ -552,6 +553,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
         <ClientOnly>{() => <Menu />}</ClientOnly>
         <div ref={scrollRef} className="flex flex-col lg:flex-row overflow-y-auto w-full h-full">
           <div className={classNames(styles.Chat, 'flex flex-col flex-grow lg:min-w-[var(--chat-min-width)] h-full')}>
+            {chatStarted && <NewHeader />}
             {!chatStarted && (
               <div id="intro" className="mt-[15vh] max-w-chat mx-auto text-center px-4 lg:px-0">
                 <div className="relative mb-8">
