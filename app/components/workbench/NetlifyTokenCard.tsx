@@ -2,8 +2,9 @@ import { Fragment, useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { toast } from 'react-toastify';
 import { useStore } from '@nanostores/react';
-import { netlifyConnection, updateNetlifyConnection } from '~/lib/stores/netlify';
+import { netlifyConnection, updateNetlifyConnection, fetchNetlifyStats } from '~/lib/stores/netlify';
 import NetlifySvgLogo from './netlifysvglogo';
+import { chatId } from '~/lib/persistence/useChatHistory';
 
 interface NetlifyTokenCardProps {
   isOpen: boolean;
@@ -13,6 +14,7 @@ interface NetlifyTokenCardProps {
 export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => {
   const connection = useStore(netlifyConnection);
   const [netlifyToken, setNetlifyToken] = useState('');
+  const currentChatId = useStore(chatId);
 
   // Initialize form token with current value (if exists)
   useEffect(() => {
@@ -20,6 +22,13 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
       setNetlifyToken(connection.token);
     }
   }, [connection.token]);
+
+  // Buscar estatísticas do Netlify quando o token ou chatId mudar
+  useEffect(() => {
+    if (connection.token && currentChatId) {
+      fetchNetlifyStats(connection.token);
+    }
+  }, [connection.token, currentChatId]);
 
   // Function to save Netlify token
   const saveNetlifyToken = () => {
@@ -36,6 +45,11 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
     toast.success('Netlify token saved successfully');
     onClose();
   };
+
+  // Encontrar sites implantados para o chat atual
+  const deployedSites = connection.stats?.sites?.filter((site) => 
+    site.name.includes(`bolt-diy-${currentChatId}`)
+  ) || [];
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -105,6 +119,38 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
                       </a>
                     </div>
                   </div>
+
+                  {/* Seção de sites implantados */}
+                  {deployedSites.length > 0 && (
+                    <div className="mt-6 pt-4 border-t border-bolt-elements-borderColor">
+                      <h4 className="text-sm font-medium text-bolt-elements-textPrimary mb-2">
+                        Deployed Sites
+                      </h4>
+                      <div className="space-y-2">
+                        {deployedSites.map((site) => (
+                          <div key={site.id} className="flex items-center justify-between p-2 rounded-lg bg-bolt-elements-background-depth-2 border border-bolt-elements-borderColor">
+                            <div className="flex items-center gap-2">
+                              <div className="w-4 h-4">
+                                <NetlifySvgLogo width={16} height={16} />
+                              </div>
+                              <span className="text-xs text-bolt-elements-textSecondary truncate max-w-[180px]">
+                                {site.name}
+                              </span>
+                            </div>
+                            <a
+                              href={site.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-accent-500 hover:underline inline-flex items-center gap-1"
+                            >
+                              Visit
+                              <div className="i-ph:arrow-square-out w-3 h-3" />
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-6 flex items-center justify-end gap-3">
@@ -130,4 +176,4 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
       </Dialog>
     </Transition>
   );
-}; 
+};

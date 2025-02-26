@@ -437,7 +437,7 @@ export const DeployButton = memo(() => {
                         <div className="i-ph:gear-six w-5 h-5" />
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-sm font-medium">Configure Netlify Token</span>
+                        <span className="text-sm font-medium">Configs and Links</span>
                         <span className="text-xs text-bolt-elements-textTertiary">
                           {connection.token ? "Update access token" : "Set access token"}
                         </span>
