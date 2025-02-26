@@ -551,281 +551,292 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
         {!chatStarted && <Canvas />}
         <div className="i-ph:sidebar-simple-duotone absolute top-4 left-4 text-xl text-bolt-elements-textPrimary hover:text-blue-500 transition-colors duration-200 cursor-pointer z-50" />
         <ClientOnly>{() => <Menu />}</ClientOnly>
-        <div ref={scrollRef} className="flex flex-col lg:flex-row overflow-y-auto w-full h-full">
-          <div className={classNames(styles.Chat, 'flex flex-col flex-grow lg:min-w-[var(--chat-min-width)] h-full')}>
-            {chatStarted && <NewHeader />}
-            {!chatStarted && (
-              <div id="intro" className="mt-[15vh] max-w-chat mx-auto text-center px-4 lg:px-0">
-                <div className="relative mb-8">
-                  <div className="absolute inset-0 blur-3xl bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-blue-500/20 rounded-full" />
-                  <h1 className="relative text-4xl lg:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 mb-6 animate-fade-in">
-                    Transforming Ideas into Code
-                  </h1>
-                </div>
-                <p className="text-lg lg:text-xl mb-12 text-zinc-400 animate-fade-in animation-delay-200 font-light">
-                  Build intelligent, future-ready software in record time.
-                </p>
+        <div className="flex flex-col lg:flex-row w-full h-full">
+          <div className={classNames(styles.Chat, 'grid grid-rows-[auto_1fr] flex-grow lg:min-w-[var(--chat-min-width)] h-full')}>
+            {/* Header sempre visível */}
+            {chatStarted && (
+              <div className="w-full z-30">
+                <NewHeader />
               </div>
             )}
-            <div
-              className={classNames('pt-6 px-2 sm:px-6', {
-                'h-full flex flex-col': chatStarted,
-              })} ref={scrollRef}
+            {/* Área de conteúdo */}
+            <div 
+              ref={scrollRef} 
+              className="overflow-y-auto h-full"
             >
-              <ClientOnly>
-                {() => {
-                  return chatStarted ? (
-                    <Messages
-                      ref={messageRef}
-                      className="flex flex-col w-full flex-1 max-w-chat pb-6 mx-auto z-1"
-                      messages={messages}
-                      isStreaming={isStreaming}
-                      data={data}
-                    />
-                  ) : null;
-                }}
-              </ClientOnly>
+              {!chatStarted && (
+                <>
+                  <div id="intro" className="mt-[15vh] max-w-chat mx-auto text-center px-4 lg:px-0">
+                    <div className="relative mb-8">
+                      <div className="absolute inset-0 blur-3xl bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-blue-500/20 rounded-full" />
+                      <h1 className="relative text-4xl lg:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 mb-6 animate-fade-in">
+                        Transforming Ideas into Code
+                      </h1>
+                    </div>
+                    <p className="text-lg lg:text-xl mb-12 text-zinc-400 animate-fade-in animation-delay-200 font-light">
+                      Build intelligent, future-ready software in record time.
+                    </p>
+                  </div>
+                </>
+              )}
               <div
-                className={classNames('flex flex-col gap-4 w-full max-w-chat mx-auto z-prompt mb-4', {
-                  'sticky bottom-2': chatStarted,
+                className={classNames('pt-6 px-2 sm:px-6', {
+                  'h-full flex flex-col': chatStarted,
                 })}
               >
-                <div className="bg-[#09090B]">
-                  {actionAlert && (
-                    <ChatAlert
-                      alert={actionAlert}
-                      clearAlert={() => clearAlert?.()}
-                      postMessage={(message) => {
-                        sendMessage?.({} as any, message);
-                        clearAlert?.();
-                      }}
-                    />
-                  )}
-                </div>
-                <div
-                  className={classNames(
-                    'relative shadow-lg border border-zinc-800/60 backdrop-blur-lg rounded-xl bg-[#111113]',
-                    'transition-all duration-300 hover:border-blue-500/30 hover:shadow-blue-500/5',
-                  )}
-                >
-                  <CommandCard
-                    isVisible={showCommands}
-                    onSelect={handleCommandSelect}
-                  />
-                  {imageDataList.length > 0 && (
-                    <div className="flex flex-wrap gap-2 p-2 max-h-32 overflow-y-auto">
-                      {imageDataList.map((image, index) => (
-                        <div key={index} className="relative group">
-                          <img
-                            src={image}
-                            alt={`Preview ${index + 1}`}
-                            className="w-24 h-24 object-cover rounded-lg border border-zinc-800"
-                          />
-                          <button
-                            onClick={() => {
-                              const newImageList = [...imageDataList];
-                              newImageList.splice(index, 1);
-                              setImageDataList?.(newImageList);
-
-                              const newFiles = [...uploadedFiles];
-                              newFiles.splice(index, 1);
-                              setUploadedFiles?.(newFiles);
-
-                              setImageContexts(prev => {
-                                const newContexts = [...prev];
-                                newContexts.splice(index, 1);
-                                return newContexts;
-                              });
-                            }}
-                            className="absolute top-1 right-1 p-1 bg-[#09090B]/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <X size={14} className="text-white" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <textarea
-                    ref={textareaRef}
-                    className={classNames(
-                      'w-full pl-6 pt-4 pr-16 outline-none resize-none text-gray-300 placeholder-gray-500 bg-transparent text-sm',
-                      'transition-all duration-200',
-                      'focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/30',
-                      input.startsWith('@') ? styles.commandInput : ''
-                    )}
-                    onDragEnter={(e) => {
-                      e.preventDefault();
-                      e.currentTarget.style.border = '2px solid #1488fc';
-                    }}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      e.currentTarget.style.border = '2px solid #1488fc';
-                    }}
-                    onDragLeave={(e) => {
-                      e.preventDefault();
-                      e.currentTarget.style.border = '1px solid var(--bolt-elements-borderColor)';
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      e.currentTarget.style.border = '1px solid var(--bolt-elements-borderColor)';
-
-                      const files = Array.from(e.dataTransfer.files);
-                      files.forEach((file) => {
-                        if (file.type.startsWith('image/')) {
-                          const reader = new FileReader();
-
-                          reader.onload = (e) => {
-                            const base64Image = e.target?.result as string;
-                            setUploadedFiles?.([...uploadedFiles, file]);
-                            setImageDataList?.([...imageDataList, base64Image]);
-                          };
-                          reader.readAsDataURL(file);
-                        }
-                      });
-                    }}
-                    onKeyDown={(event) => {
-                      handleKeyDown(event);
-                      if (event.key === 'Enter') {
-                        if (event.shiftKey) {
-                          return;
-                        }
-
-                        event.preventDefault();
-
-                        if (isStreaming) {
-                          handleStop?.();
-                          return;
-                        }
-
-                        // ignore if using input method engine
-                        if (event.nativeEvent.isComposing) {
-                          return;
-                        }
-
-                        handleSendMessage?.(event);
-                      }
-                    }}
-                    value={input}
-                    onChange={(event) => {
-                      handleLocalInputChange(event);
-                    }}
-                    onPaste={handlePaste}
-                    style={{
-                      minHeight: TEXTAREA_MIN_HEIGHT,
-                      maxHeight: TEXTAREA_MAX_HEIGHT,
-                    }}
-                    placeholder="How can I help you today?"
-                    translate="no"
-                  />
-                  <ClientOnly>
-                    {() => (
-                      <SendButton
-                        show={input.length > 0 || isStreaming || uploadedFiles.length > 0}
+                <ClientOnly>
+                  {() => {
+                    return chatStarted ? (
+                      <Messages
+                        ref={messageRef}
+                        className="flex flex-col w-full flex-1 max-w-chat pb-6 mx-auto z-1"
+                        messages={messages}
                         isStreaming={isStreaming}
-                        disabled={!providerList || providerList.length === 0}
-                        onClick={(event) => {
+                        data={data}
+                      />
+                    ) : null;
+                  }}
+                </ClientOnly>
+                <div
+                  className={classNames('flex flex-col gap-4 w-full max-w-chat mx-auto z-prompt mb-4', {
+                    'sticky bottom-2': chatStarted,
+                  })}
+                >
+                  <div className="bg-[#09090B]">
+                    {actionAlert && (
+                      <ChatAlert
+                        alert={actionAlert}
+                        clearAlert={() => clearAlert?.()}
+                        postMessage={(message) => {
+                          sendMessage?.({} as any, message);
+                          clearAlert?.();
+                        }}
+                      />
+                    )}
+                  </div>
+                  <div
+                    className={classNames(
+                      'relative shadow-lg border border-zinc-800/60 backdrop-blur-lg rounded-xl bg-[#111113]',
+                      'transition-all duration-300 hover:border-blue-500/30 hover:shadow-blue-500/5',
+                    )}
+                  >
+                    <CommandCard
+                      isVisible={showCommands}
+                      onSelect={handleCommandSelect}
+                    />
+                    {imageDataList.length > 0 && (
+                      <div className="flex flex-wrap gap-2 p-2 max-h-32 overflow-y-auto">
+                        {imageDataList.map((image, index) => (
+                          <div key={index} className="relative group">
+                            <img
+                              src={image}
+                              alt={`Preview ${index + 1}`}
+                              className="w-24 h-24 object-cover rounded-lg border border-zinc-800"
+                            />
+                            <button
+                              onClick={() => {
+                                const newImageList = [...imageDataList];
+                                newImageList.splice(index, 1);
+                                setImageDataList?.(newImageList);
+
+                                const newFiles = [...uploadedFiles];
+                                newFiles.splice(index, 1);
+                                setUploadedFiles?.(newFiles);
+
+                                setImageContexts(prev => {
+                                  const newContexts = [...prev];
+                                  newContexts.splice(index, 1);
+                                  return newContexts;
+                                });
+                              }}
+                              className="absolute top-1 right-1 p-1 bg-[#09090B]/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X size={14} className="text-white" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <textarea
+                      ref={textareaRef}
+                      className={classNames(
+                        'w-full pl-6 pt-4 pr-16 outline-none resize-none text-gray-300 placeholder-gray-500 bg-transparent text-sm',
+                        'transition-all duration-200',
+                        'focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/30',
+                        input.startsWith('@') ? styles.commandInput : ''
+                      )}
+                      onDragEnter={(e) => {
+                        e.preventDefault();
+                        e.currentTarget.style.border = '2px solid #1488fc';
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.currentTarget.style.border = '2px solid #1488fc';
+                      }}
+                      onDragLeave={(e) => {
+                        e.preventDefault();
+                        e.currentTarget.style.border = '1px solid var(--bolt-elements-borderColor)';
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        e.currentTarget.style.border = '1px solid var(--bolt-elements-borderColor)';
+
+                        const files = Array.from(e.dataTransfer.files);
+                        files.forEach((file) => {
+                          if (file.type.startsWith('image/')) {
+                            const reader = new FileReader();
+
+                            reader.onload = (e) => {
+                              const base64Image = e.target?.result as string;
+                              setUploadedFiles?.([...uploadedFiles, file]);
+                              setImageDataList?.([...imageDataList, base64Image]);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        });
+                      }}
+                      onKeyDown={(event) => {
+                        handleKeyDown(event);
+                        if (event.key === 'Enter') {
+                          if (event.shiftKey) {
+                            return;
+                          }
+
+                          event.preventDefault();
+
                           if (isStreaming) {
                             handleStop?.();
                             return;
                           }
 
-                          if (input.length > 0 || uploadedFiles.length > 0) {
-                            handleSendMessage?.(event);
+                          // ignore if using input method engine
+                          if (event.nativeEvent.isComposing) {
+                            return;
                           }
-                        }}
-                      />
-                    )}
-                  </ClientOnly>
-                  <div className="flex justify-between items-center text-sm p-4 pt-2">
-                    <div className="flex gap-2 items-center">
-                      <IconButton
-                        title="Upload file for AI Vision"
-                        className="p-2 rounded-lg bg-[#111113] border border-zinc-800/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200"
-                        onClick={() => handleFileUpload()}
-                      >
-                        <div className="i-ph:paperclip text-xl"></div>
-                      </IconButton>
-                      <AddImageToYourProject 
-                        imageDataList={imageDataList}
-                        setImageDataList={setImageDataList}
-                        setImageContexts={setImageContexts}
-                      />
-                      <IconButton
-                        title="Enhance prompt"
-                        disabled={input.length === 0 || enhancingPrompt}
-                        className={classNames(
-                          'p-2 rounded-lg bg-[#111113] border border-zinc-800/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
-                          enhancingPrompt ? 'opacity-100' : '',
-                        )}
-                        onClick={() => {
-                          enhancePrompt?.();
-                          toast.success('Prompt enhanced!');
-                        }}
-                      >
-                        {enhancingPrompt ? (
-                          <div className="i-svg-spinners:90-ring-with-bg text-blue-500 text-xl animate-spin"></div>
-                        ) : (
-                          <div className="i-bolt:stars text-xl"></div>
-                        )}
-                      </IconButton>
 
-                      <SpeechRecognitionButton
-                        isListening={isListening}
-                        onStart={startListening}
-                        onStop={stopListening}
-                        disabled={isStreaming}
-                      />
-                      {chatStarted && <ClientOnly>{() => <ExportChatButton exportChat={exportChat} />}</ClientOnly>}
+                          handleSendMessage?.(event);
+                        }
+                      }}
+                      value={input}
+                      onChange={(event) => {
+                        handleLocalInputChange(event);
+                      }}
+                      onPaste={handlePaste}
+                      style={{
+                        minHeight: TEXTAREA_MIN_HEIGHT,
+                        maxHeight: TEXTAREA_MAX_HEIGHT,
+                      }}
+                      placeholder="How can I help you today?"
+                      translate="no"
+                    />
+                    <ClientOnly>
+                      {() => (
+                        <SendButton
+                          show={input.length > 0 || isStreaming || uploadedFiles.length > 0}
+                          isStreaming={isStreaming}
+                          disabled={!providerList || providerList.length === 0}
+                          onClick={(event) => {
+                            if (isStreaming) {
+                              handleStop?.();
+                              return;
+                            }
 
-                      <div className="flex items-center gap-2">
+                            if (input.length > 0 || uploadedFiles.length > 0) {
+                              handleSendMessage?.(event);
+                            }
+                          }}
+                        />
+                      )}
+                    </ClientOnly>
+                    <div className="flex justify-between items-center text-sm p-4 pt-2">
+                      <div className="flex gap-2 items-center">
                         <IconButton
-                          title="Model Settings"
+                          title="Upload file for AI Vision"
+                          className="p-2 rounded-lg bg-[#111113] border border-zinc-800/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200"
+                          onClick={() => handleFileUpload()}
+                        >
+                          <div className="i-ph:paperclip text-xl"></div>
+                        </IconButton>
+                        <AddImageToYourProject 
+                          imageDataList={imageDataList}
+                          setImageDataList={setImageDataList}
+                          setImageContexts={setImageContexts}
+                        />
+                        <IconButton
+                          title="Enhance prompt"
+                          disabled={input.length === 0 || enhancingPrompt}
                           className={classNames(
                             'p-2 rounded-lg bg-[#111113] border border-zinc-800/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
-                            {
-                              'bg-blue-500/10 text-blue-400 border-blue-500/30': isModelSettingsCollapsed,
-                            },
+                            enhancingPrompt ? 'opacity-100' : '',
                           )}
-                          onClick={() => setIsModelSettingsCollapsed(!isModelSettingsCollapsed)}
-                          disabled={!providerList || providerList.length === 0}
+                          onClick={() => {
+                            enhancePrompt?.();
+                            toast.success('Prompt enhanced!');
+                          }}
                         >
-                          <div className={`i-ph:caret-${isModelSettingsCollapsed ? 'right' : 'down'} text-lg`} />
-                          {isModelSettingsCollapsed ? <span className="text-xs ml-1">{model}</span> : <span />}
+                          {enhancingPrompt ? (
+                            <div className="i-svg-spinners:90-ring-with-bg text-blue-500 text-xl animate-spin"></div>
+                          ) : (
+                            <div className="i-bolt:stars text-xl"></div>
+                          )}
                         </IconButton>
 
-                        <IconButton
-                          title="Configure API"
-                          className={classNames(
-                            'p-2 rounded-lg bg-[#111113] border border-zinc-800/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
-                          )}
-                          onClick={() => setIsModalOpen(true)}
-                          disabled={!providerList || providerList.length === 0}
-                        >
-                          <div className="i-ph:gear text-lg" />
-                        </IconButton>
+                        <SpeechRecognitionButton
+                          isListening={isListening}
+                          onStart={startListening}
+                          onStop={stopListening}
+                          disabled={isStreaming}
+                        />
+                        {chatStarted && <ClientOnly>{() => <ExportChatButton exportChat={exportChat} />}</ClientOnly>}
+
+                        <div className="flex items-center gap-2">
+                          <IconButton
+                            title="Model Settings"
+                            className={classNames(
+                              'p-2 rounded-lg bg-[#111113] border border-zinc-800/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
+                              {
+                                'bg-blue-500/10 text-blue-400 border-blue-500/30': isModelSettingsCollapsed,
+                              },
+                            )}
+                            onClick={() => setIsModelSettingsCollapsed(!isModelSettingsCollapsed)}
+                            disabled={!providerList || providerList.length === 0}
+                          >
+                            <div className={`i-ph:caret-${isModelSettingsCollapsed ? 'right' : 'down'} text-lg`} />
+                            {isModelSettingsCollapsed ? <span className="text-xs ml-1">{model}</span> : <span />}
+                          </IconButton>
+
+                          <IconButton
+                            title="Configure API"
+                            className={classNames(
+                              'p-2 rounded-lg bg-[#111113] border border-zinc-800/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
+                            )}
+                            onClick={() => setIsModalOpen(true)}
+                            disabled={!providerList || providerList.length === 0}
+                          >
+                            <div className="i-ph:gear text-lg" />
+                          </IconButton>
+                        </div>
                       </div>
+                      {input.length > 3 ? (
+                        <div className="text-xs text-gray-500">
+                          Use <kbd className="px-1.5 py-0.5 rounded bg-[#111113] border border-zinc-800/50">Shift</kbd> +{' '}
+                          <kbd className="px-1.5 py-0.5 rounded bg-[#111113] border border-zinc-800/50">Return</kbd> for
+                          new line
+                        </div>
+                      ) : null}
                     </div>
-                    {input.length > 3 ? (
-                      <div className="text-xs text-gray-500">
-                        Use <kbd className="px-1.5 py-0.5 rounded bg-[#111113] border border-zinc-800/50">Shift</kbd> +{' '}
-                        <kbd className="px-1.5 py-0.5 rounded bg-[#111113] border border-zinc-800/50">Return</kbd> for
-                        new line
-                      </div>
-                    ) : null}
                   </div>
                 </div>
               </div>
-            </div>
-            <div className="flex flex-col justify-center gap-8 pb-10">
               {!chatStarted && (
-                <>
+                <div className="flex flex-col justify-center gap-8 pb-10">
                   <div className="mb-8">
                     <ExamplePrompts sendMessage={handleExamplePromptClick} />
                   </div>
                   <div className="px-4 py-6 rounded-lg bg-[#09090B]/20">
                     <TemplateCards importChat={importChat} />
                   </div>
-                </>
+                </div>
               )}
             </div>
           </div>
