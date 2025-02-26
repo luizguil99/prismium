@@ -14,6 +14,7 @@ import type { FileHistory } from '~/types/actions';
 import { DiffView } from './DiffView';
 import { getVisualEditorScript } from '~/lib/modules/editor/visual-editor';
 import { reloadPreview } from '@webcontainer/api';
+import { DeployButton } from './DeployButton';
 
 // Tipos para callbacks do editor
 import {
@@ -649,12 +650,13 @@ export const Workbench = memo(({
             <div className="h-full flex flex-col bg-bolt-elements-background-depth-2 border-l border-bolt-elements-borderColor overflow-hidden rounded-tl-xl rounded-bl-xl">
               <div className="flex items-center px-3 py-2 border-b border-bolt-elements-borderColor">
                 <Slider selected={selectedView} options={sliderOptions} setSelected={setSelectedView} />
-                <div className="ml-2">
+                <div className="ml-2 flex items-center gap-1">
                   <IconButton
                     icon="i-ph-pencil-simple"
-                    tooltip={visualEditorEnabled ? 'Disable Visual Editor' : 'Enable Visual Editor'}
+                    aria-label={visualEditorEnabled ? 'Disable Visual Editor' : 'Enable Visual Editor'}
                     onClick={handleVisualEditorToggle}
                   />
+                  <DeployButton />
                 </div>
                 <div className="ml-auto" />
                 <IconButton
