@@ -15,6 +15,7 @@ import type { NetlifySiteInfo } from '~/types/netlify';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { BoltShell } from '~/utils/shell';
 import { NetlifyTokenCard } from './NetlifyTokenCard';
+import DeployLinkModal from './DeployLinkModal';
 
 // Interfaces para tipagem
 interface DeployResponse {
@@ -38,6 +39,10 @@ export const DeployButton = memo(() => {
   
   // Estado para controlar o modal de configuração do Netlify
   const [showNetlifyConfig, setShowNetlifyConfig] = useState(false);
+  
+  // Estado para controlar o modal de link de deploy
+  const [deployLinkModalOpen, setDeployLinkModalOpen] = useState(false);
+  const [deployedSiteInfo, setDeployedSiteInfo] = useState<{url: string, name: string, id: string} | null>(null);
   
   // Carrega o ID do site do Netlify do localStorage, se existir
   useEffect(() => {
@@ -330,9 +335,18 @@ export const DeployButton = memo(() => {
       
       toast.success(`Deployment to Netlify completed successfully! 🚀`);
       
-      // Abre o site em uma nova aba
+      // Salvar informações do site e abrir o modal de link de deploy
       if (data.site?.url) {
+        // Abre o site em uma nova aba
         window.open(data.site.url, '_blank');
+        
+        const siteName = data.site.url.replace('https://', '').split('.')[0];
+        setDeployedSiteInfo({
+          url: data.site.url,
+          name: siteName,
+          id: data.site.id
+        });
+        setDeployLinkModalOpen(true);
       }
       
     } catch (error) {
@@ -456,6 +470,16 @@ export const DeployButton = memo(() => {
         isOpen={showNetlifyConfig} 
         onClose={() => setShowNetlifyConfig(false)} 
       />
+      
+      {deployedSiteInfo && (
+        <DeployLinkModal
+          isOpen={deployLinkModalOpen}
+          onClose={() => setDeployLinkModalOpen(false)}
+          siteUrl={deployedSiteInfo.url}
+          siteName={deployedSiteInfo.name}
+          siteId={deployedSiteInfo.id}
+        />
+      )}
     </>
   );
 });
