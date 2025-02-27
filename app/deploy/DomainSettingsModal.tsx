@@ -28,11 +28,28 @@ export const DomainSettingsModal = ({
   // Estado para armazenar mensagens de erro
   const [error, setError] = useState('');
 
+  // Estado para controlar o tipo de domínio (personalizado ou subdomínio Netlify)
+  const [domainType, setDomainType] = useState<'custom' | 'netlify'>('custom');
+  
+  // Estado para armazenar o subdomínio Netlify
+  const [netlifySubdomain, setNetlifySubdomain] = useState('');
+
   // Função para atualizar o domínio via API do Netlify
   const updateDomain = async () => {
+    // Determinar o domínio a ser usado com base no tipo selecionado
+    const domainToUse = domainType === 'custom' 
+      ? newDomain.trim() 
+      : `${netlifySubdomain.trim()}.netlify.app`;
+
     // Validar se o domínio foi fornecido
-    if (!newDomain.trim()) {
+    if (domainType === 'custom' && !newDomain.trim()) {
       setError('Please enter a domain');
+      return;
+    }
+
+    // Validar se o subdomínio Netlify foi fornecido
+    if (domainType === 'netlify' && !netlifySubdomain.trim()) {
+      setError('Please enter a Netlify subdomain');
       return;
     }
 
@@ -57,7 +74,7 @@ export const DomainSettingsModal = ({
           'Authorization': `Bearer ${netlifyToken}`
         },
         body: JSON.stringify({
-          custom_domain: newDomain
+          custom_domain: domainToUse
         })
       });
 
@@ -71,11 +88,11 @@ export const DomainSettingsModal = ({
       const data = await response.json();
       
       // Mostrar mensagem de sucesso
-      toast.success(`Domain updated to ${newDomain}`);
+      toast.success(`Domain updated to ${domainToUse}`);
       
       // Chamar o callback de atualização, se fornecido
       if (onDomainUpdate) {
-        onDomainUpdate(newDomain);
+        onDomainUpdate(domainToUse);
       }
       
       // Fechar o modal
@@ -141,15 +158,65 @@ export const DomainSettingsModal = ({
                       </div>
                       
                       <label className="block text-sm text-bolt-elements-textSecondary mb-2">
-                        New Domain
+                        Domain Type
                       </label>
-                      <input
-                        type="text"
-                        value={newDomain}
-                        onChange={(e) => setNewDomain(e.target.value)}
-                        placeholder="Enter your custom domain"
-                        className="w-full px-3 py-2 rounded-lg text-sm bg-bolt-elements-background-depth-2 border border-bolt-elements-borderColor text-bolt-elements-textPrimary placeholder-bolt-elements-textTertiary focus:outline-none focus:ring-1 focus:ring-accent-500"
-                      />
+                      <div className="flex space-x-2 mb-4">
+                        <button
+                          type="button"
+                          onClick={() => setDomainType('custom')}
+                          className={`flex-1 px-3 py-2 rounded-lg text-sm border ${
+                            domainType === 'custom'
+                              ? 'bg-accent-500 text-white border-accent-500'
+                              : 'bg-bolt-elements-background-depth-2 border-bolt-elements-borderColor text-bolt-elements-textSecondary'
+                          } transition-colors`}
+                        >
+                          Custom Domain
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDomainType('netlify')}
+                          className={`flex-1 px-3 py-2 rounded-lg text-sm border ${
+                            domainType === 'netlify'
+                              ? 'bg-accent-500 text-white border-accent-500'
+                              : 'bg-bolt-elements-background-depth-2 border-bolt-elements-borderColor text-bolt-elements-textSecondary'
+                          } transition-colors`}
+                        >
+                          Netlify Subdomain
+                        </button>
+                      </div>
+                      
+                      {domainType === 'custom' ? (
+                        <>
+                          <label className="block text-sm text-bolt-elements-textSecondary mb-2">
+                            New Domain
+                          </label>
+                          <input
+                            type="text"
+                            value={newDomain}
+                            onChange={(e) => setNewDomain(e.target.value)}
+                            placeholder="Enter your custom domain"
+                            className="w-full px-3 py-2 rounded-lg text-sm bg-bolt-elements-background-depth-2 border border-bolt-elements-borderColor text-bolt-elements-textPrimary placeholder-bolt-elements-textTertiary focus:outline-none focus:ring-1 focus:ring-accent-500"
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <label className="block text-sm text-bolt-elements-textSecondary mb-2">
+                            Netlify Subdomain
+                          </label>
+                          <div className="flex items-center">
+                            <input
+                              type="text"
+                              value={netlifySubdomain}
+                              onChange={(e) => setNetlifySubdomain(e.target.value)}
+                              placeholder="your-site-name"
+                              className="flex-1 px-3 py-2 rounded-l-lg text-sm bg-bolt-elements-background-depth-2 border border-bolt-elements-borderColor text-bolt-elements-textPrimary placeholder-bolt-elements-textTertiary focus:outline-none focus:ring-1 focus:ring-accent-500"
+                            />
+                            <span className="px-3 py-2 rounded-r-lg text-sm bg-bolt-elements-background-depth-3 border border-l-0 border-bolt-elements-borderColor text-bolt-elements-textSecondary">
+                              .netlify.app
+                            </span>
+                          </div>
+                        </>
+                      )}
                       
                       <p className="mt-2 text-xs text-bolt-elements-textTertiary">
                         Example: mysite.com or app.mydomain.com
@@ -197,6 +264,9 @@ export const DomainSettingsModal = ({
                                 </tr>
                               </tbody>
                             </table>
+                          </div>
+                          <div className="mt-2 text-xs text-bolt-elements-textTertiary">
+                            <strong>Note:</strong> The CNAME value above is your site's unique Netlify identifier, which may be different from your current display URL.
                           </div>
                         </li>
                         <li>Wait for DNS changes to propagate (can take up to 48 hours)</li>

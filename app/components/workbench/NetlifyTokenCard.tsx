@@ -62,6 +62,16 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
     setDomainSettingsModalOpen(true);
   };
 
+  // Função para copiar texto para a área de transferência
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      toast.success('Copied to clipboard!');
+    }).catch(err => {
+      console.error('Failed to copy: ', err);
+      toast.error('Failed to copy');
+    });
+  };
+
   return (
     <>
       <Transition appear show={isOpen} as={Fragment}>
@@ -146,7 +156,9 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
                                   <NetlifySvgLogo width={16} height={16} />
                                 </div>
                                 <span className="text-xs text-bolt-elements-textSecondary truncate max-w-[180px]">
-                                  {site.name}
+                                  {site.url && !site.url.includes('.netlify.app') 
+                                    ? site.url.replace(/^https?:\/\//, '')
+                                    : site.name}
                                 </span>
                               </div>
                               <div className="flex items-center gap-2">
@@ -190,8 +202,28 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
                             <span className="px-1.5 py-0.5 bg-blue-500/10 text-blue-500 rounded">CNAME</span>
                             <span>www</span>
                           </div>
-                          <span className="text-bolt-elements-textTertiary">your-site.netlify.app</span>
+                          <div className="flex items-center gap-1">
+                            <span className="text-bolt-elements-textTertiary truncate max-w-[120px]">
+                              {deployedSites.length > 0 && deployedSites[0].name ? 
+                                `${deployedSites[0].name}.netlify.app` : 
+                                'your-site.netlify.app'}
+                            </span>
+                            <button 
+                              onClick={() => copyToClipboard(deployedSites.length > 0 && deployedSites[0].name ? 
+                                `${deployedSites[0].name}.netlify.app` : 
+                                'your-site.netlify.app')}
+                              className="p-1 bg-transparent text-xs hover:bg-bolt-elements-background-depth-3 text-bolt-elements-textTertiary rounded-md transition-colors"
+                              title="Copy to clipboard"
+                            >
+                              <div className="i-ph:copy w-3 h-3" />
+                            </button>
+                          </div>
                         </div>
+                        
+                        <div className="flex justify-center py-1">
+                          <span className="text-xs font-medium text-bolt-elements-textSecondary bg-bolt-elements-background-depth-3 px-2 py-0.5 rounded">OR</span>
+                        </div>
+                        
                         <div className="p-2 bg-bolt-elements-background-depth-2 rounded-lg border border-bolt-elements-borderColor flex justify-between">
                           <div className="flex items-center gap-2">
                             <span className="px-1.5 py-0.5 bg-blue-500/10 text-blue-500 rounded">A</span>
