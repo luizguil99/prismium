@@ -14,7 +14,7 @@ interface NetlifyTokenCardProps {
 
 export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => {
   const connection = useStore(netlifyConnection);
-  const [netlifyToken, setNetlifyToken] = useState('');
+  const [netlifyToken, setNetlifyToken] = useState(connection.token || '');
   const currentChatId = useStore(chatId);
 
   // Estado para controlar o modal de configurações de domínio
@@ -23,6 +23,9 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
   
   // Estado local para armazenar os sites implantados (para atualização imediata)
   const [localDeployedSites, setLocalDeployedSites] = useState<Array<{ id: string, name: string, url: string }>>([]);
+  
+  // Estado para forçar a atualização da lista de sites
+  const [forceUpdate, setForceUpdate] = useState(0);
 
   // Função para salvar informações do domínio no localStorage
   const saveDomainInfo = (siteId: string, url: string) => {
@@ -96,6 +99,39 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
     return cleanedUrl.includes('://') ? cleanedUrl : `https://${cleanedUrl}`;
   };
 
+  // Função para carregar sites atualizados do localStorage
+  const loadUpdatedSites = () => {
+    if (!currentChatId || !connection.stats?.sites) return;
+    
+    try {
+      // Obter todos os sites do Netlify para o chat atual
+      const netlifyOriginalSites = connection.stats.sites
+        .filter(site => site.name.includes(`prismium-ai-${currentChatId}`));
+      
+      // Verificar se algum site tem um domínio personalizado no localStorage
+      const updatedSites = netlifyOriginalSites.map(site => {
+        const savedDomain = loadDomainInfo(site.id);
+        
+        if (savedDomain) {
+          return {
+            ...site,
+            url: savedDomain,
+            _manuallyUpdated: true
+          };
+        }
+        
+        return site;
+      });
+      
+      // Atualizar o estado local
+      if (updatedSites.length > 0) {
+        setLocalDeployedSites(updatedSites);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar sites atualizados:', error);
+    }
+  };
+
   // Initialize form token with current value (if exists)
   useEffect(() => {
     if (connection.token) {
@@ -110,53 +146,26 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
     }
   }, [connection.token, currentChatId]);
   
-  // Atualizar sites locais quando as estatísticas do Netlify forem atualizadas
+  // Efeito para atualizar os sites quando o token ou o chatId mudar
   useEffect(() => {
-    if (connection.stats?.sites) {
-      // Armazenar IDs dos sites atualizados localmente para evitar dependência circular
-      const localSiteIds = localDeployedSites.map(site => site.id);
+    if (connection.token) {
+      // Buscar dados do Netlify
+      fetchNetlifyStats(connection.token);
       
-      const filteredSites = connection.stats.sites
-        .filter((site) => {
-          // Verificar se o nome do site ou a URL contém o ID do chat atual
-          const nameMatch = site.name.includes(`prismium-ai-${currentChatId}`);
-          const urlMatch = site.url && site.url.includes(`prismium-ai-${currentChatId}`);
-          
-          // Verificar se temos um site atualizado localmente com este ID
-          const isLocallyUpdated = localSiteIds.includes(site.id);
-          
-          return nameMatch || urlMatch || isLocallyUpdated;
-        })
-        .map(site => {
-          // Se o site já existe localmente, preservar a URL local
-          const localSite = localDeployedSites.find(local => local.id === site.id);
-          if (localSite) {
-            return {
-              ...site,
-              url: localSite.url // Preservar a URL local
-            };
-          }
-          
-          // Verificar se existe um domínio personalizado salvo no localStorage
-          const savedDomain = loadDomainInfo(site.id);
-          if (savedDomain) {
-            return {
-              ...site,
-              url: savedDomain
-            };
-          }
-          
-          return {
-            ...site,
-            url: formatUrl(site.url)
-          };
-        });
-      
-      console.log('Sites filtrados do Netlify:', filteredSites);
-      setLocalDeployedSites(filteredSites);
-      console.log('Sites locais atualizados:', filteredSites);
+      // Carregar sites atualizados do localStorage
+      if (connection.stats?.sites) {
+        loadUpdatedSites();
+      }
     }
-  }, [connection.stats, currentChatId]);
+  }, [connection.token, currentChatId, forceUpdate, connection.stats]);
+
+  // Efeito para processar os sites do Netlify quando os stats mudarem
+  useEffect(() => {
+    if (connection.stats?.sites && currentChatId) {
+      // Carregar sites atualizados do localStorage
+      loadUpdatedSites();
+    }
+  }, [connection.stats, currentChatId, forceUpdate]);
 
   // Função para atualizar localmente um site após a mudança de domínio
   const updateLocalSite = (siteId: string, newDomain: string) => {
@@ -210,6 +219,9 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
         fetchNetlifyStats(connection.token);
       }, 500);
     }
+    
+    // Forçar a atualização da lista de sites
+    setForceUpdate(forceUpdate + 1);
   };
 
   // Function to save Netlify token
@@ -238,6 +250,24 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
           url: formatUrl(site.url)
         })) || [];
 
+  // Filtrar sites para exibição (remover duplicatas por ID)
+  const filteredSites = deployedSites.reduce((acc, site) => {
+    // Verificar se já existe um site com o mesmo ID
+    const existingIndex = acc.findIndex(s => s.id === site.id);
+    
+    if (existingIndex >= 0) {
+      // Se existir, substituir apenas se o site atual for mais recente (manualmente atualizado)
+      if (site._manuallyUpdated) {
+        acc[existingIndex] = site;
+      }
+    } else {
+      // Se não existir, adicionar à lista
+      acc.push(site);
+    }
+    
+    return acc;
+  }, [] as typeof deployedSites);
+
   // Função para abrir o modal de configurações de domínio
   const openDomainSettings = (site: { id: string, name: string, url: string }) => {
     setSelectedSite(site);
@@ -255,7 +285,7 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
   };
 
   // Excluir domínios problemáticos ou a string "localhost" da lista de sites
-  const filteredSites = deployedSites.filter(site => {
+  const filteredSitesList = filteredSites.filter(site => {
     const url = site.url.toLowerCase();
     return !url.includes('localhost') && 
            !url.includes('undefined') && 
@@ -333,13 +363,13 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
                     </div>
 
                     {/* Seção de sites implantados */}
-                    {filteredSites.length > 0 && (
+                    {filteredSitesList.length > 0 && (
                       <div className="mt-6 pt-4 border-t border-bolt-elements-borderColor">
                         <h4 className="text-sm font-medium text-bolt-elements-textPrimary mb-2">
                           Deployed Sites
                         </h4>
                         <div className="space-y-2">
-                          {filteredSites.map((site) => (
+                          {filteredSitesList.map((site) => (
                             <div key={site.id} className="flex items-center justify-between p-2 rounded-lg bg-bolt-elements-background-depth-2 border border-bolt-elements-borderColor">
                               <div className="flex items-center gap-2">
                                 <div className="w-4 h-4">
@@ -412,6 +442,9 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
           onDomainUpdate={(newDomain) => {
             // Atualizar localmente o site com o novo domínio
             updateLocalSite(selectedSite.id, newDomain);
+            
+            // Fechar o modal
+            setDomainSettingsModalOpen(false);
             
             toast.success(`Domain updated to ${newDomain}`);
           }}

@@ -167,14 +167,14 @@ export const DomainSettingsModal = ({
       // Adicionar https:// se não estiver presente
       const updatedDomainUrl = domainToUse.includes('://') ? domainToUse : `https://${domainToUse}`;
       
-      // Mostrar mensagem de sucesso
-      toast.success(`Domain updated to ${updatedDomainUrl}`);
-      
       // Chamar o callback de atualização, se fornecido
       if (onDomainUpdate) {
         // Formato padronizado para o callback: URL completa com https://
         onDomainUpdate(updatedDomainUrl);
       }
+      
+      // Mostrar mensagem de sucesso
+      toast.success(`Domain updated to ${updatedDomainUrl}`);
       
       // Fechar o modal
       onClose();
