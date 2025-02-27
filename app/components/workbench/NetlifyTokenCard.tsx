@@ -35,7 +35,6 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
       // Salvamos a URL completa (com https://) na mesma chave usada para domínios personalizados
       const key = `netlify-domain-${currentChatId}-${siteId}`;
       localStorage.setItem(key, url);
-      console.log('Domínio salvo no localStorage:', { siteId, url, key });
     } catch (error) {
       console.error('Erro ao salvar informações do domínio:', error);
     }
@@ -76,7 +75,6 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
           
           // Adicionar ao estado local
           setLocalDeployedSites([localSite]);
-          console.log('Site carregado do localStorage:', localSite);
         }
       }
     } catch (error) {
@@ -128,7 +126,7 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
         setLocalDeployedSites(updatedSites);
       }
     } catch (error) {
-      console.error('Erro ao carregar sites atualizados:', error);
+      // Removido o console.error
     }
   };
 
@@ -152,20 +150,12 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
       // Buscar dados do Netlify
       fetchNetlifyStats(connection.token);
       
-      // Carregar sites atualizados do localStorage
+      // Carregar sites atualizados do localStorage apenas quando necessário
       if (connection.stats?.sites) {
         loadUpdatedSites();
       }
     }
-  }, [connection.token, currentChatId, forceUpdate, connection.stats]);
-
-  // Efeito para processar os sites do Netlify quando os stats mudarem
-  useEffect(() => {
-    if (connection.stats?.sites && currentChatId) {
-      // Carregar sites atualizados do localStorage
-      loadUpdatedSites();
-    }
-  }, [connection.stats, currentChatId, forceUpdate]);
+  }, [connection.token, currentChatId]);
 
   // Função para atualizar localmente um site após a mudança de domínio
   const updateLocalSite = (siteId: string, newDomain: string) => {
@@ -174,54 +164,39 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
     
     // Primeiro, encontrar o site atual para preservar todas as suas propriedades
     const currentSite = localDeployedSites.find(site => site.id === siteId) || 
-                        deployedSites.find(site => site.id === siteId);
+      connection.stats?.sites?.find(site => site.id === siteId);
     
-    if (!currentSite) {
-      console.error('Site não encontrado para atualização:', siteId);
-      return;
-    }
-    
-    // Criar uma cópia atualizada do site
-    const updatedSite = {
-      ...currentSite,
-      url: formattedDomain,
-      // Adicionar uma flag para indicar que este site foi atualizado manualmente
-      _manuallyUpdated: true
-    };
-    
-    // Atualizar a lista local de sites
-    setLocalDeployedSites(prevSites => {
-      // Verificar se o site já existe na lista
-      const siteExists = prevSites.some(site => site.id === siteId);
+    if (currentSite) {
+      // Criar uma versão atualizada do site
+      const updatedSite = {
+        ...currentSite,
+        url: formattedDomain,
+        _manuallyUpdated: true // Marcar como atualizado manualmente
+      };
       
-      if (siteExists) {
-        // Atualizar o site existente
-        return prevSites.map(site => 
-          site.id === siteId ? updatedSite : site
-        );
-      } else {
-        // Adicionar o novo site à lista
-        return [...prevSites, updatedSite];
+      // Atualizar a lista local de sites
+      const updatedSites = localDeployedSites.map(site => 
+        site.id === siteId ? updatedSite : site
+      );
+      
+      // Se o site não existia na lista local, adicioná-lo
+      if (!updatedSites.some(site => site.id === siteId)) {
+        updatedSites.push(updatedSite);
       }
-    });
-    
-    // Salvar as informações do domínio no localStorage
-    saveDomainInfo(siteId, formattedDomain);
-    
-    console.log('Site atualizado localmente:', { 
-      siteId, 
-      newDomain: formattedDomain
-    });
-    
-    // Forçar o refresh dos dados do Netlify
-    if (connection.token) {
-      setTimeout(() => {
-        fetchNetlifyStats(connection.token);
-      }, 500);
+      
+      // Atualizar o estado
+      setLocalDeployedSites(updatedSites);
+      
+      // Salvar no localStorage para persistência
+      saveDomainInfo(siteId, formattedDomain);
+      
+      // Atualizar as estatísticas do Netlify após um pequeno atraso
+      if (connection.token) {
+        setTimeout(() => {
+          fetchNetlifyStats(connection.token);
+        }, 500);
+      }
     }
-    
-    // Forçar a atualização da lista de sites
-    setForceUpdate(forceUpdate + 1);
   };
 
   // Function to save Netlify token

@@ -28,9 +28,6 @@ export const DomainSettingsModal = ({
   netlifyToken,
   onDomainUpdate
 }: DomainSettingsModalProps) => {
-  // Log para depuração
-  console.log('DomainSettingsModal props:', { siteId, siteName, currentDomain });
-  
   // Estado para armazenar o nome do site
   const [fullSiteName, setFullSiteName] = useState<string | undefined>(siteName);
   
@@ -48,7 +45,6 @@ export const DomainSettingsModal = ({
           if (response.ok) {
             const siteData = await response.json() as NetlifySiteData;
             setFullSiteName(siteData.name);
-            console.log('Site data fetched:', siteData);
           }
         } catch (error) {
           console.error('Error fetching site info:', error);
@@ -143,9 +139,6 @@ export const DomainSettingsModal = ({
         body: JSON.stringify(payload)
       });
 
-      // Log para depuração
-      console.log('Request payload:', payload);
-      
       // Verificar se a requisição foi bem-sucedida
       if (!response.ok) {
         // Tentar obter detalhes do erro da resposta
@@ -191,9 +184,6 @@ export const DomainSettingsModal = ({
 
   // Função para extrair o formato correto do nome do site (sempre prismium-ai-[chatId]-[timestamp])
   const getCanonicalSiteName = () => {
-    // Log para debug dos valores disponíveis
-    console.log('CNAME Debug:', { fullSiteName, siteId, currentDomain });
-    
     // Primeiro tenta extrair de currentDomain se estiver disponível
     if (currentDomain) {
       // Remove http:// ou https:// e .netlify.app se presente
