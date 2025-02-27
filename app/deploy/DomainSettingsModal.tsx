@@ -59,8 +59,13 @@ export const DomainSettingsModal = ({
     fetchSiteInfo();
   }, [siteId, netlifyToken]);
   
-  // Estado para armazenar o novo domínio
-  const [newDomain, setNewDomain] = useState(currentDomain || '');
+  // Remover "http://" ou "https://" do currentDomain
+  const cleanDomain = (domain: string) => {
+    return domain.replace(/^https?:\/\//, '');
+  };
+  
+  // Estado para armazenar o novo domínio, já limpo de http:// ou https://
+  const [newDomain, setNewDomain] = useState(cleanDomain(currentDomain || ''));
   
   // Estado para controlar o carregamento durante a atualização
   const [isLoading, setIsLoading] = useState(false);
@@ -175,12 +180,22 @@ export const DomainSettingsModal = ({
       // Obter os dados da resposta
       const data = await response.json() as NetlifySiteData;
       
+      // Formatar o URL correto do site atualizado para retornar
+      let updatedDomainUrl = '';
+      if (domainType === 'custom') {
+        updatedDomainUrl = domainToUse; // Domínio personalizado como está
+      } else {
+        // Para subdomínios Netlify, certificar-se de incluir .netlify.app
+        updatedDomainUrl = `${data.name}.netlify.app`;
+      }
+      
       // Mostrar mensagem de sucesso
-      toast.success(`Domain updated to ${domainType === 'custom' ? domainToUse : data.name + '.netlify.app'}`);
+      toast.success(`Domain updated to ${updatedDomainUrl}`);
       
       // Chamar o callback de atualização, se fornecido
       if (onDomainUpdate) {
-        onDomainUpdate(domainType === 'custom' ? domainToUse : data.name + '.netlify.app');
+        // Formato padronizado para o callback: apenas o domínio sem http/https
+        onDomainUpdate(updatedDomainUrl);
       }
       
       // Fechar o modal
@@ -194,6 +209,67 @@ export const DomainSettingsModal = ({
       // Finalizar carregamento
       setIsLoading(false);
     }
+  };
+
+  // Função para extrair o formato correto do nome do site (sempre prismium-ai-[chatId]-[timestamp])
+  const getCanonicalSiteName = () => {
+    // Log para debug dos valores disponíveis
+    console.log('CNAME Debug:', { fullSiteName, siteId, currentDomain });
+    
+    // Primeiro tenta extrair de currentDomain se estiver disponível
+    if (currentDomain) {
+      // Remove http:// ou https:// e .netlify.app se presente
+      const cleanedDomain = currentDomain
+        .replace(/^https?:\/\//, '')
+        .replace(/\.netlify\.app$/, '');
+      
+      // Verifica se o domínio limpo corresponde ao padrão
+      const prismiumPattern = /^prismium-ai-[a-zA-Z0-9-]+-\d+$/;
+      if (prismiumPattern.test(cleanedDomain)) {
+        return cleanedDomain;
+      }
+    }
+    
+    // Tenta extrair do nome completo do site, se disponível
+    if (fullSiteName) {
+      const prismiumPattern = /^prismium-ai-[a-zA-Z0-9-]+-\d+$/;
+      if (prismiumPattern.test(fullSiteName)) {
+        return fullSiteName;
+      }
+      
+      // Tenta encontrar o padrão em qualquer parte do nome do site
+      const match = fullSiteName.match(/prismium-ai-[a-zA-Z0-9-]+-\d+/);
+      if (match) {
+        return match[0];
+      }
+    }
+    
+    // Tenta extrair do siteId, se disponível
+    if (siteId) {
+      const prismiumPattern = /^prismium-ai-[a-zA-Z0-9-]+-\d+$/;
+      if (prismiumPattern.test(siteId)) {
+        return siteId;
+      }
+      
+      // Tenta encontrar o padrão em qualquer parte do siteId
+      const match = siteId.match(/prismium-ai-[a-zA-Z0-9-]+-\d+/);
+      if (match) {
+        return match[0];
+      }
+    }
+    
+    // Se não conseguiu extrair o padrão de nenhum lugar, extrai do siteId ou do nome do site
+    // Isso é uma tentativa de último recurso para não exibir o placeholder genérico
+    if (siteId && siteId.includes('prismium-ai')) {
+      return siteId;
+    }
+    
+    if (fullSiteName && fullSiteName.includes('prismium-ai')) {
+      return fullSiteName;
+    }
+    
+    // Se todas as tentativas falharem, retorna o placeholder genérico
+    return 'prismium-ai-site';
   };
 
   return (
@@ -242,7 +318,7 @@ export const DomainSettingsModal = ({
                         Current Domain
                       </label>
                       <div className="px-3 py-2 rounded-lg text-sm bg-bolt-elements-background-depth-2 border border-bolt-elements-borderColor text-bolt-elements-textSecondary mb-4">
-                        {currentDomain || 'No custom domain configured'}
+                        {cleanDomain(currentDomain) || 'No custom domain configured'}
                       </div>
                       
                       <label className="block text-sm text-bolt-elements-textSecondary mb-2">
@@ -281,7 +357,7 @@ export const DomainSettingsModal = ({
                           <input
                             type="text"
                             value={newDomain}
-                            onChange={(e) => setNewDomain(e.target.value)}
+                            onChange={(e) => setNewDomain(cleanDomain(e.target.value))}
                             placeholder="Enter your custom domain"
                             className="w-full px-3 py-2 rounded-lg text-sm bg-bolt-elements-background-depth-2 border border-bolt-elements-borderColor text-bolt-elements-textPrimary placeholder-bolt-elements-textTertiary focus:outline-none focus:ring-1 focus:ring-accent-500"
                           />
@@ -338,14 +414,16 @@ export const DomainSettingsModal = ({
                             </div>
                             <div className="flex items-center gap-1">
                               <span className="text-bolt-elements-textTertiary truncate max-w-[120px]">
-                                {fullSiteName ? `${fullSiteName}.netlify.app` : siteId ? `${siteId}.netlify.app` : 'your-site.netlify.app'}
+                                {getCanonicalSiteName()}.netlify.app
                               </span>
                               <button 
-                                onClick={() => copyToClipboard(fullSiteName ? `${fullSiteName}.netlify.app` : siteId ? `${siteId}.netlify.app` : 'your-site.netlify.app')}
-                                className="p-1 bg-transparent text-xs hover:bg-bolt-elements-background-depth-3 text-bolt-elements-textTertiary rounded-md transition-colors"
+                                onClick={() => copyToClipboard(`${getCanonicalSiteName()}.netlify.app`)}
+                                className="p-1.5 bg-bolt-elements-background-depth-3 hover:bg-bolt-elements-background-depth-4 text-bolt-elements-textSecondary rounded-md transition-colors"
                                 title="Copy to clipboard"
                               >
-                                <span className="i-ph:copy w-3 h-3" />
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 256 256" fill="currentColor">
+                                  <path d="M216,32H88a8,8,0,0,0-8,8V80H40a8,8,0,0,0-8,8V216a8,8,0,0,0,8,8H168a8,8,0,0,0,8-8V176h40a8,8,0,0,0,8-8V40A8,8,0,0,0,216,32ZM160,208H48V96H160Zm48-48H176V88a8,8,0,0,0-8-8H96V48H208Z"></path>
+                                </svg>
                               </button>
                             </div>
                           </div>
@@ -363,10 +441,12 @@ export const DomainSettingsModal = ({
                               <span className="text-bolt-elements-textTertiary">75.2.60.5</span>
                               <button 
                                 onClick={() => copyToClipboard('75.2.60.5')}
-                                className="p-1 bg-transparent text-xs hover:bg-bolt-elements-background-depth-3 text-bolt-elements-textTertiary rounded-md transition-colors"
+                                className="p-1.5 bg-bolt-elements-background-depth-3 hover:bg-bolt-elements-background-depth-4 text-bolt-elements-textSecondary rounded-md transition-colors"
                                 title="Copy to clipboard"
                               >
-                                <span className="i-ph:copy w-3 h-3" />
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 256 256" fill="currentColor">
+                                  <path d="M216,32H88a8,8,0,0,0-8,8V80H40a8,8,0,0,0-8,8V216a8,8,0,0,0,8,8H168a8,8,0,0,0,8-8V176h40a8,8,0,0,0,8-8V40A8,8,0,0,0,216,32ZM160,208H48V96H160Zm48-48H176V88a8,8,0,0,0-8-8H96V48H208Z"></path>
+                                </svg>
                               </button>
                             </div>
                           </div>

@@ -20,6 +20,21 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
   // Estado para controlar o modal de configurações de domínio
   const [domainSettingsModalOpen, setDomainSettingsModalOpen] = useState(false);
   const [selectedSite, setSelectedSite] = useState<{ id: string, name: string, url: string } | null>(null);
+  
+  // Estado local para armazenar os sites implantados (para atualização imediata)
+  const [localDeployedSites, setLocalDeployedSites] = useState<Array<{ id: string, name: string, url: string }>>([]);
+
+  // Função para formatar URLs corretamente
+  const formatUrl = (url: string): string => {
+    // Remover localhost ou caminhos incorretos, se presentes
+    let cleanedUrl = url.replace(/^https?:\/\/localhost:[0-9]+\/.*?\//, '');
+    
+    // Remover http:// ou https:// se presentes
+    cleanedUrl = cleanedUrl.replace(/^https?:\/\//, '');
+    
+    // Readicionar o protocolo https://
+    return cleanedUrl.includes('://') ? cleanedUrl : `https://${cleanedUrl}`;
+  };
 
   // Initialize form token with current value (if exists)
   useEffect(() => {
@@ -34,6 +49,21 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
       fetchNetlifyStats(connection.token);
     }
   }, [connection.token, currentChatId]);
+  
+  // Atualizar sites locais quando as estatísticas do Netlify forem atualizadas
+  useEffect(() => {
+    if (connection.stats?.sites) {
+      const filteredSites = connection.stats.sites
+        .filter((site) => site.name.includes(`prismium-ai-${currentChatId}`))
+        .map(site => ({
+          ...site,
+          url: formatUrl(site.url)
+        }));
+      
+      setLocalDeployedSites(filteredSites);
+      console.log('Sites locais atualizados:', filteredSites);
+    }
+  }, [connection.stats, currentChatId]);
 
   // Function to save Netlify token
   const saveNetlifyToken = () => {
@@ -52,14 +82,41 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
   };
 
   // Encontrar sites implantados para o chat atual
-  const deployedSites = connection.stats?.sites?.filter((site) => 
-    site.name.includes(`prismium-ai-${currentChatId}`)
-  ) || [];
+  const deployedSites = localDeployedSites.length > 0 
+    ? localDeployedSites 
+    : connection.stats?.sites
+        ?.filter((site) => site.name.includes(`prismium-ai-${currentChatId}`))
+        .map(site => ({
+          ...site,
+          url: formatUrl(site.url)
+        })) || [];
 
   // Função para abrir o modal de configurações de domínio
   const openDomainSettings = (site: { id: string, name: string, url: string }) => {
     setSelectedSite(site);
     setDomainSettingsModalOpen(true);
+  };
+
+  // Função para atualizar localmente um site após a mudança de domínio
+  const updateLocalSite = (siteId: string, newDomain: string) => {
+    const formattedDomain = formatUrl(newDomain);
+    
+    setLocalDeployedSites(prevSites => 
+      prevSites.map(site => 
+        site.id === siteId 
+          ? { ...site, url: formattedDomain }
+          : site
+      )
+    );
+    
+    console.log('Site atualizado localmente:', { siteId, newDomain: formattedDomain });
+    
+    // Forçar o refresh dos dados do Netlify
+    if (connection.token) {
+      setTimeout(() => {
+        fetchNetlifyStats(connection.token);
+      }, 500);
+    }
   };
 
   // Função para copiar texto para a área de transferência
@@ -71,6 +128,14 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
       toast.error('Failed to copy');
     });
   };
+
+  // Excluir domínios problemáticos ou a string "localhost" da lista de sites
+  const filteredSites = deployedSites.filter(site => {
+    const url = site.url.toLowerCase();
+    return !url.includes('localhost') && 
+           !url.includes('undefined') && 
+           (url.includes('.netlify.app') || url.includes('.'));
+  });
 
   return (
     <>
@@ -143,13 +208,13 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
                     </div>
 
                     {/* Seção de sites implantados */}
-                    {deployedSites.length > 0 && (
+                    {filteredSites.length > 0 && (
                       <div className="mt-6 pt-4 border-t border-bolt-elements-borderColor">
                         <h4 className="text-sm font-medium text-bolt-elements-textPrimary mb-2">
                           Deployed Sites
                         </h4>
                         <div className="space-y-2">
-                          {deployedSites.map((site) => (
+                          {filteredSites.map((site) => (
                             <div key={site.id} className="flex items-center justify-between p-2 rounded-lg bg-bolt-elements-background-depth-2 border border-bolt-elements-borderColor">
                               <div className="flex items-center gap-2">
                                 <div className="w-4 h-4">
@@ -222,10 +287,9 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
           currentDomain={selectedSite.url.replace(/^https?:\/\//, '')}
           netlifyToken={connection.token || ''}
           onDomainUpdate={(newDomain) => {
-            // Atualizar as estatísticas do Netlify após a atualização do domínio
-            if (connection.token) {
-              fetchNetlifyStats(connection.token);
-            }
+            // Atualizar localmente o site com o novo domínio
+            updateLocalSite(selectedSite.id, newDomain);
+            
             toast.success(`Domain updated to ${newDomain}`);
           }}
         />

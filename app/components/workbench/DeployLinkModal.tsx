@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import NetlifySvgLogo from './netlifysvglogo';
 import DomainSettingsModal from '../../deploy/DomainSettingsModal';
@@ -29,12 +29,27 @@ export const DeployLinkModal = ({ isOpen, onClose, siteUrl, siteName, siteId }: 
   // Estado para controlar o modal de configurações de domínio
   const [domainSettingsModalOpen, setDomainSettingsModalOpen] = useState(false);
   
+  // Função para formatar um URL corretamente
+  const formatUrl = (url: string): string => {
+    // Remover localhost ou caminhos incorretos, se presentes
+    let cleanedUrl = url.replace(/^https?:\/\/localhost:[0-9]+\/.*?\//, '');
+    
+    // Remover http:// ou https:// se presentes
+    cleanedUrl = cleanedUrl.replace(/^https?:\/\//, '');
+    
+    // Readicionar o protocolo https://
+    return cleanedUrl.includes('://') ? cleanedUrl : `https://${cleanedUrl}`;
+  };
+  
+  // Estado local para armazenar o URL do site (para atualização quando o domínio mudar)
+  const [currentSiteUrl, setCurrentSiteUrl] = useState(formatUrl(siteUrl));
+  
   // Obter o token do Netlify do store
   const connection = useStore(netlifyConnection);
   
   // Função para copiar o URL para a área de transferência
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(siteUrl);
+    navigator.clipboard.writeText(currentSiteUrl);
     setCopied(true);
     
     // Resetar o estado após 2 segundos
@@ -47,6 +62,13 @@ export const DeployLinkModal = ({ isOpen, onClose, siteUrl, siteName, siteId }: 
   const openDomainSettings = () => {
     setDomainSettingsModalOpen(true);
   };
+
+  // Monitorar mudanças no siteUrl prop
+  useEffect(() => {
+    if (siteUrl) {
+      setCurrentSiteUrl(formatUrl(siteUrl));
+    }
+  }, [siteUrl]);
 
   return (
     <>
@@ -97,7 +119,7 @@ export const DeployLinkModal = ({ isOpen, onClose, siteUrl, siteName, siteId }: 
                     <div className="p-3 bg-bolt-elements-background-depth-2 rounded-lg border border-bolt-elements-borderColor mb-6">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-bolt-elements-textSecondary truncate max-w-[250px]">
-                          {siteUrl}
+                          {currentSiteUrl}
                         </span>
                         <div className="flex gap-2">
                           <button
@@ -108,7 +130,7 @@ export const DeployLinkModal = ({ isOpen, onClose, siteUrl, siteName, siteId }: 
                             <div className={`${copied ? 'i-ph:check-bold text-green-500' : 'i-ph:copy'} w-4 h-4 transition-all duration-200`} />
                           </button>
                           <a
-                            href={siteUrl}
+                            href={currentSiteUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="p-1.5 rounded-md hover:bg-bolt-elements-background-depth-3 text-bolt-elements-textSecondary"
@@ -196,11 +218,14 @@ export const DeployLinkModal = ({ isOpen, onClose, siteUrl, siteName, siteId }: 
           isOpen={domainSettingsModalOpen}
           onClose={() => setDomainSettingsModalOpen(false)}
           siteId={siteId}
-          currentDomain={siteUrl}
+          siteName={siteName}
+          currentDomain={currentSiteUrl.replace(/^https?:\/\//, '')}
           netlifyToken={connection.token || ''}
           onDomainUpdate={(newDomain) => {
-            // Lógica para atualizar o domínio
-            console.log('Domínio atualizado:', newDomain);
+            // Atualizar o estado local com o novo domínio, formatando corretamente
+            const formattedDomain = formatUrl(newDomain);
+            setCurrentSiteUrl(formattedDomain);
+            console.log('Domínio atualizado:', formattedDomain);
           }}
         />
       )}
