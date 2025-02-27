@@ -20,19 +20,7 @@ export function NetlifyDeploymentLink() {
     // Remover http:// ou https:// se presentes
     cleanedUrl = cleanedUrl.replace(/^https?:\/\//, '');
     
-    // Verificar se é um domínio Netlify
-    const isNetlifyDomain = cleanedUrl.includes('.netlify.app');
-    
-    // Para domínios Netlify, garantir que o formato está correto
-    if (isNetlifyDomain) {
-      // Extrair o subdomínio
-      const netlifySubdomain = cleanedUrl.replace(/\.netlify\.app.*$/, '');
-      
-      // Formatar corretamente
-      return `https://${netlifySubdomain}.netlify.app`;
-    }
-    
-    // Para outros domínios, readicionar o protocolo https://
+    // Adicionar https:// se não estiver presente
     return cleanedUrl.includes('://') ? cleanedUrl : `https://${cleanedUrl}`;
   };
 

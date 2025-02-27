@@ -92,19 +92,7 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
     // Remover http:// ou https:// se presentes
     cleanedUrl = cleanedUrl.replace(/^https?:\/\//, '');
     
-    // Verificar se é um domínio Netlify
-    const isNetlifyDomain = cleanedUrl.includes('.netlify.app');
-    
-    // Para domínios Netlify, garantir que o formato está correto
-    if (isNetlifyDomain) {
-      // Extrair o subdomínio
-      const netlifySubdomain = cleanedUrl.replace(/\.netlify\.app.*$/, '');
-      
-      // Formatar corretamente
-      return `https://${netlifySubdomain}.netlify.app`;
-    }
-    
-    // Para outros domínios, readicionar o protocolo https://
+    // Adicionar https:// se não estiver presente
     return cleanedUrl.includes('://') ? cleanedUrl : `https://${cleanedUrl}`;
   };
 
@@ -170,6 +158,60 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
     }
   }, [connection.stats, currentChatId]);
 
+  // Função para atualizar localmente um site após a mudança de domínio
+  const updateLocalSite = (siteId: string, newDomain: string) => {
+    // Garantir que o domínio tenha o formato correto
+    const formattedDomain = newDomain.startsWith('http') ? newDomain : `https://${newDomain}`;
+    
+    // Primeiro, encontrar o site atual para preservar todas as suas propriedades
+    const currentSite = localDeployedSites.find(site => site.id === siteId) || 
+                        deployedSites.find(site => site.id === siteId);
+    
+    if (!currentSite) {
+      console.error('Site não encontrado para atualização:', siteId);
+      return;
+    }
+    
+    // Criar uma cópia atualizada do site
+    const updatedSite = {
+      ...currentSite,
+      url: formattedDomain,
+      // Adicionar uma flag para indicar que este site foi atualizado manualmente
+      _manuallyUpdated: true
+    };
+    
+    // Atualizar a lista local de sites
+    setLocalDeployedSites(prevSites => {
+      // Verificar se o site já existe na lista
+      const siteExists = prevSites.some(site => site.id === siteId);
+      
+      if (siteExists) {
+        // Atualizar o site existente
+        return prevSites.map(site => 
+          site.id === siteId ? updatedSite : site
+        );
+      } else {
+        // Adicionar o novo site à lista
+        return [...prevSites, updatedSite];
+      }
+    });
+    
+    // Salvar as informações do domínio no localStorage
+    saveDomainInfo(siteId, formattedDomain);
+    
+    console.log('Site atualizado localmente:', { 
+      siteId, 
+      newDomain: formattedDomain
+    });
+    
+    // Forçar o refresh dos dados do Netlify
+    if (connection.token) {
+      setTimeout(() => {
+        fetchNetlifyStats(connection.token);
+      }, 500);
+    }
+  };
+
   // Function to save Netlify token
   const saveNetlifyToken = () => {
     if (!netlifyToken.trim()) {
@@ -200,65 +242,6 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
   const openDomainSettings = (site: { id: string, name: string, url: string }) => {
     setSelectedSite(site);
     setDomainSettingsModalOpen(true);
-  };
-
-  // Função para atualizar localmente um site após a mudança de domínio
-  const updateLocalSite = (siteId: string, newDomain: string) => {
-    const formattedDomain = formatUrl(newDomain);
-    
-    // Primeiro, encontrar o site atual para preservar todas as suas propriedades
-    const currentSite = localDeployedSites.find(site => site.id === siteId) || 
-                        deployedSites.find(site => site.id === siteId);
-    
-    if (!currentSite) {
-      console.error('Site não encontrado para atualização:', siteId);
-      return;
-    }
-    
-    // Verificar se é um domínio Netlify
-    const isNetlifyDomain = formattedDomain.includes('.netlify.app');
-    
-    // Criar uma cópia atualizada do site
-    const updatedSite = {
-      ...currentSite,
-      url: formattedDomain,
-      // Adicionar uma flag para indicar que este site foi atualizado manualmente
-      _manuallyUpdated: true,
-      // Adicionar uma flag para indicar se é um domínio Netlify
-      _isNetlifyDomain: isNetlifyDomain
-    };
-    
-    // Atualizar a lista local de sites
-    setLocalDeployedSites(prevSites => {
-      // Verificar se o site já existe na lista
-      const siteExists = prevSites.some(site => site.id === siteId);
-      
-      if (siteExists) {
-        // Atualizar o site existente
-        return prevSites.map(site => 
-          site.id === siteId ? updatedSite : site
-        );
-      } else {
-        // Adicionar o novo site à lista
-        return [...prevSites, updatedSite];
-      }
-    });
-    
-    // Salvar as informações do domínio no localStorage
-    saveDomainInfo(siteId, formattedDomain);
-    
-    console.log('Site atualizado localmente:', { 
-      siteId, 
-      newDomain: formattedDomain,
-      isNetlifyDomain
-    });
-    
-    // Forçar o refresh dos dados do Netlify
-    if (connection.token) {
-      setTimeout(() => {
-        fetchNetlifyStats(connection.token);
-      }, 500);
-    }
   };
 
   // Função para copiar texto para a área de transferência
@@ -364,9 +347,6 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
                                 </div>
                                 <span className="text-xs text-bolt-elements-textSecondary truncate max-w-[180px]">
                                   {site.url.replace(/^https?:\/\//, '')}
-                                  {site.url.includes('.netlify.app') && (
-                                    <span className="ml-1 px-1 py-0.5 text-[10px] bg-blue-500/10 text-blue-500 rounded">Netlify</span>
-                                  )}
                                 </span>
                               </div>
                               <div className="flex items-center gap-2">
