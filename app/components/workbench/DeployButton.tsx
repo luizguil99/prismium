@@ -5,7 +5,7 @@ import { useStore } from '@nanostores/react';
 import NetlifySvgLogo from './netlifysvglogo';
 import VercelSvgLogo from './vercelsvglogo';
 import CloudflareSvgLogo from './cloudflaresvglogo';
-import { netlifyConnection } from '~/lib/stores/netlify';
+import { netlifyConnection, fetchNetlifyStats } from '~/lib/stores/netlify';
 import { chatId } from '~/lib/persistence/useChatHistory';
 import { webcontainer } from '~/lib/webcontainer';
 import { logStore } from '~/lib/stores/logs';
@@ -349,6 +349,13 @@ export const DeployButton = memo(() => {
           name: netlifySubdomain,
           id: data.site.id
         });
+        
+        // Atualizar as estatísticas do Netlify antes de abrir o modal
+        // para garantir que as informações de domínio estejam disponíveis
+        if (connection.token) {
+          await fetchNetlifyStats(connection.token);
+        }
+        
         setDeployLinkModalOpen(true);
       }
       
@@ -477,7 +484,16 @@ export const DeployButton = memo(() => {
       {deployedSiteInfo && (
         <DeployLinkModal
           isOpen={deployLinkModalOpen}
-          onClose={() => setDeployLinkModalOpen(false)}
+          onClose={() => {
+            // Atualizar as estatísticas do Netlify antes de fechar o modal
+            // para garantir que as informações de domínio estejam atualizadas
+            if (connection.token) {
+              import('~/lib/stores/netlify').then(({ fetchNetlifyStats }) => {
+                fetchNetlifyStats(connection.token || '');
+              });
+            }
+            setDeployLinkModalOpen(false);
+          }}
           siteUrl={deployedSiteInfo.url}
           siteName={deployedSiteInfo.name}
           siteId={deployedSiteInfo.id}
