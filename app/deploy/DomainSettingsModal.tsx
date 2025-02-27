@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { toast } from 'react-toastify';
 
@@ -21,6 +21,37 @@ export const DomainSettingsModal = ({
   netlifyToken,
   onDomainUpdate
 }: DomainSettingsModalProps) => {
+  // Log para depuração
+  console.log('DomainSettingsModal props:', { siteId, siteName, currentDomain });
+  
+  // Estado para armazenar o nome do site
+  const [fullSiteName, setFullSiteName] = useState<string | undefined>(siteName);
+  
+  // Buscar informações do site quando o modal é aberto
+  useEffect(() => {
+    const fetchSiteInfo = async () => {
+      if (siteId && netlifyToken) {
+        try {
+          const response = await fetch(`https://api.netlify.com/api/v1/sites/${siteId}`, {
+            headers: {
+              Authorization: `Bearer ${netlifyToken}`,
+            },
+          });
+          
+          if (response.ok) {
+            const siteData = await response.json();
+            setFullSiteName(siteData.name);
+            console.log('Site data fetched:', siteData);
+          }
+        } catch (error) {
+          console.error('Error fetching site info:', error);
+        }
+      }
+    };
+    
+    fetchSiteInfo();
+  }, [siteId, netlifyToken]);
+  
   // Estado para armazenar o novo domínio
   const [newDomain, setNewDomain] = useState(currentDomain || '');
   
@@ -249,71 +280,58 @@ export const DomainSettingsModal = ({
                       <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
                         <h4 className="text-sm font-medium text-bolt-elements-textPrimary mb-2 flex items-center gap-2">
                           <div className="i-ph:info w-4 h-4 text-blue-500" />
-                          How to point your domain to Netlify
+                          Domain Configuration
                         </h4>
-                        <ol className="text-xs text-bolt-elements-textSecondary space-y-2 list-decimal pl-4">
-                          <li>Go to your domain registrar (GoDaddy, Namecheap, etc.)</li>
-                          <li>Find the DNS management section for your domain</li>
-                          <li>Add these DNS records to point to Netlify:
-                            <div className="mt-2 space-y-2">
-                              <div className="p-2 bg-bolt-elements-background-depth-2 rounded-lg border border-bolt-elements-borderColor flex justify-between">
-                                <div className="flex items-center gap-2">
-                                  <span className="px-1.5 py-0.5 bg-blue-500/10 text-blue-500 rounded">CNAME</span>
-                                  <span>www</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <span className="text-bolt-elements-textTertiary truncate max-w-[120px]">
-                                    {siteName ? `${siteName}.netlify.app` : siteId ? `${siteId}.netlify.app` : 'your-site.netlify.app'}
-                                  </span>
-                                  <button 
-                                    onClick={() => copyToClipboard(siteName ? `${siteName}.netlify.app` : siteId ? `${siteId}.netlify.app` : 'your-site.netlify.app')}
-                                    className="p-1 bg-transparent text-xs hover:bg-bolt-elements-background-depth-3 text-bolt-elements-textTertiary rounded-md transition-colors"
-                                    title="Copy to clipboard"
-                                  >
-                                    <div className="i-ph:copy w-3 h-3" />
-                                  </button>
-                                </div>
-                              </div>
-                              
-                              <div className="flex justify-center py-1">
-                                <span className="text-xs font-medium text-bolt-elements-textSecondary bg-bolt-elements-background-depth-3 px-2 py-0.5 rounded">OR</span>
-                              </div>
-                              
-                              <div className="p-2 bg-bolt-elements-background-depth-2 rounded-lg border border-bolt-elements-borderColor flex justify-between">
-                                <div className="flex items-center gap-2">
-                                  <span className="px-1.5 py-0.5 bg-blue-500/10 text-blue-500 rounded">A</span>
-                                  <span>@</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <span className="text-bolt-elements-textTertiary">75.2.60.5</span>
-                                  <button 
-                                    onClick={() => copyToClipboard('75.2.60.5')}
-                                    className="p-1 bg-transparent text-xs hover:bg-bolt-elements-background-depth-3 text-bolt-elements-textTertiary rounded-md transition-colors"
-                                    title="Copy to clipboard"
-                                  >
-                                    <div className="i-ph:copy w-3 h-3" />
-                                  </button>
-                                </div>
-                              </div>
+                        <p className="text-xs text-bolt-elements-textSecondary mb-2">
+                          After adding a custom domain, you'll need to configure your DNS settings:
+                        </p>
+                        <div className="space-y-1 text-xs text-bolt-elements-textSecondary">
+                          <div className="p-2 bg-bolt-elements-background-depth-2 rounded-lg border border-bolt-elements-borderColor flex justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="px-1.5 py-0.5 bg-blue-500/10 text-blue-500 rounded">CNAME</span>
+                              <span>www</span>
                             </div>
-                            <div className="mt-2 text-xs text-bolt-elements-textTertiary">
-                              <strong>Note:</strong> The CNAME value above is your site's unique Netlify identifier, which may be different from your current display URL.
+                            <div className="flex items-center gap-1">
+                              <span className="text-bolt-elements-textTertiary truncate max-w-[120px]">
+                                {fullSiteName ? `${fullSiteName}.netlify.app` : siteId ? `${siteId}.netlify.app` : 'your-site.netlify.app'}
+                              </span>
+                              <button 
+                                onClick={() => copyToClipboard(fullSiteName ? `${fullSiteName}.netlify.app` : siteId ? `${siteId}.netlify.app` : 'your-site.netlify.app')}
+                                className="p-1 bg-transparent text-xs hover:bg-bolt-elements-background-depth-3 text-bolt-elements-textTertiary rounded-md transition-colors"
+                                title="Copy to clipboard"
+                              >
+                                <div className="i-ph:copy w-3 h-3" />
+                              </button>
                             </div>
-                          </li>
-                          <li>Wait for DNS changes to propagate (can take up to 48 hours)</li>
-                          <li>After adding the domain here, Netlify will verify it automatically</li>
-                        </ol>
-                        <div className="mt-2 text-xs">
-                          <a 
-                            href="https://docs.netlify.com/domains-https/custom-domains/" 
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-accent-500 hover:underline inline-flex items-center gap-1"
-                          >
-                            Read Netlify's official documentation
-                            <div className="i-ph:arrow-square-out w-3 h-3" />
-                          </a>
+                          </div>
+                          
+                          <div className="flex justify-center py-1">
+                            <span className="text-xs font-medium text-bolt-elements-textSecondary bg-bolt-elements-background-depth-3 px-2 py-0.5 rounded">OR</span>
+                          </div>
+                          
+                          <div className="p-2 bg-bolt-elements-background-depth-2 rounded-lg border border-bolt-elements-borderColor flex justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="px-1.5 py-0.5 bg-blue-500/10 text-blue-500 rounded">A</span>
+                              <span>@</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="text-bolt-elements-textTertiary">75.2.60.5</span>
+                              <button 
+                                onClick={() => copyToClipboard('75.2.60.5')}
+                                className="p-1 bg-transparent text-xs hover:bg-bolt-elements-background-depth-3 text-bolt-elements-textTertiary rounded-md transition-colors"
+                                title="Copy to clipboard"
+                              >
+                                <div className="i-ph:copy w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
                         </div>
+                        <p className="mt-2 text-xs text-bolt-elements-textTertiary">
+                          <span className="font-medium">Note:</span> The CNAME value is your Netlify site's name in the format "prismium-ai-[chatId]-[timestamp]", which is used to configure your DNS settings.
+                        </p>
+                        <p className="mt-2 text-xs text-bolt-elements-textTertiary">
+                          For detailed instructions, check Netlify's official documentation.
+                        </p>
                       </div>
                     )}
                   </div>

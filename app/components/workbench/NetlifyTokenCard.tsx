@@ -187,55 +187,6 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
                       </div>
                     )}
 
-                    {/* Seção informativa sobre DNS - Sempre visível */}
-                    <div className="mt-6 pt-4 border-t border-bolt-elements-borderColor">
-                      <h4 className="text-sm font-medium text-bolt-elements-textPrimary mb-2 flex items-center gap-2">
-                        <div className="i-ph:info w-4 h-4 text-blue-500" />
-                        Domain Configuration
-                      </h4>
-                      <p className="text-xs text-bolt-elements-textSecondary mb-2">
-                        After adding a custom domain, you'll need to configure your DNS settings:
-                      </p>
-                      <div className="space-y-1 text-xs text-bolt-elements-textSecondary">
-                        <div className="p-2 bg-bolt-elements-background-depth-2 rounded-lg border border-bolt-elements-borderColor flex justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="px-1.5 py-0.5 bg-blue-500/10 text-blue-500 rounded">CNAME</span>
-                            <span>www</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <span className="text-bolt-elements-textTertiary truncate max-w-[120px]">
-                              {deployedSites.length > 0 && deployedSites[0].name ? 
-                                `${deployedSites[0].name}.netlify.app` : 
-                                'your-site.netlify.app'}
-                            </span>
-                            <button 
-                              onClick={() => copyToClipboard(deployedSites.length > 0 && deployedSites[0].name ? 
-                                `${deployedSites[0].name}.netlify.app` : 
-                                'your-site.netlify.app')}
-                              className="p-1 bg-transparent text-xs hover:bg-bolt-elements-background-depth-3 text-bolt-elements-textTertiary rounded-md transition-colors"
-                              title="Copy to clipboard"
-                            >
-                              <div className="i-ph:copy w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
-                        
-                        <div className="flex justify-center py-1">
-                          <span className="text-xs font-medium text-bolt-elements-textSecondary bg-bolt-elements-background-depth-3 px-2 py-0.5 rounded">OR</span>
-                        </div>
-                        
-                        <div className="p-2 bg-bolt-elements-background-depth-2 rounded-lg border border-bolt-elements-borderColor flex justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="px-1.5 py-0.5 bg-blue-500/10 text-blue-500 rounded">A</span>
-                            <span>@</span>
-                          </div>
-                          <span className="text-bolt-elements-textTertiary">75.2.60.5</span>
-                        </div>
-                      </div>
-                      <p className="mt-2 text-xs text-bolt-elements-textTertiary">
-                        For detailed instructions, click the "Domain" button on any deployed site.
-                      </p>
-                    </div>
                   </div>
 
                   <div className="mt-6 flex items-center justify-end gap-3">
