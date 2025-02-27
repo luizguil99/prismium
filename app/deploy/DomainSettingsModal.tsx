@@ -198,12 +198,15 @@ export const DomainSettingsModal = ({
       
       // Formatar o URL correto do site atualizado para retornar
       let updatedDomainUrl = '';
+      
       if (domainType === 'custom') {
         // Adicionar https:// se não estiver presente
         updatedDomainUrl = domainToUse.includes('://') ? domainToUse : `https://${domainToUse}`;
       } else {
-        // Para subdomínios Netlify, certificar-se de incluir .netlify.app e https://
-        updatedDomainUrl = `https://${data.name}.netlify.app`;
+        // Para subdomínios Netlify, garantir que usamos o nome retornado pela API
+        // e formatamos corretamente com https:// e .netlify.app
+        const netlifyName = data.name || netlifySubdomain.trim();
+        updatedDomainUrl = `https://${netlifyName}.netlify.app`;
       }
       
       // Mostrar mensagem de sucesso

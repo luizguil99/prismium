@@ -92,7 +92,19 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
     // Remover http:// ou https:// se presentes
     cleanedUrl = cleanedUrl.replace(/^https?:\/\//, '');
     
-    // Readicionar o protocolo https://
+    // Verificar se é um domínio Netlify
+    const isNetlifyDomain = cleanedUrl.includes('.netlify.app');
+    
+    // Para domínios Netlify, garantir que o formato está correto
+    if (isNetlifyDomain) {
+      // Extrair o subdomínio
+      const netlifySubdomain = cleanedUrl.replace(/\.netlify\.app.*$/, '');
+      
+      // Formatar corretamente
+      return `https://${netlifySubdomain}.netlify.app`;
+    }
+    
+    // Para outros domínios, readicionar o protocolo https://
     return cleanedUrl.includes('://') ? cleanedUrl : `https://${cleanedUrl}`;
   };
 
@@ -203,12 +215,17 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
       return;
     }
     
+    // Verificar se é um domínio Netlify
+    const isNetlifyDomain = formattedDomain.includes('.netlify.app');
+    
     // Criar uma cópia atualizada do site
     const updatedSite = {
       ...currentSite,
       url: formattedDomain,
       // Adicionar uma flag para indicar que este site foi atualizado manualmente
-      _manuallyUpdated: true
+      _manuallyUpdated: true,
+      // Adicionar uma flag para indicar se é um domínio Netlify
+      _isNetlifyDomain: isNetlifyDomain
     };
     
     // Atualizar a lista local de sites
@@ -230,7 +247,11 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
     // Salvar as informações do domínio no localStorage
     saveDomainInfo(siteId, formattedDomain);
     
-    console.log('Site atualizado localmente:', { siteId, newDomain: formattedDomain });
+    console.log('Site atualizado localmente:', { 
+      siteId, 
+      newDomain: formattedDomain,
+      isNetlifyDomain
+    });
     
     // Forçar o refresh dos dados do Netlify
     if (connection.token) {

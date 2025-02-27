@@ -2,11 +2,52 @@ import { useStore } from '@nanostores/react';
 import { netlifyConnection, fetchNetlifyStats } from '~/lib/stores/netlify';
 import { chatId } from '~/lib/persistence/useChatHistory';
 import * as Tooltip from '@radix-ui/react-tooltip';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 export function NetlifyDeploymentLink() {
   const connection = useStore(netlifyConnection);
   const currentChatId = useStore(chatId);
+  const [siteUrl, setSiteUrl] = useState<string | null>(null);
+
+  // Função para formatar URLs corretamente
+  const formatUrl = (url: string): string => {
+    // Se a URL estiver vazia, retornar vazia
+    if (!url) return '';
+    
+    // Remover localhost ou caminhos incorretos, se presentes
+    let cleanedUrl = url.replace(/^https?:\/\/localhost:[0-9]+\/.*?\//, '');
+    
+    // Remover http:// ou https:// se presentes
+    cleanedUrl = cleanedUrl.replace(/^https?:\/\//, '');
+    
+    // Verificar se é um domínio Netlify
+    const isNetlifyDomain = cleanedUrl.includes('.netlify.app');
+    
+    // Para domínios Netlify, garantir que o formato está correto
+    if (isNetlifyDomain) {
+      // Extrair o subdomínio
+      const netlifySubdomain = cleanedUrl.replace(/\.netlify\.app.*$/, '');
+      
+      // Formatar corretamente
+      return `https://${netlifySubdomain}.netlify.app`;
+    }
+    
+    // Para outros domínios, readicionar o protocolo https://
+    return cleanedUrl.includes('://') ? cleanedUrl : `https://${cleanedUrl}`;
+  };
+
+  // Função para carregar informações do domínio do localStorage
+  const loadDomainInfo = (siteId: string): string | null => {
+    if (!currentChatId) return null;
+    
+    try {
+      const key = `netlify-domain-${currentChatId}-${siteId}`;
+      return localStorage.getItem(key);
+    } catch (error) {
+      console.error('Error loading domain info:', error);
+      return null;
+    }
+  };
 
   useEffect(() => {
     if (connection.token && currentChatId) {
@@ -14,9 +55,26 @@ export function NetlifyDeploymentLink() {
     }
   }, [connection.token, currentChatId]);
 
-  const deployedSite = connection.stats?.sites?.find((site) => site.name.includes(`prismium-ai-${currentChatId}`));
+  useEffect(() => {
+    const deployedSite = connection.stats?.sites?.find((site) => site.name.includes(`prismium-ai-${currentChatId}`));
+    
+    if (deployedSite) {
+      // Verificar se existe um domínio personalizado no localStorage
+      const savedDomain = loadDomainInfo(deployedSite.id);
+      
+      if (savedDomain) {
+        // Formatar o domínio salvo para garantir consistência
+        setSiteUrl(formatUrl(savedDomain));
+      } else {
+        // Se não houver domínio personalizado, usar a URL do site formatada
+        setSiteUrl(formatUrl(deployedSite.url));
+      }
+    } else {
+      setSiteUrl(null);
+    }
+  }, [connection.stats, currentChatId]);
 
-  if (!deployedSite) {
+  if (!siteUrl) {
     return null;
   }
 
@@ -25,7 +83,7 @@ export function NetlifyDeploymentLink() {
       <Tooltip.Root>
         <Tooltip.Trigger asChild>
           <a
-            href={deployedSite.url}
+            href={siteUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center justify-center w-8 h-8 rounded hover:bg-bolt-elements-item-backgroundActive text-bolt-elements-textSecondary hover:text-[#00AD9F] z-50"
@@ -41,7 +99,7 @@ export function NetlifyDeploymentLink() {
             className="px-3 py-2 rounded bg-bolt-elements-background-depth-3 text-bolt-elements-textPrimary text-xs z-50"
             sideOffset={5}
           >
-            {deployedSite.url}
+            {siteUrl}
             <Tooltip.Arrow className="fill-bolt-elements-background-depth-3" />
           </Tooltip.Content>
         </Tooltip.Portal>
