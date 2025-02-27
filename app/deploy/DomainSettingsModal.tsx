@@ -188,7 +188,7 @@ export const DomainSettingsModal = ({
                                 <tr className="border-b border-bolt-elements-borderColor/50">
                                   <td className="px-2 py-1">CNAME</td>
                                   <td className="px-2 py-1">www</td>
-                                  <td className="px-2 py-1">{currentDomain ? currentDomain.replace(/^www\./, '') : 'your-site.netlify.app'}</td>
+                                  <td className="px-2 py-1">{siteId ? `${siteId}.netlify.app` : 'your-site.netlify.app'}</td>
                                 </tr>
                                 <tr>
                                   <td className="px-2 py-1">A</td>
