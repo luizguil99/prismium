@@ -79,6 +79,22 @@ export const DomainSettingsModal = ({
   // Estado para armazenar o subdomínio Netlify
   const [netlifySubdomain, setNetlifySubdomain] = useState('');
 
+  // Detectar automaticamente o tipo de domínio com base na URL
+  useEffect(() => {
+    if (currentDomain) {
+      if (currentDomain.includes('.netlify.app')) {
+        // É um domínio Netlify, extrair o subdomínio
+        setDomainType('netlify');
+        const subdomain = currentDomain.replace(/\.netlify\.app$/, '');
+        setNetlifySubdomain(subdomain);
+      } else {
+        // É um domínio personalizado
+        setDomainType('custom');
+        setNewDomain(currentDomain);
+      }
+    }
+  }, [currentDomain]);
+
   // Função para copiar texto para a área de transferência
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -183,10 +199,11 @@ export const DomainSettingsModal = ({
       // Formatar o URL correto do site atualizado para retornar
       let updatedDomainUrl = '';
       if (domainType === 'custom') {
-        updatedDomainUrl = domainToUse; // Domínio personalizado como está
+        // Adicionar https:// se não estiver presente
+        updatedDomainUrl = domainToUse.includes('://') ? domainToUse : `https://${domainToUse}`;
       } else {
-        // Para subdomínios Netlify, certificar-se de incluir .netlify.app
-        updatedDomainUrl = `${data.name}.netlify.app`;
+        // Para subdomínios Netlify, certificar-se de incluir .netlify.app e https://
+        updatedDomainUrl = `https://${data.name}.netlify.app`;
       }
       
       // Mostrar mensagem de sucesso
@@ -194,7 +211,7 @@ export const DomainSettingsModal = ({
       
       // Chamar o callback de atualização, se fornecido
       if (onDomainUpdate) {
-        // Formato padronizado para o callback: apenas o domínio sem http/https
+        // Formato padronizado para o callback: URL completa com https://
         onDomainUpdate(updatedDomainUrl);
       }
       

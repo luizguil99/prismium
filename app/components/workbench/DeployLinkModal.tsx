@@ -4,6 +4,7 @@ import NetlifySvgLogo from './netlifysvglogo';
 import DomainSettingsModal from '../../deploy/DomainSettingsModal';
 import { useStore } from '@nanostores/react';
 import { netlifyConnection } from '~/lib/stores/netlify';
+import { chatId } from '~/lib/persistence/useChatHistory';
 
 interface DeployLinkModalProps {
   isOpen: boolean;
@@ -47,6 +48,41 @@ export const DeployLinkModal = ({ isOpen, onClose, siteUrl, siteName, siteId }: 
   // Obter o token do Netlify do store
   const connection = useStore(netlifyConnection);
   
+  // Obter o chatId atual
+  const currentChatId = useStore(chatId);
+  
+  // Função para salvar informações do domínio no localStorage
+  const saveDomainInfo = (siteId: string, url: string) => {
+    if (!currentChatId) return;
+    
+    try {
+      // Salvamos a informação do domínio em uma chave diferente do ID do site
+      const key = `netlify-domain-${currentChatId}-${siteId}`;
+      localStorage.setItem(key, url);
+      console.log('Domínio salvo no localStorage pelo DeployLinkModal:', { siteId, url, key });
+    } catch (error) {
+      console.error('Erro ao salvar informações do domínio:', error);
+    }
+  };
+  
+  // Carregar domínio personalizado do localStorage, se existir
+  useEffect(() => {
+    if (currentChatId && siteId) {
+      try {
+        const key = `netlify-domain-${currentChatId}-${siteId}`;
+        const savedDomain = localStorage.getItem(key);
+        
+        if (savedDomain) {
+          // Usar o domínio salvo em vez do padrão
+          setCurrentSiteUrl(savedDomain);
+          console.log('Carregado domínio personalizado do localStorage:', savedDomain);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar domínio do localStorage:', error);
+      }
+    }
+  }, [currentChatId, siteId]);
+  
   // Função para copiar o URL para a área de transferência
   const copyToClipboard = () => {
     navigator.clipboard.writeText(currentSiteUrl);
@@ -66,9 +102,15 @@ export const DeployLinkModal = ({ isOpen, onClose, siteUrl, siteName, siteId }: 
   // Monitorar mudanças no siteUrl prop
   useEffect(() => {
     if (siteUrl) {
-      setCurrentSiteUrl(formatUrl(siteUrl));
+      const formatted = formatUrl(siteUrl);
+      setCurrentSiteUrl(formatted);
+      
+      // Salvar o URL no localStorage sempre que for atualizado via props
+      if (currentChatId && siteId) {
+        saveDomainInfo(siteId, formatted);
+      }
     }
-  }, [siteUrl]);
+  }, [siteUrl, currentChatId, siteId]);
 
   return (
     <>
@@ -225,6 +267,12 @@ export const DeployLinkModal = ({ isOpen, onClose, siteUrl, siteName, siteId }: 
             // Atualizar o estado local com o novo domínio, formatando corretamente
             const formattedDomain = formatUrl(newDomain);
             setCurrentSiteUrl(formattedDomain);
+            
+            // Salvar o novo domínio no localStorage
+            if (currentChatId) {
+              saveDomainInfo(siteId, formattedDomain);
+            }
+            
             console.log('Domínio atualizado:', formattedDomain);
           }}
         />

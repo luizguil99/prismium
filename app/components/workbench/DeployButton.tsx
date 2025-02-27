@@ -97,6 +97,19 @@ export const DeployButton = memo(() => {
     }
   };
 
+  // Função para carregar informações do domínio do localStorage
+  const loadDomainInfo = (siteId: string): string | null => {
+    if (!currentChatId) return null;
+    
+    try {
+      const key = `netlify-domain-${currentChatId}-${siteId}`;
+      return localStorage.getItem(key);
+    } catch (error) {
+      console.error('Erro ao carregar informações do domínio:', error);
+      return null;
+    }
+  };
+
   // Função para executar o build e fazer deploy no Netlify
   const deployToNetlify = async () => {
     if (deployingTo) {
@@ -331,6 +344,15 @@ export const DeployButton = memo(() => {
       if (data.site?.id) {
         localStorage.setItem(`netlify-site-${currentChatId}`, data.site.id);
         setNetlifyId(data.site.id);
+        
+        // Verificar se já existe um domínio personalizado salvo
+        const savedDomain = loadDomainInfo(data.site.id);
+        
+        // Se existe um domínio personalizado salvo, usá-lo em vez da URL padrão do Netlify
+        if (savedDomain) {
+          data.site.url = savedDomain;
+          console.log('Usando domínio personalizado salvo:', savedDomain);
+        }
       }
       
       toast.success(`Deployment to Netlify completed successfully! 🚀`);

@@ -24,8 +24,68 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
   // Estado local para armazenar os sites implantados (para atualização imediata)
   const [localDeployedSites, setLocalDeployedSites] = useState<Array<{ id: string, name: string, url: string }>>([]);
 
+  // Função para salvar informações do domínio no localStorage
+  const saveDomainInfo = (siteId: string, url: string) => {
+    if (!currentChatId) return;
+    
+    try {
+      // Salvamos a URL completa (com https://) na mesma chave usada para domínios personalizados
+      const key = `netlify-domain-${currentChatId}-${siteId}`;
+      localStorage.setItem(key, url);
+      console.log('Domínio salvo no localStorage:', { siteId, url, key });
+    } catch (error) {
+      console.error('Erro ao salvar informações do domínio:', error);
+    }
+  };
+
+  // Função para carregar informações do domínio do localStorage
+  const loadDomainInfo = (siteId: string): string | null => {
+    if (!currentChatId) return null;
+    
+    try {
+      const key = `netlify-domain-${currentChatId}-${siteId}`;
+      return localStorage.getItem(key);
+    } catch (error) {
+      console.error('Erro ao carregar informações do domínio:', error);
+      return null;
+    }
+  };
+
+  // Carregar sites do localStorage na inicialização
+  useEffect(() => {
+    if (!currentChatId) return;
+    
+    try {
+      // Verificar se existe um site ID para este chat
+      const siteId = localStorage.getItem(`netlify-site-${currentChatId}`);
+      
+      if (siteId) {
+        // Verificar se existe informação de domínio salva
+        const savedDomain = loadDomainInfo(siteId);
+        
+        if (savedDomain) {
+          // Criar um site local com as informações salvas
+          const localSite = {
+            id: siteId,
+            name: `prismium-ai-${currentChatId}`,
+            url: savedDomain
+          };
+          
+          // Adicionar ao estado local
+          setLocalDeployedSites([localSite]);
+          console.log('Site carregado do localStorage:', localSite);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar sites do localStorage:', error);
+    }
+  }, [currentChatId]);
+
   // Função para formatar URLs corretamente
   const formatUrl = (url: string): string => {
+    // Se a URL estiver vazia, retornar vazia
+    if (!url) return '';
+    
     // Remover localhost ou caminhos incorretos, se presentes
     let cleanedUrl = url.replace(/^https?:\/\/localhost:[0-9]+\/.*?\//, '');
     
@@ -53,13 +113,46 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
   // Atualizar sites locais quando as estatísticas do Netlify forem atualizadas
   useEffect(() => {
     if (connection.stats?.sites) {
-      const filteredSites = connection.stats.sites
-        .filter((site) => site.name.includes(`prismium-ai-${currentChatId}`))
-        .map(site => ({
-          ...site,
-          url: formatUrl(site.url)
-        }));
+      // Armazenar IDs dos sites atualizados localmente para evitar dependência circular
+      const localSiteIds = localDeployedSites.map(site => site.id);
       
+      const filteredSites = connection.stats.sites
+        .filter((site) => {
+          // Verificar se o nome do site ou a URL contém o ID do chat atual
+          const nameMatch = site.name.includes(`prismium-ai-${currentChatId}`);
+          const urlMatch = site.url && site.url.includes(`prismium-ai-${currentChatId}`);
+          
+          // Verificar se temos um site atualizado localmente com este ID
+          const isLocallyUpdated = localSiteIds.includes(site.id);
+          
+          return nameMatch || urlMatch || isLocallyUpdated;
+        })
+        .map(site => {
+          // Se o site já existe localmente, preservar a URL local
+          const localSite = localDeployedSites.find(local => local.id === site.id);
+          if (localSite) {
+            return {
+              ...site,
+              url: localSite.url // Preservar a URL local
+            };
+          }
+          
+          // Verificar se existe um domínio personalizado salvo no localStorage
+          const savedDomain = loadDomainInfo(site.id);
+          if (savedDomain) {
+            return {
+              ...site,
+              url: savedDomain
+            };
+          }
+          
+          return {
+            ...site,
+            url: formatUrl(site.url)
+          };
+        });
+      
+      console.log('Sites filtrados do Netlify:', filteredSites);
       setLocalDeployedSites(filteredSites);
       console.log('Sites locais atualizados:', filteredSites);
     }
@@ -101,13 +194,41 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
   const updateLocalSite = (siteId: string, newDomain: string) => {
     const formattedDomain = formatUrl(newDomain);
     
-    setLocalDeployedSites(prevSites => 
-      prevSites.map(site => 
-        site.id === siteId 
-          ? { ...site, url: formattedDomain }
-          : site
-      )
-    );
+    // Primeiro, encontrar o site atual para preservar todas as suas propriedades
+    const currentSite = localDeployedSites.find(site => site.id === siteId) || 
+                        deployedSites.find(site => site.id === siteId);
+    
+    if (!currentSite) {
+      console.error('Site não encontrado para atualização:', siteId);
+      return;
+    }
+    
+    // Criar uma cópia atualizada do site
+    const updatedSite = {
+      ...currentSite,
+      url: formattedDomain,
+      // Adicionar uma flag para indicar que este site foi atualizado manualmente
+      _manuallyUpdated: true
+    };
+    
+    // Atualizar a lista local de sites
+    setLocalDeployedSites(prevSites => {
+      // Verificar se o site já existe na lista
+      const siteExists = prevSites.some(site => site.id === siteId);
+      
+      if (siteExists) {
+        // Atualizar o site existente
+        return prevSites.map(site => 
+          site.id === siteId ? updatedSite : site
+        );
+      } else {
+        // Adicionar o novo site à lista
+        return [...prevSites, updatedSite];
+      }
+    });
+    
+    // Salvar as informações do domínio no localStorage
+    saveDomainInfo(siteId, formattedDomain);
     
     console.log('Site atualizado localmente:', { siteId, newDomain: formattedDomain });
     
@@ -134,7 +255,7 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
     const url = site.url.toLowerCase();
     return !url.includes('localhost') && 
            !url.includes('undefined') && 
-           (url.includes('.netlify.app') || url.includes('.'));
+           url.length > 0;
   });
 
   return (
@@ -221,9 +342,10 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
                                   <NetlifySvgLogo width={16} height={16} />
                                 </div>
                                 <span className="text-xs text-bolt-elements-textSecondary truncate max-w-[180px]">
-                                  {site.url && !site.url.includes('.netlify.app') 
-                                    ? site.url.replace(/^https?:\/\//, '')
-                                    : site.name}
+                                  {site.url.replace(/^https?:\/\//, '')}
+                                  {site.url.includes('.netlify.app') && (
+                                    <span className="ml-1 px-1 py-0.5 text-[10px] bg-blue-500/10 text-blue-500 rounded">Netlify</span>
+                                  )}
                                 </span>
                               </div>
                               <div className="flex items-center gap-2">
