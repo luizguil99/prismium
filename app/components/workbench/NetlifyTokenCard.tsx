@@ -267,6 +267,7 @@ export const NetlifyTokenCard = ({ isOpen, onClose }: NetlifyTokenCardProps) => 
           isOpen={domainSettingsModalOpen}
           onClose={() => setDomainSettingsModalOpen(false)}
           siteId={selectedSite.id}
+          siteName={selectedSite.name}
           currentDomain={selectedSite.url.replace(/^https?:\/\//, '')}
           netlifyToken={connection.token || ''}
           onDomainUpdate={(newDomain) => {

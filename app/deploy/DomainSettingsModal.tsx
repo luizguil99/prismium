@@ -6,6 +6,7 @@ interface DomainSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   siteId: string;
+  siteName?: string;
   currentDomain: string;
   netlifyToken: string;
   onDomainUpdate?: (newDomain: string) => void;
@@ -15,6 +16,7 @@ export const DomainSettingsModal = ({
   isOpen,
   onClose,
   siteId,
+  siteName,
   currentDomain,
   netlifyToken,
   onDomainUpdate
@@ -33,6 +35,16 @@ export const DomainSettingsModal = ({
   
   // Estado para armazenar o subdomínio Netlify
   const [netlifySubdomain, setNetlifySubdomain] = useState('');
+
+  // Função para copiar texto para a área de transferência
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      toast.success('Copied to clipboard!');
+    }).catch(err => {
+      console.error('Failed to copy: ', err);
+      toast.error('Failed to copy');
+    });
+  };
 
   // Função para atualizar o domínio via API do Netlify
   const updateDomain = async () => {
@@ -243,28 +255,46 @@ export const DomainSettingsModal = ({
                           <li>Go to your domain registrar (GoDaddy, Namecheap, etc.)</li>
                           <li>Find the DNS management section for your domain</li>
                           <li>Add these DNS records to point to Netlify:
-                            <div className="mt-2 overflow-x-auto">
-                              <table className="min-w-full text-xs border-collapse">
-                                <thead>
-                                  <tr className="border-b border-bolt-elements-borderColor">
-                                    <th className="px-2 py-1 text-left">Type</th>
-                                    <th className="px-2 py-1 text-left">Name</th>
-                                    <th className="px-2 py-1 text-left">Value</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  <tr className="border-b border-bolt-elements-borderColor/50">
-                                    <td className="px-2 py-1">CNAME</td>
-                                    <td className="px-2 py-1">www</td>
-                                    <td className="px-2 py-1">{siteId ? `${siteId}.netlify.app` : 'your-site.netlify.app'}</td>
-                                  </tr>
-                                  <tr>
-                                    <td className="px-2 py-1">A</td>
-                                    <td className="px-2 py-1">@</td>
-                                    <td className="px-2 py-1">75.2.60.5</td>
-                                  </tr>
-                                </tbody>
-                              </table>
+                            <div className="mt-2 space-y-2">
+                              <div className="p-2 bg-bolt-elements-background-depth-2 rounded-lg border border-bolt-elements-borderColor flex justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className="px-1.5 py-0.5 bg-blue-500/10 text-blue-500 rounded">CNAME</span>
+                                  <span>www</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <span className="text-bolt-elements-textTertiary truncate max-w-[120px]">
+                                    {siteName ? `${siteName}.netlify.app` : siteId ? `${siteId}.netlify.app` : 'your-site.netlify.app'}
+                                  </span>
+                                  <button 
+                                    onClick={() => copyToClipboard(siteName ? `${siteName}.netlify.app` : siteId ? `${siteId}.netlify.app` : 'your-site.netlify.app')}
+                                    className="p-1 bg-transparent text-xs hover:bg-bolt-elements-background-depth-3 text-bolt-elements-textTertiary rounded-md transition-colors"
+                                    title="Copy to clipboard"
+                                  >
+                                    <div className="i-ph:copy w-3 h-3" />
+                                  </button>
+                                </div>
+                              </div>
+                              
+                              <div className="flex justify-center py-1">
+                                <span className="text-xs font-medium text-bolt-elements-textSecondary bg-bolt-elements-background-depth-3 px-2 py-0.5 rounded">OR</span>
+                              </div>
+                              
+                              <div className="p-2 bg-bolt-elements-background-depth-2 rounded-lg border border-bolt-elements-borderColor flex justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className="px-1.5 py-0.5 bg-blue-500/10 text-blue-500 rounded">A</span>
+                                  <span>@</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <span className="text-bolt-elements-textTertiary">75.2.60.5</span>
+                                  <button 
+                                    onClick={() => copyToClipboard('75.2.60.5')}
+                                    className="p-1 bg-transparent text-xs hover:bg-bolt-elements-background-depth-3 text-bolt-elements-textTertiary rounded-md transition-colors"
+                                    title="Copy to clipboard"
+                                  >
+                                    <div className="i-ph:copy w-3 h-3" />
+                                  </button>
+                                </div>
+                              </div>
                             </div>
                             <div className="mt-2 text-xs text-bolt-elements-textTertiary">
                               <strong>Note:</strong> The CNAME value above is your site's unique Netlify identifier, which may be different from your current display URL.
@@ -292,7 +322,7 @@ export const DomainSettingsModal = ({
                 <div className="mt-6 flex justify-end space-x-3">
                   <button
                     type="button"
-                    className="inline-flex justify-center rounded-md border border-bolt-elements-borderColor px-4 py-2 text-sm font-medium text-bolt-elements-textPrimary hover:bg-bolt-elements-background-depth-2 focus:outline-none"
+                    className="inline-flex bg-transparent justify-center rounded-md border border-bolt-elements-borderColor px-4 py-2 text-sm font-medium text-bolt-elements-textPrimary hover:bg-bolt-elements-background-depth-2 focus:outline-none"
                     onClick={onClose}
                   >
                     Cancel
