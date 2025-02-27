@@ -12,6 +12,13 @@ interface DomainSettingsModalProps {
   onDomainUpdate?: (newDomain: string) => void;
 }
 
+// Tipo para resposta da API do Netlify
+interface NetlifySiteData {
+  name: string;
+  custom_domain?: string;
+  [key: string]: any;
+}
+
 export const DomainSettingsModal = ({
   isOpen,
   onClose,
@@ -39,7 +46,7 @@ export const DomainSettingsModal = ({
           });
           
           if (response.ok) {
-            const siteData = await response.json();
+            const siteData = await response.json() as NetlifySiteData;
             setFullSiteName(siteData.name);
             console.log('Site data fetched:', siteData);
           }
@@ -77,6 +84,13 @@ export const DomainSettingsModal = ({
     });
   };
 
+  // Validar domínio personalizado
+  const validateCustomDomain = (domain: string): boolean => {
+    // Regex para validar domínio
+    const domainRegex = /^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
+    return domainRegex.test(domain);
+  };
+
   // Função para atualizar o domínio via API do Netlify
   const updateDomain = async () => {
     // Determinar o domínio a ser usado com base no tipo selecionado
@@ -85,9 +99,17 @@ export const DomainSettingsModal = ({
       : `${netlifySubdomain.trim()}.netlify.app`;
 
     // Validar se o domínio foi fornecido
-    if (domainType === 'custom' && !newDomain.trim()) {
-      setError('Please enter a domain');
-      return;
+    if (domainType === 'custom') {
+      if (!newDomain.trim()) {
+        setError('Please enter a domain');
+        return;
+      }
+      
+      // Validar formato do domínio personalizado
+      if (!validateCustomDomain(newDomain.trim())) {
+        setError('Please enter a valid domain (e.g., example.com)');
+        return;
+      }
     }
 
     // Validar se o subdomínio Netlify foi fornecido
@@ -109,6 +131,20 @@ export const DomainSettingsModal = ({
     setIsLoading(true);
 
     try {
+      // Prepare o payload com base no tipo de domínio
+      const payload: Record<string, any> = {};
+      
+      if (domainType === 'custom') {
+        payload.custom_domain = domainToUse;
+      } else {
+        // Para subdomínios Netlify, enviamos uma atualização diferente
+        payload.name = netlifySubdomain.trim();
+        // Se houver um domínio personalizado anteriormente, limpamos ele
+        if (currentDomain && !currentDomain.endsWith('.netlify.app')) {
+          payload.custom_domain = null;
+        }
+      }
+
       // Fazer a requisição para a API do Netlify
       const response = await fetch(`https://api.netlify.com/api/v1/sites/${siteId}`, {
         method: 'PUT',
@@ -116,26 +152,35 @@ export const DomainSettingsModal = ({
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${netlifyToken}`
         },
-        body: JSON.stringify({
-          custom_domain: domainToUse
-        })
+        body: JSON.stringify(payload)
       });
 
+      // Log para depuração
+      console.log('Request payload:', payload);
+      
       // Verificar se a requisição foi bem-sucedida
       if (!response.ok) {
-        const errorData = await response.json() as { message?: string };
-        throw new Error(errorData.message || 'Failed to update domain');
+        // Tentar obter detalhes do erro da resposta
+        let errorMessage = 'Failed to update domain';
+        try {
+          const errorData = await response.json() as { message?: string, errors?: Array<{message: string}> };
+          errorMessage = errorData.message || 
+                        (errorData.errors && errorData.errors.length > 0 ? errorData.errors[0].message : errorMessage);
+        } catch (e) {
+          // Se não conseguir analisar a resposta JSON, usar mensagem padrão
+        }
+        throw new Error(errorMessage);
       }
 
       // Obter os dados da resposta
-      const data = await response.json();
+      const data = await response.json() as NetlifySiteData;
       
       // Mostrar mensagem de sucesso
-      toast.success(`Domain updated to ${domainToUse}`);
+      toast.success(`Domain updated to ${domainType === 'custom' ? domainToUse : data.name + '.netlify.app'}`);
       
       // Chamar o callback de atualização, se fornecido
       if (onDomainUpdate) {
-        onDomainUpdate(domainToUse);
+        onDomainUpdate(domainType === 'custom' ? domainToUse : data.name + '.netlify.app');
       }
       
       // Fechar o modal
@@ -182,14 +227,14 @@ export const DomainSettingsModal = ({
                   as="h3"
                   className="text-lg font-medium leading-6 text-bolt-elements-textPrimary flex items-center gap-2"
                 >
-                  <div className="i-ph:globe-simple w-5 h-5 text-accent-500" />
+                  <span className="i-ph:globe-simple w-5 h-5 text-accent-500" />
                   Custom Domain Settings
                 </Dialog.Title>
 
                 <div className="mt-4">
-                  <p className="text-sm text-bolt-elements-textSecondary mb-4">
+                  <div className="text-sm text-bolt-elements-textSecondary mb-4">
                     Update the custom domain for your Netlify site.
-                  </p>
+                  </div>
 
                   <div className="space-y-4">
                     <div>
@@ -261,17 +306,17 @@ export const DomainSettingsModal = ({
                         </>
                       )}
                       
-                      <p className="mt-2 text-xs text-bolt-elements-textTertiary">
+                      <div className="mt-2 text-xs text-bolt-elements-textTertiary">
                         Example: mysite.com or app.mydomain.com
-                      </p>
+                      </div>
                     </div>
 
                     {error && (
                       <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
-                        <p className="text-sm text-red-500 flex items-center gap-2">
-                          <div className="i-ph:warning-circle w-4 h-4" />
+                        <div className="text-sm text-red-500 flex items-center gap-2">
+                          <span className="i-ph:warning-circle w-4 h-4" />
                           {error}
-                        </p>
+                        </div>
                       </div>
                     )}
 
@@ -279,12 +324,12 @@ export const DomainSettingsModal = ({
                     {domainType === 'custom' && (
                       <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
                         <h4 className="text-sm font-medium text-bolt-elements-textPrimary mb-2 flex items-center gap-2">
-                          <div className="i-ph:info w-4 h-4 text-blue-500" />
+                          <span className="i-ph:info w-4 h-4 text-blue-500" />
                           Domain Configuration
                         </h4>
-                        <p className="text-xs text-bolt-elements-textSecondary mb-2">
+                        <div className="text-xs text-bolt-elements-textSecondary mb-2">
                           After adding a custom domain, you'll need to configure your DNS settings:
-                        </p>
+                        </div>
                         <div className="space-y-1 text-xs text-bolt-elements-textSecondary">
                           <div className="p-2 bg-bolt-elements-background-depth-2 rounded-lg border border-bolt-elements-borderColor flex justify-between">
                             <div className="flex items-center gap-2">
@@ -300,7 +345,7 @@ export const DomainSettingsModal = ({
                                 className="p-1 bg-transparent text-xs hover:bg-bolt-elements-background-depth-3 text-bolt-elements-textTertiary rounded-md transition-colors"
                                 title="Copy to clipboard"
                               >
-                                <div className="i-ph:copy w-3 h-3" />
+                                <span className="i-ph:copy w-3 h-3" />
                               </button>
                             </div>
                           </div>
@@ -321,17 +366,17 @@ export const DomainSettingsModal = ({
                                 className="p-1 bg-transparent text-xs hover:bg-bolt-elements-background-depth-3 text-bolt-elements-textTertiary rounded-md transition-colors"
                                 title="Copy to clipboard"
                               >
-                                <div className="i-ph:copy w-3 h-3" />
+                                <span className="i-ph:copy w-3 h-3" />
                               </button>
                             </div>
                           </div>
                         </div>
-                        <p className="mt-2 text-xs text-bolt-elements-textTertiary">
+                        <div className="mt-2 text-xs text-bolt-elements-textTertiary">
                           <span className="font-medium">Note:</span> The CNAME value is your Netlify site's name in the format "prismium-ai-[chatId]-[timestamp]", which is used to configure your DNS settings.
-                        </p>
-                        <p className="mt-2 text-xs text-bolt-elements-textTertiary">
+                        </div>
+                        <div className="mt-2 text-xs text-bolt-elements-textTertiary">
                           For detailed instructions, check Netlify's official documentation.
-                        </p>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -357,7 +402,7 @@ export const DomainSettingsModal = ({
                   >
                     {isLoading ? (
                       <>
-                        <div className="i-ph:circle-notch w-4 h-4 mr-2 animate-spin" />
+                        <span className="i-ph:circle-notch w-4 h-4 mr-2 animate-spin" />
                         Updating...
                       </>
                     ) : (
