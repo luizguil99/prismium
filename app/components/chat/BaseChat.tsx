@@ -226,112 +226,55 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
 
     useEffect(() => {
       if (typeof window !== 'undefined') {
-        const providerSettings = getProviderSettings();
         let parsedApiKeys: Record<string, string> | undefined = {};
 
         try {
-          // Limpar todos os cookies relacionados a API keys
-          Cookies.remove('apiKeys');
-          
-          // Carregar as chaves do .env
-          const envApiKeys: Record<string, string> = {};
-            
-          // Mapeamento de todas as variáveis de ambiente para os providers
-          const envMapping = {
-            Anthropic: 'ANTHROPIC_API_KEY',
-            Google: 'GOOGLE_GENERATIVE_AI_API_KEY',
-            Deepseek: 'DEEPSEEK_API_KEY',
-            OpenAI: 'OPENAI_API_KEY',
-            HuggingFace: 'HuggingFace_API_KEY',
-            OpenRouter: 'OPEN_ROUTER_API_KEY',
-            OpenAILike: 'OPENAI_LIKE_API_KEY',
-            Together: 'TOGETHER_API_KEY',
-            Mistral: 'MISTRAL_API_KEY',
-            Cohere: 'COHERE_API_KEY',
-            xAI: 'XAI_API_KEY',
-            Perplexity: 'PERPLEXITY_API_KEY',
-            Groq: 'GROQ_API_KEY',
-          };
-
-          console.log('[BaseChat] Variáveis disponíveis:', Object.keys(import.meta.env));
-
-          // Carregar as chaves do .env usando import.meta.env
-          Object.entries(envMapping).forEach(([provider, envKey]) => {
-            const value = (import.meta.env as any)[envKey];
-            console.log(`[BaseChat] Carregando ${provider}:`, { key: envKey, value });
-            
-            if (value && typeof value === 'string' && value.trim() !== '') {
-              // Remover qualquer = do início e fazer trim
-              const cleanValue = value.trim().replace(/^=+/, '');
-              if (cleanValue) {
-                envApiKeys[provider] = cleanValue;
-              }
-            }
-          });
-
-          // Filtrar e salvar apenas as chaves válidas
-          const validEnvApiKeys = Object.fromEntries(
-            Object.entries(envApiKeys).filter(([_, value]) => 
-              value && typeof value === 'string' && value.trim() !== ''
-            )
-          );
-
-          console.log('[BaseChat] API Keys válidas:', validEnvApiKeys);
-
-          if (Object.keys(validEnvApiKeys).length > 0) {
-            // Salvar as chaves válidas nos cookies
-            Cookies.set('apiKeys', JSON.stringify(validEnvApiKeys));
-            parsedApiKeys = validEnvApiKeys;
-          }
-
+          parsedApiKeys = getApiKeysFromCookies();
           setApiKeys(parsedApiKeys);
         } catch (error) {
-          console.error('[BaseChat] Erro ao carregar API keys:', error);
+          console.error('Error loading API keys from cookies:', error);
           Cookies.remove('apiKeys');
         }
+
         setIsModelLoading('all');
-        initializeModelList({ apiKeys: parsedApiKeys, providerSettings })
-          .then((modelList) => {
-            // console.log('Model List: ', modelList);
-            setModelList(modelList);
+        fetch('/api/models')
+          .then((response) => response.json())
+          .then((data) => {
+            const typedData = data as { modelList: ModelInfo[] };
+            setModelList(typedData.modelList);
           })
           .catch((error) => {
-            console.error('Error initializing model list:', error);
+            console.error('Error fetching model list:', error);
           })
           .finally(() => {
             setIsModelLoading(undefined);
           });
       }
-    }, [providerList]);
+    }, [providerList, provider]);
 
     const onApiKeysChange = async (providerName: string, apiKey: string) => {
       const newApiKeys = { ...apiKeys, [providerName]: apiKey };
       setApiKeys(newApiKeys);
       Cookies.set('apiKeys', JSON.stringify(newApiKeys));
 
-      const provider = LLMManager.getInstance(import.meta.env || process.env || {}).getProvider(providerName);
+      setIsModelLoading(providerName);
 
-      if (provider && provider.getDynamicModels) {
-        setIsModelLoading(providerName);
+      let providerModels: ModelInfo[] = [];
 
-        try {
-          const providerSettings = getProviderSettings();
-          const staticModels = provider.staticModels;
-          const dynamicModels = await provider.getDynamicModels(
-            newApiKeys,
-            providerSettings,
-            import.meta.env || process.env || {},
-          );
-
-          setModelList((preModels) => {
-            const filteredOutPreModels = preModels.filter((x) => x.provider !== providerName);
-            return [...filteredOutPreModels, ...staticModels, ...dynamicModels];
-          });
-        } catch (error) {
-          console.error('Error loading dynamic models:', error);
-        }
-        setIsModelLoading(undefined);
+      try {
+        const response = await fetch(`/api/models/${encodeURIComponent(providerName)}`);
+        const data = await response.json();
+        providerModels = (data as { modelList: ModelInfo[] }).modelList;
+      } catch (error) {
+        console.error('Error loading dynamic models for:', providerName, error);
       }
+
+      // Only update models for the specific provider
+      setModelList((prevModels) => {
+        const otherModels = prevModels.filter((model) => model.provider !== providerName);
+        return [...otherModels, ...providerModels];
+      });
+      setIsModelLoading(undefined);
     };
 
     const startListening = () => {
