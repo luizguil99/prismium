@@ -242,33 +242,33 @@ export const Artifact = memo(({ messageId }: ArtifactProps) => {
                             transition={{ duration: 1.5, repeat: Infinity, repeatType: "reverse" }}
                           >
                             <Layers className="w-5 h-5" />
+                            
+                            {/* Pontos de progresso */}
+                            <motion.div 
+                              className="absolute w-1 h-1 rounded-full bg-bolt-elements-borderColor"
+                              style={{ top: '0px', left: '50%', transform: 'translateX(-50%)' }}
+                              animate={{ opacity: [0, 1, 0] }}
+                              transition={{ duration: 1, repeat: Infinity, delay: 0 }}
+                            />
+                            <motion.div 
+                              className="absolute w-1 h-1 rounded-full bg-bolt-elements-borderColor"
+                              style={{ top: '50%', right: '0px', transform: 'translateY(-50%)' }}
+                              animate={{ opacity: [0, 1, 0] }}
+                              transition={{ duration: 1, repeat: Infinity, delay: 0.25 }}
+                            />
+                            <motion.div 
+                              className="absolute w-1 h-1 rounded-full bg-bolt-elements-borderColor"
+                              style={{ bottom: '0px', left: '50%', transform: 'translateX(-50%)' }}
+                              animate={{ opacity: [0, 1, 0] }}
+                              transition={{ duration: 1, repeat: Infinity, delay: 0.5 }}
+                            />
+                            <motion.div 
+                              className="absolute w-1 h-1 rounded-full bg-bolt-elements-borderColor"
+                              style={{ top: '50%', left: '0px', transform: 'translateY(-50%)' }}
+                              animate={{ opacity: [0, 1, 0] }}
+                              transition={{ duration: 1, repeat: Infinity, delay: 0.75 }}
+                            />
                           </motion.div>
-                          
-                          {/* Pontos de progresso */}
-                          <motion.div 
-                            className="absolute w-1 h-1 rounded-full bg-bolt-elements-borderColor"
-                            style={{ top: '0px', left: '50%', transform: 'translateX(-50%)' }}
-                            animate={{ opacity: [0, 1, 0] }}
-                            transition={{ duration: 1, repeat: Infinity, delay: 0 }}
-                          />
-                          <motion.div 
-                            className="absolute w-1 h-1 rounded-full bg-bolt-elements-borderColor"
-                            style={{ top: '50%', right: '0px', transform: 'translateY(-50%)' }}
-                            animate={{ opacity: [0, 1, 0] }}
-                            transition={{ duration: 1, repeat: Infinity, delay: 0.25 }}
-                          />
-                          <motion.div 
-                            className="absolute w-1 h-1 rounded-full bg-bolt-elements-borderColor"
-                            style={{ bottom: '0px', left: '50%', transform: 'translateX(-50%)' }}
-                            animate={{ opacity: [0, 1, 0] }}
-                            transition={{ duration: 1, repeat: Infinity, delay: 0.5 }}
-                          />
-                          <motion.div 
-                            className="absolute w-1 h-1 rounded-full bg-bolt-elements-borderColor"
-                            style={{ top: '50%', left: '0px', transform: 'translateY(-50%)' }}
-                            animate={{ opacity: [0, 1, 0] }}
-                            transition={{ duration: 1, repeat: Infinity, delay: 0.75 }}
-                          />
                         </div>
                       </motion.div>
                     )}
@@ -626,15 +626,30 @@ const ActionList = memo(({ actions }: ActionListProps) => {
                   ) : null}
                   <div className={classNames('text-lg', getIconColor(action.status))}>
                     {status === 'running' ? (
-                      <div className="relative">
-                        <Loader className="w-4 h-4 animate-spin text-gray-500" />
-                        <motion.div 
-                          className="absolute inset-0 rounded-full border border-gray-500"
-                          animate={{ scale: [1, 1.5, 1], opacity: [1, 0, 1] }}
-                          transition={{ duration: 1.5, repeat: Infinity }}
-                        />
-                      </div>
-                    ) : status === 'complete' || (type === 'start' && status !== 'failed') ? (
+                      <>
+                        {type !== 'start' ? (
+                          <div className="relative">
+                            <Loader className="w-4 h-4 animate-spin text-gray-500" />
+                            <motion.div 
+                              className="absolute inset-0 rounded-full border border-gray-500"
+                              animate={{ scale: [1, 1.5, 1], opacity: [1, 0, 1] }}
+                              transition={{ duration: 1.5, repeat: Infinity }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="relative">
+                            <Terminal className="w-4 h-4 text-green-500" />
+                            <motion.div 
+                              className="absolute inset-0 rounded-full border border-green-500"
+                              animate={{ scale: [1, 1.5, 1], opacity: [1, 0, 1] }}
+                              transition={{ duration: 1.5, repeat: Infinity }}
+                            />
+                          </div>
+                        )}
+                      </>
+                    ) : status === 'pending' ? (
+                      <div className="w-4 h-4 rounded-full border border-gray-400"></div>
+                    ) : status === 'complete' ? (
                       <motion.div
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
@@ -694,4 +709,3 @@ function getIconColor(status: ActionState['status']) {
     }
   }
 }
-
