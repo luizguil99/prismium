@@ -1,15 +1,11 @@
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
-import { createServerClient } from "@supabase/auth-helpers-remix";
+import { createServerClient } from "~/utils/supabase.server";
 import { StatsCards } from "~/admin-components/StatsCards";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const response = new Response();
-  const supabase = createServerClient(
-    import.meta.env.SUPABASE_URL ?? '',
-    import.meta.env.SUPABASE_ANON_KEY ?? '',
-    { request, response }
-  );
+  const supabase = createServerClient(request, response);
 
   // Busca estatísticas gerais
   const { data: stats, error: statsError } = await supabase
@@ -31,6 +27,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       proUsers,
       activeTrials
     }
+  }, {
+    headers: response.headers
   });
 };
 
@@ -51,4 +49,4 @@ export default function AdminIndexPage() {
       />
     </div>
   );
-} 
+}

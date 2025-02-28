@@ -5,7 +5,6 @@ import { useLoaderData } from '@remix-run/react';
 import { ClientOnly } from 'remix-utils/client-only';
 
 export async function loader(args: LoaderFunctionArgs) {
-  await requireAuth(args);
   return json({ id: args.params.id });
 }
 

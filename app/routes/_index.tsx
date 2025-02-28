@@ -1,22 +1,16 @@
-import { json, type MetaFunction, type LoaderFunctionArgs } from '@remix-run/cloudflare';
+import { json, redirect, type MetaFunction, type LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { ClientOnly } from 'remix-utils/client-only';
 import { BaseChat } from '~/components/chat/BaseChat';
 import { Chat } from '~/components/chat/Chat.client';
 import BackgroundRays from '~/components/ui/BackgroundRays';
-import { requireAuth } from '~/lib/auth';
+import { createServerClient } from '@supabase/ssr';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Prismium' }, { name: 'description', content: 'Talk with Prismium, Your coding assistant' }];
 };
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const user = await requireAuth({ request });
-  
-  // Obtém os headers da resposta do Supabase
-  const response = new Response();
-  const headers = response.headers;
-
-  return json({ user }, { headers });
+  return json({});
 };
 
 export default function Index() {

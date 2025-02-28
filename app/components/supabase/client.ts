@@ -1,4 +1,4 @@
-import { createBrowserClient as createSupabaseBrowserClient } from '@supabase/auth-helpers-remix';
+import { createBrowserClient as createSupabaseBrowserClient } from '@supabase/ssr';
 
 const supabaseUrl = import.meta.env.SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.SUPABASE_ANON_KEY;

@@ -1,6 +1,6 @@
 import { redirect, type LoaderFunctionArgs, json } from "@remix-run/node";
 import { useLoaderData, Outlet } from "@remix-run/react";
-import { createServerClient } from "@supabase/auth-helpers-remix";
+import { createServerClient } from "~/utils/supabase.server";
 import { Provider as TooltipProvider } from '@radix-ui/react-tooltip';
 import { useState, useEffect } from "react";
 import { Header } from "~/admin-components/Header";
@@ -13,11 +13,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   console.log('🔐 Admin: Verificando permissões...');
   
   const response = new Response();
-  const supabase = createServerClient(
-    import.meta.env.SUPABASE_URL ?? '',
-    import.meta.env.SUPABASE_ANON_KEY ?? '',
-    { request, response }
-  );
+  const supabase = createServerClient(request, response);
 
   // Verifica autenticação de forma segura
   const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -119,4 +115,4 @@ export default function AdminPage() {
       </div>
     </TooltipProvider>
   );
-} 
+}
