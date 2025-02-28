@@ -50,6 +50,7 @@ import ChatAlert from './ChatAlert';
 import { LLMManager } from '~/lib/modules/llm/manager';
 import ProgressCompilation from './ProgressCompilation';
 import type { ProgressAnnotation } from '~/types/context';
+import { AuthenticatedChatInput } from './AuthenticatedChatInput';
 
 import logoAngular from '~/lib/png/logo_angular.svg.png';
 import logoAstro from '~/lib/png/logo_astro.svg.png';
@@ -617,218 +618,37 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                       />
                     )}
                   </div>
-                  <div
-                    className={classNames(
-                      'relative shadow-lg border border-zinc-800/60 backdrop-blur-lg rounded-xl bg-[#111113]',
-                      'transition-all duration-300 hover:border-blue-500/30 hover:shadow-blue-500/5',
-                    )}
-                  >
-                    <CommandCard
-                      isVisible={showCommands}
-                      onSelect={handleCommandSelect}
-                    />
-                    {imageDataList.length > 0 && (
-                      <div className="flex flex-wrap gap-2 p-2 max-h-32 overflow-y-auto">
-                        {imageDataList.map((image, index) => (
-                          <div key={index} className="relative group">
-                            <img
-                              src={image}
-                              alt={`Preview ${index + 1}`}
-                              className="w-24 h-24 object-cover rounded-lg border border-zinc-800"
-                            />
-                            <button
-                              onClick={() => {
-                                const newImageList = [...imageDataList];
-                                newImageList.splice(index, 1);
-                                setImageDataList?.(newImageList);
-
-                                const newFiles = [...uploadedFiles];
-                                newFiles.splice(index, 1);
-                                setUploadedFiles?.(newFiles);
-
-                                setImageContexts(prev => {
-                                  const newContexts = [...prev];
-                                  newContexts.splice(index, 1);
-                                  return newContexts;
-                                });
-                              }}
-                              className="absolute top-1 right-1 p-1 bg-[#09090B]/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <X size={14} className="text-white" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <textarea
-                      ref={textareaRef}
-                      className={classNames(
-                        'w-full pl-6 pt-4 pr-16 outline-none resize-none text-gray-300 placeholder-gray-500 bg-transparent text-sm',
-                        'transition-all duration-200',
-                        'focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/30',
-                        input.startsWith('@') ? styles.commandInput : ''
-                      )}
-                      onDragEnter={(e) => {
-                        e.preventDefault();
-                        e.currentTarget.style.border = '2px solid #1488fc';
-                      }}
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        e.currentTarget.style.border = '2px solid #1488fc';
-                      }}
-                      onDragLeave={(e) => {
-                        e.preventDefault();
-                        e.currentTarget.style.border = '1px solid var(--bolt-elements-borderColor)';
-                      }}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        e.currentTarget.style.border = '1px solid var(--bolt-elements-borderColor)';
-
-                        const files = Array.from(e.dataTransfer.files);
-                        files.forEach((file) => {
-                          if (file.type.startsWith('image/')) {
-                            const reader = new FileReader();
-
-                            reader.onload = (e) => {
-                              const base64Image = e.target?.result as string;
-                              setUploadedFiles?.([...uploadedFiles, file]);
-                              setImageDataList?.([...imageDataList, base64Image]);
-                            };
-                            reader.readAsDataURL(file);
-                          }
-                        });
-                      }}
-                      onKeyDown={(event) => {
-                        handleKeyDown(event);
-                        if (event.key === 'Enter') {
-                          if (event.shiftKey) {
-                            return;
-                          }
-
-                          event.preventDefault();
-
-                          if (isStreaming) {
-                            handleStop?.();
-                            return;
-                          }
-
-                          // ignore if using input method engine
-                          if (event.nativeEvent.isComposing) {
-                            return;
-                          }
-
-                          handleSendMessage?.(event);
-                        }
-                      }}
-                      value={input}
-                      onChange={(event) => {
-                        handleLocalInputChange(event);
-                      }}
-                      onPaste={handlePaste}
-                      style={{
-                        minHeight: TEXTAREA_MIN_HEIGHT,
-                        maxHeight: TEXTAREA_MAX_HEIGHT,
-                      }}
-                      placeholder="How can I help you today?"
-                      translate="no"
-                    />
-                    <ClientOnly>
-                      {() => (
-                        <SendButton
-                          show={input.length > 0 || isStreaming || uploadedFiles.length > 0}
-                          isStreaming={isStreaming}
-                          disabled={!providerList || providerList.length === 0}
-                          onClick={(event) => {
-                            if (isStreaming) {
-                              handleStop?.();
-                              return;
-                            }
-
-                            if (input.length > 0 || uploadedFiles.length > 0) {
-                              handleSendMessage?.(event);
-                            }
-                          }}
-                        />
-                      )}
-                    </ClientOnly>
-                    <div className="flex justify-between items-center text-sm p-4 pt-2">
-                      <div className="flex gap-2 items-center">
-                        <IconButton
-                          title="Upload file for AI Vision"
-                          className="p-2 rounded-lg bg-[#111113] border border-zinc-800/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200"
-                          onClick={() => handleFileUpload()}
-                        >
-                          <div className="i-ph:paperclip text-xl"></div>
-                        </IconButton>
-                        <AddImageToYourProject 
-                          imageDataList={imageDataList}
-                          setImageDataList={setImageDataList}
-                          setImageContexts={setImageContexts}
-                        />
-                        <IconButton
-                          title="Enhance prompt"
-                          disabled={input.length === 0 || enhancingPrompt}
-                          className={classNames(
-                            'p-2 rounded-lg bg-[#111113] border border-zinc-800/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
-                            enhancingPrompt ? 'opacity-100' : '',
-                          )}
-                          onClick={() => {
-                            enhancePrompt?.();
-                            toast.success('Prompt enhanced!');
-                          }}
-                        >
-                          {enhancingPrompt ? (
-                            <div className="i-svg-spinners:90-ring-with-bg text-blue-500 text-xl animate-spin"></div>
-                          ) : (
-                            <div className="i-bolt:stars text-xl"></div>
-                          )}
-                        </IconButton>
-
-                        <SpeechRecognitionButton
-                          isListening={isListening}
-                          onStart={startListening}
-                          onStop={stopListening}
-                          disabled={isStreaming}
-                        />
-                        {chatStarted && <ClientOnly>{() => <ExportChatButton exportChat={exportChat} />}</ClientOnly>}
-
-                        <div className="flex items-center gap-2">
-                          <IconButton
-                            title="Model Settings"
-                            className={classNames(
-                              'p-2 rounded-lg bg-[#111113] border border-zinc-800/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
-                              {
-                                'bg-blue-500/10 text-blue-400 border-blue-500/30': isModelSettingsCollapsed,
-                              },
-                            )}
-                            onClick={() => setIsModelSettingsCollapsed(!isModelSettingsCollapsed)}
-                            disabled={!providerList || providerList.length === 0}
-                          >
-                            <div className={`i-ph:caret-${isModelSettingsCollapsed ? 'right' : 'down'} text-lg`} />
-                            {isModelSettingsCollapsed ? <span className="text-xs ml-1">{model}</span> : <span />}
-                          </IconButton>
-
-                          <IconButton
-                            title="Configure API"
-                            className={classNames(
-                              'p-2 rounded-lg bg-[#111113] border border-zinc-800/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
-                            )}
-                            onClick={() => setIsModalOpen(true)}
-                            disabled={!providerList || providerList.length === 0}
-                          >
-                            <div className="i-ph:gear text-lg" />
-                          </IconButton>
-                        </div>
-                      </div>
-                      {input.length > 3 ? (
-                        <div className="text-xs text-gray-500">
-                          Use <kbd className="px-1.5 py-0.5 rounded bg-[#111113] border border-zinc-800/50">Shift</kbd> +{' '}
-                          <kbd className="px-1.5 py-0.5 rounded bg-[#111113] border border-zinc-800/50">Return</kbd> for
-                          new line
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
+                  
+                  <AuthenticatedChatInput
+                    textareaRef={textareaRef}
+                    input={input}
+                    enhancingPrompt={enhancingPrompt}
+                    isStreaming={isStreaming}
+                    uploadedFiles={uploadedFiles}
+                    imageDataList={imageDataList}
+                    imageContexts={imageContexts}
+                    showCommands={showCommands}
+                    handleInputChange={handleInputChange}
+                    handleStop={handleStop}
+                    enhancePrompt={enhancePrompt}
+                    handleSendMessage={handleSendMessage}
+                    handleFileUpload={handleFileUpload}
+                    setShowCommands={setShowCommands}
+                    handleCommandSelect={handleCommandSelect}
+                    exportChat={exportChat}
+                    setImageContexts={setImageContexts}
+                    setImageDataList={setImageDataList}
+                    setUploadedFiles={setUploadedFiles}
+                    isListening={isListening}
+                    startListening={startListening}
+                    stopListening={stopListening}
+                    chatStarted={chatStarted}
+                    providerList={providerList}
+                    isModelSettingsCollapsed={isModelSettingsCollapsed}
+                    setIsModelSettingsCollapsed={setIsModelSettingsCollapsed}
+                    model={model}
+                    setIsModalOpen={setIsModalOpen}
+                  />
                 </div>
               </div>
               {!chatStarted && (

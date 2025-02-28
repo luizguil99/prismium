@@ -80,7 +80,7 @@ async function processBatchSave() {
   const supabase = getOrCreateClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    messageQueue.forEach(({reject}) => reject(new Error('Usuário não autenticado')));
+    messageQueue.forEach(({reject}) => reject(new Error('User not authenticated')));
     messageQueue.clear();
     return;
   }
@@ -185,7 +185,7 @@ export async function createChatFromMessages(
 ): Promise<string> {
   const supabase = getOrCreateClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Usuário não autenticado');
+  if (!user) throw new Error('User not authenticated');
 
   const { data, error } = await supabase
     .from('chats')
