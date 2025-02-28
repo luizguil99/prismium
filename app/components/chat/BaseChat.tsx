@@ -6,6 +6,8 @@ import type { JSONValue, Message } from 'ai';
 import React, { type RefCallback, useCallback, useEffect, useState } from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
 import { Menu } from '~/components/sidebar/Menu.client';
+import { DynamicMenu } from '~/components/sidebar/DynamicMenu';
+import { SidebarIcon } from '~/components/sidebar/SidebarIcon';
 import { IconButton } from '~/components/ui/IconButton';
 import { Workbench } from '~/components/workbench/Workbench.client';
 import { classNames } from '~/utils/classNames';
@@ -550,9 +552,11 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       >
         {!chatStarted && <Canvas />}
         {!chatStarted && (
-          <div className="i-ph:sidebar-simple-duotone absolute top-4 left-4 text-xl text-bolt-elements-textPrimary hover:text-blue-500 transition-colors duration-200 cursor-pointer z-50" />
+          <ClientOnly>
+            {() => <SidebarIcon />}
+          </ClientOnly>
         )}
-        <ClientOnly>{() => <Menu />}</ClientOnly>
+        <ClientOnly>{() => <DynamicMenu chatStarted={chatStarted} />}</ClientOnly>
         <div className="flex flex-col lg:flex-row w-full h-full">
           <div className={classNames(styles.Chat, 'grid grid-rows-[auto_1fr] flex-grow lg:min-w-[var(--chat-min-width)] h-full')}>
             {/* Header dinâmica */}

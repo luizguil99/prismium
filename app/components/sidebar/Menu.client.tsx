@@ -12,6 +12,7 @@ import { binDates } from './date-binning';
 import { useSearchFilter } from '~/lib/hooks/useSearchFilter';
 import { ImportButtons } from '~/components/chat/chatExportAndImport/ImportButtons';
 import GitCloneButton from '~/components/chat/GitCloneButton';
+import { useAuth } from '~/components/supabase/auth-context';
 
 const menuVariants = {
   closed: {
@@ -76,6 +77,7 @@ export const Menu = () => {
   const [open, setOpen] = useState(false);
   const [dialogContent, setDialogContent] = useState<DialogContent>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const { user } = useAuth();
 
   const { filteredItems: filteredList, handleSearchChange } = useSearchFilter({
     items: list,
@@ -126,7 +128,7 @@ export const Menu = () => {
     const exitThreshold = 40;
 
     function onMouseMove(event: MouseEvent) {
-      if (event.pageX < enterThreshold) {
+      if (user && event.pageX < enterThreshold) {
         setOpen(true);
       }
 
@@ -140,7 +142,7 @@ export const Menu = () => {
     return () => {
       window.removeEventListener('mousemove', onMouseMove);
     };
-  }, []);
+  }, [user]);
 
   const handleDeleteClick = (event: React.UIEvent, item: ChatHistoryItem) => {
     event.preventDefault();
@@ -151,6 +153,32 @@ export const Menu = () => {
     await duplicateCurrentChat(id);
     loadEntries(); // Reload the list after duplication
   };
+
+  // Função pública para abrir o menu
+  const openMenu = () => {
+    setOpen(true);
+  };
+
+  // Função pública para fechar o menu
+  const closeMenu = () => {
+    setOpen(false);
+  };
+
+  // Expor as funções para o window para que possam ser chamadas externamente
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).__sidebarControl = {
+        openMenu,
+        closeMenu
+      };
+    }
+    
+    return () => {
+      if (typeof window !== 'undefined') {
+        delete (window as any).__sidebarControl;
+      }
+    };
+  }, []);
 
   return (
     <motion.div
