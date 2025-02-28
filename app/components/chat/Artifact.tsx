@@ -52,7 +52,14 @@ export const Artifact = memo(({ messageId }: ArtifactProps) => {
     }
 
     if (actions.length !== 0 && artifact.type === 'bundled') {
-      const finished = !actions.find((action) => action.status !== 'complete');
+      const finished = !actions.find((action) => {
+        // Considera ações do tipo 'start' como completas se não estiverem em estado de falha ou em execução
+        if (action.type === 'start') {
+          return action.status === 'failed' || action.status === 'running';
+        }
+        // Para outros tipos de ação, verifica se o status é diferente de 'complete'
+        return action.status !== 'complete';
+      });
 
       if (allActionFinished !== finished) {
         setAllActionFinished(finished);
@@ -60,7 +67,13 @@ export const Artifact = memo(({ messageId }: ArtifactProps) => {
     }
   }, [actions]);
 
-  const completedActionsCount = actions.filter(a => a.status === 'complete').length;
+  // Função auxiliar para verificar se uma ação está completa
+  const isActionComplete = (action: ActionState) => {
+    return action.status === 'complete' || (action.type === 'start' && action.status !== 'failed' && action.status !== 'running');
+  };
+
+  // Contagem de ações completadas
+  const completedActionsCount = actions.filter(isActionComplete).length;
   const completionPercentage = actions.length ? Math.round((completedActionsCount / actions.length) * 100) : 100;
 
   return (
@@ -649,7 +662,7 @@ const ActionList = memo(({ actions }: ActionListProps) => {
                       </>
                     ) : status === 'pending' ? (
                       <div className="w-4 h-4 rounded-full border border-gray-400"></div>
-                    ) : status === 'complete' ? (
+                    ) : (status === 'complete' || (type === 'start' && status !== 'failed' && status !== 'running')) ? (
                       <motion.div
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}

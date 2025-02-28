@@ -65,7 +65,12 @@ export const Preview = memo(() => {
     }
 
     const { baseUrl } = activePreview;
-    setUrl(baseUrl);
+    
+    // Construir a URL completa no formato que é gerado ao clicar no link do terminal
+    const fullWebContainerUrl = `${window.location.origin}/webcontainer/preview/${encodeURIComponent(baseUrl)}`;
+    
+    // Definir a URL de exibição e a URL do iframe
+    setUrl(fullWebContainerUrl);
     setIframeUrl(baseUrl);
   }, [activePreview]);
 
@@ -298,15 +303,22 @@ export const Preview = memo(() => {
           onClick={() => setIsSelectionMode(!isSelectionMode)}
           className={isSelectionMode ? 'bg-bolt-elements-background-depth-3' : ''}
         />
-        <div className="flex items-center gap-1 flex-grow bg-bolt-elements-preview-addressBar-background border border-bolt-elements-borderColor text-bolt-elements-preview-addressBar-text rounded-full px-3 py-1 text-sm hover:bg-bolt-elements-preview-addressBar-backgroundHover hover:focus-within:bg-bolt-elements-preview-addressBar-backgroundActive focus-within:bg-bolt-elements-preview-addressBar-backgroundActive focus-within-border-bolt-elements-borderColorActive focus-within:text-bolt-elements-preview-addressBar-textActive">
+        <div className="flex items-center gap-1 flex-grow bg-bolt-elements-preview-addressBar-background border border-bolt-elements-borderColor text-bolt-elements-preview-addressBar-text rounded-full px-3 py-1 text-sm hover:bg-bolt-elements-preview-addressBar-background hover:focus-within:bg-bolt-elements-preview-addressBar-backgroundActive focus-within:bg-bolt-elements-preview-addressBar-backgroundActive focus-within-border-bolt-elements-borderColorActive focus-within:text-bolt-elements-preview-addressBar-textActive">
           <input
-            title="URL"
+            title="URL do Preview" 
             ref={inputRef}
             className="w-full bg-transparent outline-none"
             type="text"
-            value={url}
+            value={url} /* Mostra a URL completa do webcontainer com o path /webcontainer/preview/ */
             onChange={(event) => {
               setUrl(event.target.value);
+            }}
+            onFocus={(event) => {
+              // Nenhuma mudança necessária ao focar, já estamos mostrando a URL completa
+              event.target.select();
+            }}
+            onBlur={() => {
+              // Nenhuma mudança necessária ao desfocalizar, mantemos a URL completa
             }}
             onKeyDown={(event) => {
               if (event.key === 'Enter' && validateUrl(url)) {
