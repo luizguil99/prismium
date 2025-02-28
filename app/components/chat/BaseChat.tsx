@@ -227,8 +227,61 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     useEffect(() => {
       if (typeof window !== 'undefined') {
         let parsedApiKeys: Record<string, string> | undefined = {};
-
+         //Api Keys Handler
         try {
+          // Limpar todos os cookies relacionados a API keys
+          Cookies.remove('apiKeys');
+          
+          // Carregar as chaves do .env
+          const envApiKeys: Record<string, string> = {};
+            
+          // Mapeamento de todas as variáveis de ambiente para os providers
+          const envMapping = {
+            Anthropic: 'ANTHROPIC_API_KEY',
+            Google: 'GOOGLE_GENERATIVE_AI_API_KEY',
+            Deepseek: 'DEEPSEEK_API_KEY',
+            OpenAI: 'OPENAI_API_KEY',
+            HuggingFace: 'HuggingFace_API_KEY',
+            OpenRouter: 'OPEN_ROUTER_API_KEY',
+            OpenAILike: 'OPENAI_LIKE_API_KEY',
+            Together: 'TOGETHER_API_KEY',
+            Mistral: 'MISTRAL_API_KEY',
+            Cohere: 'COHERE_API_KEY',
+            xAI: 'XAI_API_KEY',
+            Perplexity: 'PERPLEXITY_API_KEY',
+            Groq: 'GROQ_API_KEY',
+          };
+
+          console.log('[BaseChat] Variáveis disponíveis:', Object.keys(import.meta.env));
+
+          // Carregar as chaves do .env usando import.meta.env
+          Object.entries(envMapping).forEach(([provider, envKey]) => {
+            const value = (import.meta.env as any)[envKey];
+            console.log(`[BaseChat] Carregando ${provider}:`, { key: envKey, value });
+            
+            if (value && typeof value === 'string' && value.trim() !== '') {
+              // Remover qualquer = do início e fazer trim
+              const cleanValue = value.trim().replace(/^=+/, '');
+              if (cleanValue) {
+                envApiKeys[provider] = cleanValue;
+              }
+            }
+          });
+
+          // Filtrar e salvar apenas as chaves válidas
+          const validEnvApiKeys = Object.fromEntries(
+            Object.entries(envApiKeys).filter(([_, value]) => 
+              value && typeof value === 'string' && value.trim() !== ''
+            )
+          );
+
+          console.log('[BaseChat] API Keys válidas:', validEnvApiKeys);
+
+          if (Object.keys(validEnvApiKeys).length > 0) {
+            // Salvar as chaves válidas nos cookies
+            Cookies.set('apiKeys', JSON.stringify(validEnvApiKeys));
+            parsedApiKeys = validEnvApiKeys;
+          }
           parsedApiKeys = getApiKeysFromCookies();
           setApiKeys(parsedApiKeys);
         } catch (error) {
