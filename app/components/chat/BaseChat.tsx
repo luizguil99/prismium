@@ -27,6 +27,7 @@ import { getOrCreateClient } from '~/components/supabase/client';
 import { NewHeader } from '~/components/header/NewHeader';
 import { NotSignedHeader } from '~/components/header/NotSignedHeader';
 import { useAuth } from '~/components/supabase/auth-context';
+import { DynamicHeader } from '~/components/header/DynamicHeader';
 
 import styles from './BaseChat.module.scss';
 import { ExportChatButton } from '~/components/chat/chatExportAndImport/ExportChatButton';
@@ -165,18 +166,6 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     const [imageContexts, setImageContexts] = useState<string[]>([]);
     const [showCommands, setShowCommands] = useState(false);
     const { user } = useAuth();
-    const [isMounted, setIsMounted] = useState(false);
-
-    useEffect(() => {
-      // Pequeno atraso para suavizar a transição
-      const timer = setTimeout(() => {
-        setIsMounted(true);
-      }, 50);
-      
-      return () => {
-        clearTimeout(timer);
-      };
-    }, []);
 
     useEffect(() => {
       if (data) {
@@ -566,35 +555,9 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
         <ClientOnly>{() => <Menu />}</ClientOnly>
         <div className="flex flex-col lg:flex-row w-full h-full">
           <div className={classNames(styles.Chat, 'grid grid-rows-[auto_1fr] flex-grow lg:min-w-[var(--chat-min-width)] h-full')}>
-            {/* Header baseada no estado de chat e autenticação */}
-            {(chatStarted || !user) && (
-              <div className="transition-opacity duration-300" 
-                  style={{ 
-                    opacity: isMounted ? 1 : 0
-                  }}>
-                <ClientOnly>
-                  {() => {
-                    // Só mostrar header para não-logados ou quando o chat está ativo
-                    if (chatStarted) {
-                      return (
-                        <div className="w-full z-30">
-                          <NewHeader />
-                        </div>
-                      );
-                    } else if (!user) {
-                      return (
-                        <div className="w-full z-30">
-                          <NotSignedHeader />
-                        </div>
-                      );
-                    }
-                    
-                    // Usuário logado sem chat iniciado - não renderiza nada
-                    return null;
-                  }}
-                </ClientOnly>
-              </div>
-            )}
+            {/* Header dinâmica */}
+            <DynamicHeader chatStarted={chatStarted} />
+            
             {/* Área de conteúdo */}
             <div 
               ref={scrollRef} 
