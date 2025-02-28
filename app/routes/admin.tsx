@@ -2,12 +2,10 @@ import { redirect, type LoaderFunctionArgs, json } from "@remix-run/node";
 import { useLoaderData, Outlet } from "@remix-run/react";
 import { createServerClient } from "~/utils/supabase.server";
 import { Provider as TooltipProvider } from '@radix-ui/react-tooltip';
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Header } from "~/admin-components/Header";
 import { AdminSidebar } from "~/admin-components/AdminSidebar";
 import { useAuth } from "~/components/supabase/auth-context";
-import { useNavigate } from "@remix-run/react";
-import { toast } from 'react-toastify';
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   console.log('🔐 Admin: Verificando permissões...');
@@ -46,7 +44,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     });
   }
 
-  console.log('✅ Admin: Dados carregados com sucesso');
+  console.log('✅ Admin: Acesso permitido para o administrador:', user.email);
   
   return json({ profile }, {
     headers: response.headers
@@ -56,38 +54,15 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 export default function AdminPage() {
   const { profile } = useLoaderData<typeof loader>();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const { user, loading } = useAuth();
-  const navigate = useNavigate();
+  const { loading } = useAuth();
 
-  // Verifica autenticação no cliente
-  useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        console.log('⚠️ Admin Client: Usuário não autenticado');
-        navigate("/login");
-        return;
-      }
-
-      if (!profile?.is_admin) {
-        console.log('⚠️ Admin Client: Usuário não é administrador');
-        toast.error('Você não tem permissão para acessar esta página');
-        navigate("/");
-      }
-    }
-  }, [user, profile, navigate, loading]);
-
-  // Mostra loading enquanto verifica autenticação
+  // Mostra loading enquanto carrega
   if (loading) {
     return (
       <div className="min-h-screen bg-[#09090B] flex items-center justify-center">
         <div className="text-white">Carregando...</div>
       </div>
     );
-  }
-
-  // Não renderiza nada se não estiver autenticado ou não for admin
-  if (!user || !profile?.is_admin) {
-    return null;
   }
 
   return (
@@ -102,7 +77,6 @@ export default function AdminPage() {
           <Header 
             email={profile.email}
             onOpenSettings={() => setIsSettingsOpen(true)}
-            className="flex-shrink-0"
           />
 
           {/* Área de conteúdo com scroll */}

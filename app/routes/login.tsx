@@ -2,13 +2,13 @@ import { useState } from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
 import * as Label from '@radix-ui/react-label';
 import { useNavigate } from '@remix-run/react';
-import { useSupabaseAuth } from '~/components/supabase';
+import { useAuth } from '~/components/supabase/auth-context';
 import { redirect, type LoaderFunctionArgs, json } from '@remix-run/cloudflare';
 import { Notification } from '~/components/ui/Notification';
 
 export default function Login() {
   const navigate = useNavigate();
-  const { signIn, signUp, loading } = useSupabaseAuth();
+  const { signIn, signUp, loading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
