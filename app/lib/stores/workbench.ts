@@ -10,7 +10,7 @@ import { FilesStore, type FileMap } from './files';
 import { PreviewsStore } from './previews';
 import { TerminalStore } from './terminal';
 import JSZip from 'jszip';
-import { saveAs } from 'file-saver';
+import fileSaver from 'file-saver';
 import { Octokit, type RestEndpointMethodTypes } from '@octokit/rest';
 import * as nodePath from 'node:path';
 import { extractRelativePath } from '~/utils/diff';
@@ -18,6 +18,8 @@ import { description } from '~/lib/persistence';
 import Cookies from 'js-cookie';
 import { createSampler } from '~/utils/sampler';
 import type { ActionAlert } from '~/types/actions';
+
+const { saveAs } = fileSaver;
 
 export interface ArtifactState {
   id: string;
@@ -239,6 +241,9 @@ export class WorkbenchStore {
 
   getFileModifcations() {
     return this.#filesStore.getFileModifications();
+  }
+  getModifiedFiles() {
+    return this.#filesStore.getModifiedFiles();
   }
 
   resetAllFileModifications() {

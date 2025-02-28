@@ -167,12 +167,8 @@ export class ActionRunner {
         case 'start': {
           // making the start app non blocking
 
-          // Vamos garantir que a Promise seja executada corretamente
-          const startPromise = this.#runStartAction(action)
-            .then(() => {
-              logger.debug(`[${action.type}]: Completed successfully, updating status to complete`);
-              this.#updateAction(actionId, { status: 'complete' });
-            })
+          this.#runStartAction(action)
+            .then(() => this.#updateAction(actionId, { status: 'complete' }))
             .catch((err: Error) => {
               if (action.abortSignal.aborted) {
                 return;

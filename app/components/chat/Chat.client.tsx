@@ -23,7 +23,7 @@ import type { ProviderInfo } from '~/types/model';
 import { useSearchParams } from '@remix-run/react';
 import { createSampler } from '~/utils/sampler';
 import { getTemplates, selectStarterTemplate } from '~/utils/selectStarterTemplate';
-
+import { filesToArtifacts } from '~/utils/fileUtils';
 
 const toastAnimation = cssTransition({
   enter: 'animated fadeInRight',
@@ -119,9 +119,7 @@ export const ChatImpl = memo(
     const [imageDataList, setImageDataList] = useState<string[]>([]); // Move here
     const [searchParams, setSearchParams] = useSearchParams();
     const [fakeLoading, setFakeLoading] = useState(false);
-    const [conversationId, setConversationId] = useState<string>(
-      localStorage.getItem('dify_conversation_id') || ''
-    );
+    const [conversationId, setConversationId] = useState<string>(localStorage.getItem('dify_conversation_id') || '');
     const files = useStore(workbenchStore.files);
     const actionAlert = useStore(workbenchStore.alert);
     const { activeProviders, promptId, autoSelectTemplate, contextOptimizationEnabled } = useSettings();
@@ -141,7 +139,7 @@ export const ChatImpl = memo(
 
     const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
 
-     const {
+    const {
       messages,
       isLoading,
       input,
@@ -269,58 +267,78 @@ export const ChatImpl = memo(
       setChatStarted(true);
     };
 
-    /**
-     * Função principal para envio de mensagens no chat
-     * @param _event - Evento do React que disparou o envio
-     * @param messageInput - Mensagem opcional que pode ser passada diretamente
-     */
-    const sendMessage = async (_event: React.UIEvent, messageInput?: string | { isStatus: boolean; text: string }) => {
-      console.log('[ChatClient] sendMessage chamado', { messageInput, input });
+    const sendMessage = async (_event: React.UIEvent, messageInput?: string) => {
+      const messageContent = messageInput || input;
 
-      // Log para registrar mensagem enviada
-      console.log('Mensagem enviada:', messageInput || input);
-
-      // Usa a mensagem passada como parâmetro ou o input atual do chat
-      const _input = messageInput || input;
-
-      // Não permite enviar mensagem vazia ou durante carregamento
-      if ((typeof _input === 'string' && _input.length === 0) || isLoading) {
-        console.log('[ChatClient] Input vazio ou carregando, retornando');
+      if (!messageContent?.trim()) {
         return;
       }
 
-      // Inicia a animação de envio
-      runAnimation();
-
-      // Se for uma mensagem de status (como "Creating project..."), apenas mostra ela no chat
-      if (messageInput && typeof messageInput === 'object' && messageInput.isStatus) {
-        setMessages((messages) => [...messages, {
-          id: String(Date.now()),
-          role: 'assistant',
-          content: messageInput.text
-        }]);
+      if (isLoading) {
+        abort();
         return;
       }
 
-      // Prepara o prompt inicial com a mensagem do usuário
-      let finalPrompt = _input;
-
-      // Salva todos os arquivos abertos no editor
-      await workbenchStore.saveAllFiles();
-
-      // Obtém as modificações feitas nos arquivos
-      const fileModifications = workbenchStore.getFileModifcations();
-      console.log('[ChatClient] Modificações de arquivo:', fileModifications);
-
-      // Reseta o estado de abortar chat
-      chatStore.setKey('aborted', false);
-
-      // Lógica especial para primeira mensagem com seleção automática de template
-      if (!chatStarted && _input && autoSelectTemplate) {
-        // Ativa loading para seleção de template
+      if (!chatStarted) {
         setFakeLoading(true);
 
-        // Define a mensagem inicial do usuário
+        setMessages([
+          {
+            id: `${new Date().getTime()}`,
+            role: 'user',
+            content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${messageContent}`,
+          },
+        ]);
+
+        runAnimation();
+
+        if (autoSelectTemplate) {
+          const { template, title } = await selectStarterTemplate({
+            message: messageContent,
+            model,
+            provider,
+          });
+
+          if (template !== 'blank') {
+            const temResp = await getTemplates(template, title).catch((e) => {
+              if (e.message.includes('rate limit')) {
+                toast.warning('Rate limit exceeded. Skipping starter template\n Continuing with blank template');
+              } else {
+                toast.warning('Failed to import starter template\n Continuing with blank template');
+              }
+
+              return null;
+            });
+
+            if (temResp) {
+              const { assistantMessage, userMessage } = temResp;
+              setMessages([
+                {
+                  id: `1-${new Date().getTime()}`,
+                  role: 'user',
+                  content: messageContent,
+                },
+                {
+                  id: `2-${new Date().getTime()}`,
+                  role: 'assistant',
+                  content: assistantMessage,
+                },
+                {
+                  id: `3-${new Date().getTime()}`,
+                  role: 'user',
+                  content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${userMessage}`,
+                  annotations: ['hidden'],
+                },
+              ]);
+              reload();
+              setFakeLoading(false);
+
+              return;
+            }
+          }
+        }
+
+        // If autoSelectTemplate is disabled or template selection failed, proceed with normal message
         setMessages([
           {
             id: `${new Date().getTime()}`,
@@ -328,9 +346,8 @@ export const ChatImpl = memo(
             content: [
               {
                 type: 'text',
-                text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${finalPrompt}`,
+                text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${messageContent}`,
               },
-              // Adiciona imagens à mensagem se existirem
               ...imageDataList.map((imageData) => ({
                 type: 'image',
                 image: imageData,
@@ -338,111 +355,28 @@ export const ChatImpl = memo(
             ] as any,
           },
         ]);
+        reload();
+        setFakeLoading(false);
 
-        // Seleciona um template inicial baseado na mensagem
-        const { template, title } = await selectStarterTemplate({
-          message: typeof _input === 'string' ? _input : _input.text,
-          model,
-          provider,
-        });
-
-        // Se selecionou um template válido (não em branco)
-        if (template !== 'blank') {
-          // Tenta obter o template
-          const temResp = await getTemplates(template, title).catch((e) => {
-            // Trata erros de rate limit ou falha ao importar
-            if (e.message.includes('rate limit')) {
-              toast.warning('Rate limit exceeded. Skipping starter template\n Continuing with blank template');
-            } else {
-              toast.warning('Failed to import starter template\n Continuing with blank template');
-            }
-            return null;
-          });
-
-          // Se conseguiu obter o template com sucesso
-          if (temResp) {
-            const { assistantMessage, userMessage } = temResp;
-
-            // Atualiza as mensagens com o contexto do template
-            setMessages([
-              {
-                id: `${new Date().getTime()}`,
-                role: 'user',
-                content: typeof _input === 'string' ? _input : _input.text,
-              },
-              {
-                id: `${new Date().getTime()}`,
-                role: 'assistant',
-                content: assistantMessage,
-              },
-              {
-                id: `${new Date().getTime()}`,
-                role: 'user',
-                content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${userMessage}`,
-                annotations: ['hidden'],
-              },
-            ]);
-
-            // Recarrega o chat e desativa loading
-            reload();
-            setFakeLoading(false);
-
-            return;
-          } else {
-            setMessages([
-              {
-                id: `${new Date().getTime()}`,
-                role: 'user',
-                content: [
-                  {
-                    type: 'text',
-                    text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${finalPrompt}`,
-                  },
-                  ...imageDataList.map((imageData) => ({
-                    type: 'image',
-                    image: imageData,
-                  })),
-                ] as any,
-              },
-            ]);
-            reload();
-            setFakeLoading(false);
-
-            return;
-          }
-        } else {
-          setMessages([
-            {
-              id: `${new Date().getTime()}`,
-              role: 'user',
-              content: [
-                {
-                  type: 'text',
-                  text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${finalPrompt}`,
-                },
-                ...imageDataList.map((imageData) => ({
-                  type: 'image',
-                  image: imageData,
-                })),
-              ] as any,
-            },
-          ]);
-          reload();
-          setFakeLoading(false);
-
-          return;
-        }
+        return;
       }
 
-      // Se houver modificações em arquivos, envia mensagem com essas modificações
-      if (fileModifications !== undefined) {
-        console.log('[ChatClient] Enviando mensagem com modificações de arquivo');
+      if (error != null) {
+        setMessages(messages.slice(0, -1));
+      }
+
+      const modifiedFiles = workbenchStore.getModifiedFiles();
+
+      chatStore.setKey('aborted', false);
+
+      if (modifiedFiles !== undefined) {
+        const userUpdateArtifact = filesToArtifacts(modifiedFiles, `${Date.now()}`);
         append({
           role: 'user',
           content: [
             {
               type: 'text',
-              text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${typeof _input === 'string' ? _input : _input.text}`,
+              text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${userUpdateArtifact}${messageContent}`,
             },
             ...imageDataList.map((imageData) => ({
               type: 'image',
@@ -453,13 +387,12 @@ export const ChatImpl = memo(
 
         workbenchStore.resetAllFileModifications();
       } else {
-        console.log('[ChatClient] Enviando mensagem normal');
         append({
           role: 'user',
           content: [
             {
               type: 'text',
-              text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${typeof _input === 'string' ? _input : _input.text}`,
+              text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${messageContent}`,
             },
             ...imageDataList.map((imageData) => ({
               type: 'image',
@@ -469,19 +402,15 @@ export const ChatImpl = memo(
         });
       }
 
-      
-
       setInput('');
       Cookies.remove(PROMPT_COOKIE_KEY);
 
-      // Add file cleanup here
       setUploadedFiles([]);
       setImageDataList([]);
 
       resetEnhancer();
 
       textareaRef.current?.blur();
-      console.log('[ChatClient] Mensagem enviada com sucesso');
     };
 
     // Função para processar blocos de código da resposta
