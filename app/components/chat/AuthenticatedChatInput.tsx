@@ -77,8 +77,9 @@ export const AuthenticatedChatInput = ({
   const { user } = useAuth();
   const [isReady, setIsReady] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const TEXTAREA_MIN_HEIGHT = 76;
-  const TEXTAREA_MAX_HEIGHT = chatStarted ? 400 : 200;
+  const [fileExplorerOpen, setFileExplorerOpen] = useState(false);
+  const TEXTAREA_MIN_HEIGHT = 55;
+  const TEXTAREA_MAX_HEIGHT = chatStarted ? 280 : 140;
 
   useEffect(() => {
     // Small delay to ensure authentication state is loaded
@@ -204,7 +205,8 @@ export const AuthenticatedChatInput = ({
     <div
       className={classNames(
         'relative shadow-lg border border-zinc-800/60 backdrop-blur-lg rounded-xl bg-[#111113]',
-        'transition-all duration-300 hover:border-blue-500/30 hover:shadow-blue-500/5'
+        'transition-all duration-300 hover:border-blue-500/30 hover:shadow-blue-500/5',
+        'text-sm'
       )}
     >
       <LoginModal />
@@ -214,13 +216,13 @@ export const AuthenticatedChatInput = ({
         onSelect={(command) => handleCommandSelect?.(command)}
       />
       {imageDataList.length > 0 && (
-        <div className="flex flex-wrap gap-2 p-2 max-h-32 overflow-y-auto">
+        <div className="flex flex-wrap gap-1 p-1.5 max-h-24 overflow-y-auto">
           {imageDataList.map((image, index) => (
             <div key={index} className="relative group">
               <img
                 src={image}
                 alt={`Preview ${index + 1}`}
-                className="w-24 h-24 object-cover rounded-lg border border-zinc-800"
+                className="w-18 h-18 object-cover rounded-lg border border-zinc-800"
               />
               <button
                 onClick={() => {
@@ -251,100 +253,124 @@ export const AuthenticatedChatInput = ({
           ))}
         </div>
       )}
-      <textarea
-        ref={textareaRef}
-        className={classNames(
-          'w-full pl-6 pt-4 pr-16 outline-none resize-none text-gray-300 placeholder-gray-500 bg-transparent text-sm',
-          'transition-all duration-200',
-          'focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/30',
-          input.startsWith('@') ? 'command-input' : ''
-        )}
-        onDragEnter={(e) => {
-          if (!user) {
-            setShowLoginModal(true);
-            return;
-          }
-          e.preventDefault();
-          e.currentTarget.style.border = '2px solid #1488fc';
-        }}
-        onDragOver={(e) => {
-          if (!user) {
-            setShowLoginModal(true);
-            return;
-          }
-          e.preventDefault();
-          e.currentTarget.style.border = '2px solid #1488fc';
-        }}
-        onDragLeave={(e) => {
-          if (!user) {
-            setShowLoginModal(true);
-            return;
-          }
-          e.preventDefault();
-          e.currentTarget.style.border = '1px solid var(--bolt-elements-borderColor)';
-        }}
-        onDrop={(e) => {
-          if (!user) {
-            setShowLoginModal(true);
-            return;
-          }
-          e.preventDefault();
-          e.currentTarget.style.border = '1px solid var(--bolt-elements-borderColor)';
-
-          const files = Array.from(e.dataTransfer.files);
-          files.forEach((file) => {
-            if (file.type.startsWith('image/')) {
-              const reader = new FileReader();
-
-              reader.onload = (e) => {
-                const base64Image = e.target?.result as string;
-                setUploadedFiles?.([...uploadedFiles, file]);
-                setImageDataList?.([...imageDataList, base64Image]);
-              };
-              reader.readAsDataURL(file);
+      
+      <div className="flex items-center px-3.5 py-1.5 border-b border-zinc-800/60">
+        <button 
+          className="text-gray-400 hover:text-blue-500 transition-colors p-1 rounded-md hover:bg-blue-500/10 flex items-center gap-1 bg-transparent border border-zinc-800/60 px-2 py-1 border-radius-full"
+          onClick={() => {
+            if (!user) {
+              setShowLoginModal(true);
+              return;
             }
-          });
-        }}
-        onKeyDown={handleKeyDown}
-        value={input}
-        onChange={handleLocalInputChange}
-        onPaste={handlePaste}
-        style={{
-          minHeight: TEXTAREA_MIN_HEIGHT,
-          maxHeight: TEXTAREA_MAX_HEIGHT,
-        }}
-        placeholder="How can I help you today?"
-        translate="no"
-      />
-      <ClientOnly>
-        {() => (
-          <SendButton
-            show={input.length > 0 || isStreaming || uploadedFiles.length > 0}
-            isStreaming={isStreaming || false}
-            disabled={!providerList || providerList.length === 0}
-            onClick={(event) => {
-              if (!user) {
-                setShowLoginModal(true);
-                return;
-              }
-              
-              if (isStreaming) {
-                handleStop?.();
-                return;
-              }
+            setShowCommands?.(true);
+          }}
+          title="Open commands"
+        >
+            <span className="font-semibold text-md">@</span>
+            
+         
+        </button>
+       
+      </div>
+      
+      <div className="relative">
+        <textarea
+          ref={textareaRef}
+          className={classNames(
+            'w-full pl-3.5 pt-2.5 pr-12 outline-none resize-none text-gray-300 placeholder-gray-500 bg-transparent text-sm',
+            'transition-all duration-200',
+            'focus:ring-1 focus:ring-blue-500/30 focus:border-blue-500/30',
+            input.startsWith('@') ? 'command-input' : ''
+          )}
+          onDragEnter={(e) => {
+            if (!user) {
+              setShowLoginModal(true);
+              return;
+            }
+            e.preventDefault();
+            e.currentTarget.style.border = '2px solid #1488fc';
+          }}
+          onDragOver={(e) => {
+            if (!user) {
+              setShowLoginModal(true);
+              return;
+            }
+            e.preventDefault();
+            e.currentTarget.style.border = '2px solid #1488fc';
+          }}
+          onDragLeave={(e) => {
+            if (!user) {
+              setShowLoginModal(true);
+              return;
+            }
+            e.preventDefault();
+            e.currentTarget.style.border = '1px solid var(--bolt-elements-borderColor)';
+          }}
+          onDrop={(e) => {
+            if (!user) {
+              setShowLoginModal(true);
+              return;
+            }
+            e.preventDefault();
+            e.currentTarget.style.border = '1px solid var(--bolt-elements-borderColor)';
 
-              if (input.length > 0 || uploadedFiles.length > 0) {
-                handleSendMessage?.(event);
+            const files = Array.from(e.dataTransfer.files);
+            files.forEach((file) => {
+              if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+
+                reader.onload = (e) => {
+                  const base64Image = e.target?.result as string;
+                  setUploadedFiles?.([...uploadedFiles, file]);
+                  setImageDataList?.([...imageDataList, base64Image]);
+                };
+                reader.readAsDataURL(file);
               }
-            }}
-          />
-        )}
-      </ClientOnly>
-      <div className="flex justify-between items-center text-sm p-4 pt-2">
-        <div className="flex gap-2 items-center">
+            });
+          }}
+          onKeyDown={handleKeyDown}
+          value={input}
+          onChange={handleLocalInputChange}
+          onPaste={handlePaste}
+          style={{
+            minHeight: TEXTAREA_MIN_HEIGHT,
+            maxHeight: TEXTAREA_MAX_HEIGHT,
+          }}
+          placeholder="How can I help you today?"
+          translate="no"
+        />
+        <ClientOnly>
+          {() => (
+            <div className="absolute right-2 top-2">
+              <SendButton
+                show={input.length > 0 || isStreaming || uploadedFiles.length > 0}
+                isStreaming={isStreaming || false}
+                disabled={!providerList || providerList.length === 0}
+                onClick={(event) => {
+                  if (!user) {
+                    setShowLoginModal(true);
+                    return;
+                  }
+                  
+                  if (isStreaming) {
+                    handleStop?.();
+                    return;
+                  }
+
+                  if (input.length > 0 || uploadedFiles.length > 0) {
+                    handleSendMessage?.(event);
+                  }
+                }}
+              />
+            </div>
+          )}
+        </ClientOnly>
+      </div>
+      <div className="flex justify-between items-center text-xs p-2.5 pt-1.5">
+        <div className="flex gap-1.5 items-center">
           <IconButton
             title="Upload file for AI Vision"
-            className="p-2 rounded-lg bg-[#111113] border border-zinc-800/50 text-gray-400 transition-all duration-200 hover:text-blue-500 hover:border-blue-500/30"
+            className="p-1.5 rounded-lg bg-[#111113] border border-zinc-800/50 text-gray-400 transition-all duration-200 hover:text-blue-500 hover:border-blue-500/30"
             onClick={() => {
               if (!user) {
                 setShowLoginModal(true);
@@ -353,7 +379,7 @@ export const AuthenticatedChatInput = ({
               handleFileUpload?.();
             }}
           >
-            <div className="i-ph:paperclip text-xl"></div>
+            <div className="i-ph:paperclip text-lg"></div>
           </IconButton>
           
           {/* Wrapper para o AddImageToYourProject com verificação de autenticação */}
@@ -366,10 +392,10 @@ export const AuthenticatedChatInput = ({
           ) : (
             <IconButton
               title="Add Image From Your Project (Login Required)"
-              className="p-2 rounded-lg bg-[#111113] border border-zinc-800/50 text-gray-400 transition-all duration-200 hover:text-blue-500 hover:border-blue-500/30"
+              className="p-1.5 rounded-lg bg-[#111113] border border-zinc-800/50 text-gray-400 transition-all duration-200 hover:text-blue-500 hover:border-blue-500/30"
               onClick={() => setShowLoginModal(true)}
             >
-              <div className="i-ph:image-square text-xl"></div>
+              <div className="i-ph:image-square text-lg"></div>
             </IconButton>
           )}
           
@@ -377,7 +403,7 @@ export const AuthenticatedChatInput = ({
             title="Enhance prompt"
             disabled={input.length === 0 || enhancingPrompt}
             className={classNames(
-              'p-2 rounded-lg bg-[#111113] border border-zinc-800/50 text-gray-400 transition-all duration-200 hover:text-blue-500 hover:border-blue-500/30',
+              'p-1.5 rounded-lg bg-[#111113] border border-zinc-800/50 text-gray-400 transition-all duration-200 hover:text-blue-500 hover:border-blue-500/30',
               enhancingPrompt ? 'opacity-100' : '',
             )}
             onClick={() => {
@@ -390,9 +416,9 @@ export const AuthenticatedChatInput = ({
             }}
           >
             {enhancingPrompt ? (
-              <div className="i-svg-spinners:90-ring-with-bg text-blue-500 text-xl animate-spin"></div>
+              <div className="i-svg-spinners:90-ring-with-bg text-blue-500 text-lg animate-spin"></div>
             ) : (
-              <div className="i-bolt:stars text-xl"></div>
+              <div className="i-bolt:stars text-lg"></div>
             )}
           </IconButton>
 
@@ -420,7 +446,7 @@ export const AuthenticatedChatInput = ({
               {() => (
                 <IconButton
                   title={user ? "Export Chat" : "Export Chat (Login Required)"}
-                  className="p-2 rounded-lg bg-[#111113] border border-zinc-800/50 text-gray-400 transition-all duration-200 hover:text-blue-500 hover:border-blue-500/30"
+                  className="p-1.5 rounded-lg bg-[#111113] border border-zinc-800/50 text-gray-400 transition-all duration-200 hover:text-blue-500 hover:border-blue-500/30"
                   onClick={() => {
                     if (!user) {
                       setShowLoginModal(true);
@@ -429,17 +455,17 @@ export const AuthenticatedChatInput = ({
                     exportChat?.();
                   }}
                 >
-                  <div className="i-ph:download-simple text-xl"></div>
+                  <div className="i-ph:download-simple text-lg"></div>
                 </IconButton>
               )}
             </ClientOnly>
           )}
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <IconButton
               title="Model Settings"
               className={classNames(
-                'p-2 rounded-lg bg-[#111113] border border-zinc-800/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
+                'p-1.5 rounded-lg bg-[#111113] border border-zinc-800/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
                 {
                   'bg-blue-500/10 text-blue-400 border-blue-500/30': isModelSettingsCollapsed,
                 },
@@ -460,7 +486,7 @@ export const AuthenticatedChatInput = ({
             <IconButton
               title="Configure API"
               className={classNames(
-                'p-2 rounded-lg bg-[#111113] border border-zinc-800/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
+                'p-1.5 rounded-lg bg-[#111113] border border-zinc-800/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200',
               )}
               onClick={() => {
                 if (!user) {
@@ -478,8 +504,8 @@ export const AuthenticatedChatInput = ({
         
         {input.length > 3 ? (
           <div className="text-xs text-gray-500">
-            Use <kbd className="px-1.5 py-0.5 rounded bg-[#111113] border border-zinc-800/50">Shift</kbd> +{' '}
-            <kbd className="px-1.5 py-0.5 rounded bg-[#111113] border border-zinc-800/50">Return</kbd> for
+            Use <kbd className="px-1 py-0.5 rounded bg-[#111113] border border-zinc-800/50">Shift</kbd> +{' '}
+            <kbd className="px-1 py-0.5 rounded bg-[#111113] border border-zinc-800/50">Enter</kbd> to a
             new line
           </div>
         ) : null}

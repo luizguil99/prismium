@@ -48,7 +48,7 @@ export const AddImageToYourProject = ({
           // Armazena o contexto da imagem sem mostrar no input
           setImageContexts(prev => [...prev, `Context: Image uploaded to ${publicUrl}`]);
           
-          toast.success('Imagem enviada com sucesso! A imagem será incluída no contexto da mensagem.');
+          toast.success('This image has been added to your project');
         } catch (error) {
           console.error('Erro ao fazer upload:', error);
           toast.error('Erro ao fazer upload da imagem');
@@ -63,10 +63,10 @@ export const AddImageToYourProject = ({
   return (
     <IconButton
       title="Add Image To Your Project"
-      className="p-2 rounded-lg bg-[#111113] border border-zinc-800/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200"
+      className="p-1.5 rounded-lg bg-[#111113] border border-zinc-800/50 text-gray-400 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200"
       onClick={handleImageUpload}
     >
-      <div className="i-ph:image-square text-xl"></div>
+      <div className="i-ph:image-square text-lg"></div>
     </IconButton>
   );
 };

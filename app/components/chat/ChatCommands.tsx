@@ -1,12 +1,215 @@
 import { toast } from 'react-toastify';
 import { getOrCreateClient } from '~/components/supabase/client';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/ui/dialog';
+import React, { useState, useEffect } from 'react';
+import { webcontainer } from '~/lib/webcontainer';
+import type { WebContainer } from '@webcontainer/api';
+
+// Declaração global para a variável de callback
+declare global {
+  var fileExplorerSelectCallback: ((file: string) => void) | null;
+  var fileExplorerOpenState: boolean;
+  interface Window {
+    selectedContextFiles?: string[];
+  }
+}
+
+// Função para obter recursivamente todos os arquivos do WebContainer
+const getAllFiles = async (container: WebContainer, dir: string): Promise<Record<string, string>> => {
+  try {
+    const files: Record<string, string> = {};
+    
+    // Função recursiva para navegar pelos diretórios
+    const processDirectory = async (dirPath: string) => {
+      try {
+        const dirEntries = await container.fs.readdir(dirPath, { withFileTypes: true });
+        
+        for (const entry of dirEntries) {
+          const fullPath = `${dirPath}/${entry.name}`;
+          
+          if (entry.isDirectory()) {
+            // Ignora node_modules e .git
+            if (entry.name !== 'node_modules' && entry.name !== '.git') {
+              await processDirectory(fullPath);
+            }
+          } else if (entry.isFile()) {
+            try {
+              // Lê o conteúdo do arquivo
+              const content = await container.fs.readFile(fullPath, 'utf-8');
+              files[fullPath] = content;
+            } catch (error) {
+              console.error(`Erro ao ler arquivo ${fullPath}:`, error);
+            }
+          }
+        }
+      } catch (error) {
+        console.error(`Erro ao ler diretório ${dirPath}:`, error);
+      }
+    };
+    
+    await processDirectory(dir);
+    return files;
+  } catch (error) {
+    console.error('Erro ao obter arquivos:', error);
+    throw error;
+  }
+};
 
 interface ChatCommand {
   description: string;
   handler: (supabase?: any) => Promise<string[] | string | void>;
 }
 
+// Interface para os itens retornados pela API
+interface FileSystemItem {
+  name: string;
+  type: 'file' | 'directory';
+  size: number;
+  modified: string;
+}
+
+// Componente para o explorador de arquivos
+export const FileExplorer = ({ 
+  isOpen, 
+  onClose, 
+  onSelect 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  onSelect: (file: string) => void;
+}) => {
+  const [currentPath, setCurrentPath] = useState<string>('');
+  const [items, setItems] = useState<FileSystemItem[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  
+  useEffect(() => {
+    if (isOpen) {
+      loadItems('');
+    }
+  }, [isOpen]);
+  
+  const loadItems = async (path: string) => {
+    setLoading(true);
+    try {
+      // Usamos a API fetch para obter arquivos e pastas
+      const response = await fetch(`/api/filesystem?path=${encodeURIComponent(path)}`);
+      if (!response.ok) throw new Error('Falha ao carregar arquivos');
+      
+      const data = await response.json() as { items: FileSystemItem[] };
+      setItems(data.items);
+      setCurrentPath(path);
+    } catch (error) {
+      console.error('Erro ao carregar arquivos:', error);
+      toast.error('Não foi possível carregar os arquivos');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  return (
+    <Dialog open={isOpen} onOpenChange={() => onClose()}>
+      <DialogContent className="sm:max-w-md bg-[#09090B]/95 border border-zinc-800 text-zinc-100">
+        <DialogHeader>
+          <DialogTitle>Files and Folders</DialogTitle>
+        </DialogHeader>
+        
+        <div className="max-h-80 overflow-y-auto py-2">
+          {currentPath && (
+            <div 
+              className="flex items-center gap-1 mb-2 p-2 hover:bg-zinc-800/50 rounded-md cursor-pointer transition-colors"
+              onClick={() => loadItems(currentPath.split('/').slice(0, -1).join('/'))}
+            >
+              <div className="i-ph:arrow-left text-zinc-400" />
+              <span>Go back</span>
+            </div>
+          )}
+          
+          {loading ? (
+            <div className="py-4 flex justify-center">
+              <div className="i-svg-spinners:90-ring-with-bg text-blue-500 text-xl animate-spin" />
+            </div>
+          ) : (
+            items.map((item, index) => (
+              <div 
+                key={index}
+                className="flex items-center gap-2 p-2 hover:bg-zinc-800/50 rounded-md cursor-pointer transition-colors"
+                onClick={() => {
+                  if (item.type === 'directory') {
+                    loadItems(`${currentPath}${currentPath ? '/' : ''}${item.name}`);
+                  } else {
+                    onSelect(`${currentPath}${currentPath ? '/' : ''}${item.name}`);
+                    onClose();
+                  }
+                }}
+              >
+                <div className={item.type === 'directory' ? "i-ph:folder text-yellow-500" : "i-ph:file-text text-blue-500"} />
+                <span>{item.name}</span>
+              </div>
+            ))
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Função para abrir o explorador de arquivos
+const openFileExplorer = (callback: (file: string) => void): void => {
+  globalThis.fileExplorerOpenState = true;
+  globalThis.fileExplorerSelectCallback = callback;
+  
+  // Forçar atualização da UI
+  const event = new CustomEvent('fileexplorer:open');
+  window.dispatchEvent(event);
+};
+
+// Função para fechar o explorador de arquivos
+const closeFileExplorer = (): void => {
+  globalThis.fileExplorerOpenState = false;
+  
+  // Forçar atualização da UI
+  const event = new CustomEvent('fileexplorer:close');
+  window.dispatchEvent(event);
+};
+
 export const CHAT_COMMANDS: Record<string, ChatCommand> = {
+  '@allfiles': {
+    description: 'Get all files from the WebContainer workspace for AI context',
+    handler: async (): Promise<string> => {
+      try {
+        const container = await webcontainer;
+        const files = await getAllFiles(container, '/');
+        
+        // Formatar a lista de arquivos para exibição
+        const fileList = Object.keys(files);
+        
+        // Adicionar todos os arquivos ao contexto
+        if (typeof window !== 'undefined') {
+          // Inicializa a lista se não existir
+          if (!window.selectedContextFiles) {
+            window.selectedContextFiles = [];
+          }
+          
+          // Limpa a lista existente e adiciona os novos arquivos
+          window.selectedContextFiles = [];
+          
+          // Adicionar os arquivos à lista
+          for (const file of fileList) {
+            window.selectedContextFiles.push(file);
+          }
+          
+          // Armazena em localStorage para persistência
+          localStorage.setItem('selectedContextFiles', JSON.stringify(window.selectedContextFiles));
+        }
+        
+        return `Added all ${fileList.length} files to context. Files include:\n${fileList.slice(0, 10).map(f => `- ${f}`).join('\n')}${fileList.length > 10 ? `\n... and ${fileList.length - 10} more files` : ''}`;
+      } catch (error) {
+        console.error('Erro ao obter arquivos do WebContainer:', error);
+        toast.error('Erro ao obter arquivos do WebContainer');
+        return 'Erro ao obter arquivos do WebContainer. Verifique o console para mais detalhes.';
+      }
+    }
+  },
   '@addfiles': {
     description: 'Upload files to Supabase',
     handler: async (supabase: any): Promise<string[]> => {
@@ -90,6 +293,16 @@ export const handleChatCommand = async (
             bubbles: true
           } as React.UIEvent;
           props.handleSendMessage(syntheticEvent, urls.join('\n'));
+        }
+      } else if (cmd === '@allfiles') {
+        // Manipula o comando de arquivos
+        const result = await chatCommand.handler();
+        if (result) {
+          const syntheticEvent = {
+            type: 'synthetic',
+            bubbles: true
+          } as React.UIEvent;
+          props.handleSendMessage(syntheticEvent, result.toString());
         }
       } else {
         const result = await chatCommand.handler();
