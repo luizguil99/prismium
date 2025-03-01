@@ -443,6 +443,7 @@ export async function selectContext(props: {
         * If no changes are needed, you can leave the response empty updateContextBuffer tag.
         * Only 5 files can be placed in the context buffer at a time.
         * if the buffer is full, you need to exclude files that is not needed and include files that is relevent.
+        * Dont forget to run the command to install the dependencies and run the project
 
         `,
     model: provider.getModelInstance({
