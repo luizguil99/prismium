@@ -57,7 +57,7 @@ const getAllFiles = async (container: WebContainer, dir: string): Promise<Record
 
 interface ChatCommand {
   description: string;
-  handler: (supabase?: any) => Promise<string[] | string | void>;
+  handler: (supabase?: any) => Promise<string[] | string | void | { files: string[], event: string }>;
 }
 
 // Interface para os itens retornados pela API
@@ -172,10 +172,33 @@ const closeFileExplorer = (): void => {
   window.dispatchEvent(event);
 };
 
+// Função para adicionar arquivos ao contexto
+const addFilesToContext = (fileList: string[]): string => {
+  if (typeof window !== 'undefined') {
+    // Inicializa a lista se não existir
+    if (!window.selectedContextFiles) {
+      window.selectedContextFiles = [];
+    }
+    
+    // Limpa a lista existente e adiciona os novos arquivos
+    window.selectedContextFiles = [];
+    
+    // Adicionar os arquivos à lista
+    for (const file of fileList) {
+      window.selectedContextFiles.push(file);
+    }
+    
+    // Armazena em localStorage para persistência
+    localStorage.setItem('selectedContextFiles', JSON.stringify(window.selectedContextFiles));
+  }
+  
+  return `Added all ${fileList.length} files to context. Files include:\n${fileList.slice(0, 10).map(f => `- ${f}`).join('\n')}${fileList.length > 10 ? `\n... and ${fileList.length - 10} more files` : ''}`;
+};
+
 export const CHAT_COMMANDS: Record<string, ChatCommand> = {
   '@allfiles': {
     description: 'Get all files from the WebContainer workspace for AI context',
-    handler: async (): Promise<string> => {
+    handler: async (): Promise<{ files: string[], event: string }> => {
       try {
         const container = await webcontainer;
         const files = await getAllFiles(container, '/');
@@ -183,30 +206,16 @@ export const CHAT_COMMANDS: Record<string, ChatCommand> = {
         // Formatar a lista de arquivos para exibição
         const fileList = Object.keys(files);
         
-        // Adicionar todos os arquivos ao contexto
-        if (typeof window !== 'undefined') {
-          // Inicializa a lista se não existir
-          if (!window.selectedContextFiles) {
-            window.selectedContextFiles = [];
-          }
-          
-          // Limpa a lista existente e adiciona os novos arquivos
-          window.selectedContextFiles = [];
-          
-          // Adicionar os arquivos à lista
-          for (const file of fileList) {
-            window.selectedContextFiles.push(file);
-          }
-          
-          // Armazena em localStorage para persistência
-          localStorage.setItem('selectedContextFiles', JSON.stringify(window.selectedContextFiles));
-        }
+        // Retornar a lista de arquivos e o tipo de evento
+        return { 
+          files: fileList,
+          event: 'showFilesInCommand'
+        };
         
-        return `Added all ${fileList.length} files to context. Files include:\n${fileList.slice(0, 10).map(f => `- ${f}`).join('\n')}${fileList.length > 10 ? `\n... and ${fileList.length - 10} more files` : ''}`;
       } catch (error) {
         console.error('Erro ao obter arquivos do WebContainer:', error);
         toast.error('Erro ao obter arquivos do WebContainer');
-        return 'Erro ao obter arquivos do WebContainer. Verifique o console para mais detalhes.';
+        throw error;
       }
     }
   },
@@ -277,12 +286,17 @@ export const handleChatCommand = async (
   command: string,
   props: ChatCommandsHandlerProps
 ): Promise<boolean> => {
-  const [cmd] = command.split(' ');
-  const chatCommand = CHAT_COMMANDS[cmd as keyof typeof CHAT_COMMANDS];
+  // Verifica se há algum token que começa com @
+  const tokens = command.split(' ');
+  const commandToken = tokens.find(token => token.startsWith('@'));
+  
+  if (!commandToken) return false;
+  
+  const chatCommand = CHAT_COMMANDS[commandToken as keyof typeof CHAT_COMMANDS];
 
   if (chatCommand) {
     try {
-      if (cmd === '@addfiles') {
+      if (commandToken === '@addfiles') {
         const supabase = getOrCreateClient();
         const urls = await chatCommand.handler(supabase);
         
@@ -294,15 +308,29 @@ export const handleChatCommand = async (
           } as React.UIEvent;
           props.handleSendMessage(syntheticEvent, urls.join('\n'));
         }
-      } else if (cmd === '@allfiles') {
-        // Manipula o comando de arquivos
-        const result = await chatCommand.handler();
-        if (result) {
-          const syntheticEvent = {
-            type: 'synthetic',
-            bubbles: true
-          } as React.UIEvent;
-          props.handleSendMessage(syntheticEvent, result.toString());
+      } else if (commandToken === '@allfiles') {
+        // Para o comando @allfiles digitado, emitimos o evento que será capturado pelo CommandCard
+        const result = await chatCommand.handler() as { files: string[], event: string };
+        
+        if (result && result.files) {
+          // Emite evento para mostrar os arquivos no card de comandos
+          const filesEvent = new CustomEvent(result.event, { 
+            detail: { 
+              files: result.files,
+              onConfirm: () => {
+                // Adiciona os arquivos ao contexto quando o usuário confirmar
+                const message = addFilesToContext(result.files);
+                
+                // Envia a mensagem para o chat
+                const syntheticEvent = {
+                  type: 'synthetic',
+                  bubbles: true
+                } as React.UIEvent;
+                props.handleSendMessage(syntheticEvent, message);
+              }
+            } 
+          });
+          window.dispatchEvent(filesEvent);
         }
       } else {
         const result = await chatCommand.handler();

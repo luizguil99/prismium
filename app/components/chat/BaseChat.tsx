@@ -480,9 +480,33 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     };
 
     const handleLocalInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-      if (!event.target.value.includes('@')) {
+      // Verificar se há '@' em qualquer posição do texto
+      const text = event.target.value;
+      const hasAtSymbol = text.includes('@');
+      
+      // Extrair o token que contém '@' para sugestões de comandos
+      if (hasAtSymbol) {
+        // Pegar a posição do cursor
+        const cursorPosition = event.target.selectionStart;
+        
+        // Obter o token atual onde o cursor está
+        const textBeforeCursor = text.substring(0, cursorPosition);
+        const words = textBeforeCursor.split(/\s+/);
+        const currentWord = words[words.length - 1];
+        
+        // Se o token atual contém '@', mostrar comandos
+        if (currentWord && currentWord.includes('@')) {
+          setShowCommands(true);
+        } else {
+          // Verificar se há algum token com '@' ainda presente no texto
+          const tokens = text.split(/\s+/);
+          const hasTokenWithAt = tokens.some(token => token.startsWith('@'));
+          setShowCommands(hasTokenWithAt);
+        }
+      } else {
         setShowCommands(false);
       }
+      
       handleInputChange?.(event);
     };
 
