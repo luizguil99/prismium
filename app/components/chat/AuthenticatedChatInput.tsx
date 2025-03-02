@@ -123,29 +123,17 @@ export const AuthenticatedChatInput = ({
   };
 
   const handleLocalInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    // Verificar se há '@' em qualquer posição do texto
+    // Pegar a posição do cursor
+    const cursorPosition = event.target.selectionStart;
     const text = event.target.value;
-    const hasAtSymbol = text.includes('@');
     
-    // Extrair o token que contém '@' para sugestões de comandos
-    if (hasAtSymbol) {
-      // Pegar a posição do cursor
-      const cursorPosition = event.target.selectionStart;
-      
-      // Obter o token atual onde o cursor está
-      const textBeforeCursor = text.substring(0, cursorPosition);
-      const words = textBeforeCursor.split(/\s+/);
-      const currentWord = words[words.length - 1];
-      
-      // Se o token atual contém '@', mostrar comandos
-      if (currentWord && currentWord.includes('@')) {
-        setShowCommands?.(true);
-      } else {
-        // Verificar se há algum token com '@' ainda presente no texto
-        const tokens = text.split(/\s+/);
-        const hasTokenWithAt = tokens.some(token => token.startsWith('@'));
-        setShowCommands?.(hasTokenWithAt);
-      }
+    // Encontrar o token atual onde o cursor está
+    const tokens = text.substring(0, cursorPosition).split(/\s/);
+    const currentToken = tokens[tokens.length - 1];
+    
+    // Mostrar comandos apenas se o token atual começar com @
+    if (currentToken && currentToken.startsWith('@')) {
+      setShowCommands?.(true);
     } else {
       setShowCommands?.(false);
     }
@@ -186,6 +174,20 @@ export const AuthenticatedChatInput = ({
         break;
       }
     }
+  };
+
+  const renderStyledInput = () => {
+    if (!input) return '';
+    
+    // Divide o texto em partes, mantendo os espaços e quebras de linha
+    const parts = input.split(/(\s+|@\S+)/g);
+    
+    return parts.map((part, index) => {
+      if (part.startsWith('@')) {
+        return <span key={index} className="text-blue-400">{part}</span>;
+      }
+      return <span key={index} className="text-gray-300">{part}</span>;
+    });
   };
 
   // Login Modal Component
@@ -299,14 +301,30 @@ export const AuthenticatedChatInput = ({
       </div>
       
       <div className="relative">
+        <div
+          className={classNames(
+            'w-full pl-3.5 pt-2.5 pr-12 outline-none resize-none bg-transparent text-sm pointer-events-none absolute top-0 left-0',
+            'min-h-[55px]'
+          )}
+          style={{
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+          }}
+        >
+          {renderStyledInput()}
+        </div>
+        
         <textarea
           ref={textareaRef}
           className={classNames(
-            'w-full pl-3.5 pt-2.5 pr-12 outline-none resize-none text-gray-300 placeholder-gray-500 bg-transparent text-sm',
+            'w-full pl-3.5 pt-2.5 pr-12 outline-none resize-none text-transparent placeholder-gray-500 bg-transparent text-sm caret-gray-300',
             'transition-all duration-200',
-            'focus:ring-1 focus:ring-blue-500/30 focus:border-blue-500/30',
-            input.startsWith('@') ? 'command-input' : ''
+            'focus:ring-1 focus:ring-blue-500/30 focus:border-blue-500/30'
           )}
+          style={{
+            minHeight: TEXTAREA_MIN_HEIGHT,
+            maxHeight: TEXTAREA_MAX_HEIGHT,
+          }}
           onDragEnter={(e) => {
             if (!user) {
               setShowLoginModal(true);
@@ -353,14 +371,10 @@ export const AuthenticatedChatInput = ({
               }
             });
           }}
-          onKeyDown={handleKeyDown}
           value={input}
           onChange={handleLocalInputChange}
+          onKeyDown={handleKeyDown}
           onPaste={handlePaste}
-          style={{
-            minHeight: TEXTAREA_MIN_HEIGHT,
-            maxHeight: TEXTAREA_MAX_HEIGHT,
-          }}
           placeholder="How can I help you today?"
           translate="no"
         />
