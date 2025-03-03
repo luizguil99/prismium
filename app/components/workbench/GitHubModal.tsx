@@ -15,6 +15,16 @@ export const GitHubModal = ({ isOpen, onClose }: GitHubModalProps) => {
   const [username, setUsername] = useState(Cookies.get('githubUsername') || '');
   const [token, setToken] = useState(Cookies.get('githubToken') || '');
   const [isLoading, setIsLoading] = useState(false);
+  const hasCredentials = !!Cookies.get('githubUsername') && !!Cookies.get('githubToken');
+
+  const handleDisconnect = () => {
+    Cookies.remove('githubUsername');
+    Cookies.remove('githubToken');
+    Cookies.remove('git:github.com');
+    setUsername('');
+    setToken('');
+    toast.success('GitHub connection removed successfully!');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,15 +78,34 @@ export const GitHubModal = ({ isOpen, onClose }: GitHubModalProps) => {
                 <span className="i-ph-github-logo-bold w-6 h-6" />
                 Push to GitHub
               </h2>
-              <button
-                onClick={onClose}
-                className="text-red-500 hover:text-red-400 transition-colors"
-              >
-                <span className="i-ph-x-bold w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                {hasCredentials && (
+                  <button
+                    onClick={handleDisconnect}
+                    className="text-red-500 hover:text-red-400 transition-colors flex items-center gap-1 text-sm bg-transparent"
+                  >
+                    <span className="i-ph-sign-out-bold w-4 h-4" />
+                    Disconnect
+                  </button>
+                )}
+                <button
+                  onClick={onClose}
+                  className="text-red-500 hover:text-red-400 transition-colors"
+                >
+                  <span className="i-ph-x-bold w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              {hasCredentials && (
+                <div className="mb-4 p-2 bg-green-500/10 rounded-md border border-green-500/20">
+                  <p className="text-sm text-green-500 flex items-center gap-1">
+                    <span className="i-ph-check-circle-bold w-4 h-4" />
+                    Connected as {username}
+                  </p>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-bolt-elements-textSecondary mb-1">
                   Repository Name
@@ -119,8 +148,17 @@ export const GitHubModal = ({ isOpen, onClose }: GitHubModalProps) => {
               
               {!Cookies.get('githubToken') && (
                 <div>
-                  <label className="block text-sm font-medium text-bolt-elements-textSecondary mb-1">
-                    GitHub Token
+                  <label className="block text-sm font-medium text-bolt-elements-textSecondary mb-1 flex items-center justify-between">
+                    <span>GitHub Token</span>
+                    <a
+                      href="https://github.com/settings/tokens"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#548BE4] hover:text-[#548BE4]/80 text-sm font-medium transition-colors"
+                    >
+                      Get your access token
+                      <span className="i-ph-arrow-right-bold ml-1 inline-block w-3 h-3" />
+                    </a>
                   </label>
                   <input
                     type="password"
