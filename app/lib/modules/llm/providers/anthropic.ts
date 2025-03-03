@@ -61,9 +61,24 @@ export default class AnthropicProvider extends BaseProvider {
     });
 
     const res = (await response.json()) as any;
+    
     const staticModelIds = this.staticModels.map((m) => m.name);
+    const staticModelBaseNames = staticModelIds.map(name => {
+      return name.replace(/-latest$/, '').replace(/-\d+$/, '');
+    });
 
-    const data = res.data.filter((model: any) => model.type === 'model' && !staticModelIds.includes(model.id));
+    const data = res.data.filter((model: any) => {
+      if (staticModelIds.includes(model.id)) {
+        return false;
+      }
+      
+      const baseModelName = model.id.replace(/-latest$/, '').replace(/-\d+$/, '');
+      if (staticModelBaseNames.includes(baseModelName)) {
+        return false;
+      }
+      
+      return model.type === 'model';
+    });
 
     return data.map((m: any) => ({
       name: m.id,
