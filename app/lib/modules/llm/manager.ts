@@ -10,10 +10,36 @@ export class LLMManager {
   private _providers: Map<string, BaseProvider> = new Map();
   private _modelList: ModelInfo[] = [];
   private readonly _env: any = {};
+  private _disabledProviders: string[] = [];
 
   private constructor(_env: Record<string, string>) {
-    this._registerProvidersFromDirectory();
     this._env = _env;
+    // Carregar provedores desabilitados do env
+    this._loadDisabledProviders();
+    this._registerProvidersFromDirectory();
+  }
+
+  private _loadDisabledProviders() {
+    const disabledProvidersEnv = this._env.VITE_DISABLED_PROVIDERS || import.meta.env.VITE_DISABLED_PROVIDERS;
+    
+    if (disabledProvidersEnv) {
+      // Normaliza os nomes dos provedores para remover "Provider" do final se existir
+      this._disabledProviders = disabledProvidersEnv.split(',').map((p: string) => {
+        const name = p.trim();
+        return name.endsWith('Provider') ? name.slice(0, -8) : name;
+      });
+      logger.info('Disabled providers from .env:', this._disabledProviders);
+    }
+  }
+
+  // Verifica se um provedor está desabilitado
+  isProviderDisabled(providerName: string): boolean {
+    return this._disabledProviders.includes(providerName);
+  }
+
+  // Retorna a lista de provedores desabilitados
+  getDisabledProviders(): string[] {
+    return [...this._disabledProviders];
   }
 
   static getInstance(env: Record<string, string> = {}): LLMManager {
@@ -38,6 +64,12 @@ export class LLMManager {
       for (const exportedItem of Object.values(providers)) {
         if (typeof exportedItem === 'function' && exportedItem.prototype instanceof BaseProvider) {
           const provider = new exportedItem();
+          
+          // Verificar se o provedor está na lista de desabilitados
+          if (this._disabledProviders.includes(provider.name)) {
+            logger.info(`Provider ${provider.name} is disabled via .env configuration. Skipping.`);
+            continue;
+          }
 
           try {
             this.registerProvider(provider);
@@ -63,11 +95,34 @@ export class LLMManager {
   }
 
   getProvider(name: string): BaseProvider | undefined {
+    // Verifica se o provedor está desabilitado
+    if (this.isProviderDisabled(name)) {
+      logger.warn(`Attempted to get provider ${name} but it is disabled via .env configuration.`);
+      return undefined;
+    }
     return this._providers.get(name);
   }
 
   getAllProviders(): BaseProvider[] {
+    // Filtra os provedores desabilitados
     return Array.from(this._providers.values());
+  }
+
+  // Método para obter todos os provedores, incluindo os desabilitados (usado para debug)
+  getAllProvidersIncludingDisabled(): Record<string, { provider: BaseProvider; disabled: boolean }> {
+    const result: Record<string, { provider: BaseProvider; disabled: boolean }> = {};
+    
+    // Primeiro, adicionar provedores registrados
+    Array.from(this._providers.values()).forEach((provider) => {
+      result[provider.name] = { provider, disabled: false };
+    });
+    
+    // Depois, adicionar informações sobre provedores desabilitados
+    this._disabledProviders.forEach((name) => {
+      result[name] = { provider: undefined as any, disabled: true };
+    });
+    
+    return result;
   }
 
   getModelList(): ModelInfo[] {
