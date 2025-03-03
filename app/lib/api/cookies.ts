@@ -81,6 +81,7 @@ export function parseCookies(cookieHeader: string | null) {
   }
   
   export function getApiKeysFromCookie(cookieHeader: string | null): Record<string, string> {
+    // No lado do servidor, ainda tentamos ler do cookie por compatibilidade
     const cookies = parseCookies(cookieHeader);
     return cookies.apiKeys ? JSON.parse(cookies.apiKeys) : {};
   }

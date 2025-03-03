@@ -14,21 +14,89 @@ interface APIKeyManagerProps {
   labelForGetApiKey?: string;
 }
 
-const apiKeyMemoizeCache: { [k: string]: Record<string, string> } = {};
+const STORAGE_KEY = 'prismium_api_keys';
+const SECRET_KEY = 'prismium-secure';
 
-export function getApiKeysFromCookies() {
-  const storedApiKeys = Cookies.get('apiKeys');
-  let parsedKeys = {};
-
-  if (storedApiKeys) {
-    parsedKeys = apiKeyMemoizeCache[storedApiKeys];
-
-    if (!parsedKeys) {
-      parsedKeys = apiKeyMemoizeCache[storedApiKeys] = JSON.parse(storedApiKeys);
-    }
+// Implementação simples de mascaramento das chaves de API
+function simpleEncrypt(text: string): string {
+  if (!text) return '';
+  
+  // Converter o texto para bytes e fazer um XOR com a chave
+  const result = [];
+  for (let i = 0; i < text.length; i++) {
+    const charCode = text.charCodeAt(i) ^ SECRET_KEY.charCodeAt(i % SECRET_KEY.length);
+    result.push(String.fromCharCode(charCode));
   }
+  
+  // Converter para base64 para garantir texto seguro para armazenamento
+  return btoa(result.join(''));
+}
 
-  return parsedKeys;
+function simpleDecrypt(encrypted: string): string {
+  if (!encrypted) return '';
+  try {
+    // Decodificar o base64
+    const decoded = atob(encrypted);
+    
+    // Reverter o XOR
+    const result = [];
+    for (let i = 0; i < decoded.length; i++) {
+      const charCode = decoded.charCodeAt(i) ^ SECRET_KEY.charCodeAt(i % SECRET_KEY.length);
+      result.push(String.fromCharCode(charCode));
+    }
+    
+    return result.join('');
+  } catch (error) {
+    console.error('Error decrypting:', error);
+    return '';
+  }
+}
+
+export function getApiKeysFromCookies(): Record<string, string> {
+  try {
+    if (typeof window === 'undefined') return {};
+    
+    const encryptedData = localStorage.getItem(STORAGE_KEY);
+    if (!encryptedData) return {};
+    
+    try {
+      // Tenta decodificar os dados como JSON encriptado
+      const decryptedData = simpleDecrypt(encryptedData);
+      return JSON.parse(decryptedData);
+    } catch (e) {
+      // Fallback: tenta interpretar como JSON não encriptado
+      try {
+        const data = JSON.parse(encryptedData);
+        // Salva de volta no formato encriptado
+        saveApiKeysToCookies(data);
+        return data;
+      } catch {
+        console.error('Could not parse API keys');
+        return {};
+      }
+    }
+  } catch (error) {
+    console.error('Error loading API keys:', error);
+    return {};
+  }
+}
+
+export function saveApiKeysToCookies(apiKeys: Record<string, string>): void {
+  try {
+    if (typeof window === 'undefined') return;
+    
+    // Encripta o JSON das chaves
+    const encryptedData = simpleEncrypt(JSON.stringify(apiKeys));
+    localStorage.setItem(STORAGE_KEY, encryptedData);
+    
+    // Remover cookies antigos
+    Cookies.remove('apiKeys');
+    Object.keys(apiKeys).forEach(provider => {
+      Cookies.remove(`${provider}_API_KEY`);
+    });
+  } catch (error) {
+    console.error('Error saving API keys:', error);
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -39,6 +107,14 @@ export const APIKeyManager: React.FC<APIKeyManagerProps> = ({ provider, apiKey, 
   const handleSave = () => {
     setApiKey(tempKey);
     setIsEditing(false);
+    
+    // Atualizar as chaves no localStorage de forma criptografada
+    const apiKeys = getApiKeysFromCookies();
+    const updatedKeys = {
+      ...apiKeys,
+      [provider.name]: tempKey
+    };
+    saveApiKeysToCookies(updatedKeys);
   };
 
   return (

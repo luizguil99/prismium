@@ -14,7 +14,7 @@ import { classNames } from '~/utils/classNames';
 import { MODEL_LIST, PROVIDER_LIST, initializeModelList } from '~/utils/constants';
 import { Messages } from './Messages.client';
 import { SendButton } from './SendButton.client';
-import { APIKeyManager, getApiKeysFromCookies } from './APIKeyManager';
+import { getApiKeysFromCookies, saveApiKeysToCookies } from './APIKeyManager';
 import Cookies from 'js-cookie';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { useTemplateManager } from '~/hooks/useTemplateManager';
@@ -30,6 +30,9 @@ import { NewHeader } from '~/components/header/NewHeader';
 import { NotSignedHeader } from '~/components/header/NotSignedHeader';
 import { useAuth } from '~/components/supabase/auth-context';
 import { DynamicHeader } from '~/components/header/DynamicHeader';
+import type { IProviderSetting, ProviderInfo } from '~/types/model';
+import type { ModelInfo } from '~/lib/modules/llm/types';
+import { ActionRunner } from '~/lib/runtime/action-runner';
 
 import styles from './BaseChat.module.scss';
 import { ExportChatButton } from '~/components/chat/chatExportAndImport/ExportChatButton';
@@ -42,7 +45,6 @@ import FeaturedTemplates from './featuredtemplates';
 import FilePreview from './FilePreview';
 import { ModelSelector } from '~/components/chat/ModelSelector';
 import { SpeechRecognitionButton } from '~/components/chat/SpeechRecognition';
-import type { IProviderSetting, ProviderInfo } from '~/types/model';
 import { ScreenshotStateManager } from './ScreenshotStateManager';
 import StarterTemplates from './StarterTemplates';
 import type { ActionAlert } from '~/types/actions';
@@ -233,12 +235,8 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
 
     useEffect(() => {
       if (typeof window !== 'undefined') {
-        let parsedApiKeys: Record<string, string> | undefined = {};
-         //Api Keys Handler
+        //Api Keys Handler
         try {
-          // Limpar todos os cookies relacionados a API keys
-          Cookies.remove('apiKeys');
-          
           // Carregar as chaves do .env
           const envApiKeys: Record<string, string> = {};
             
@@ -259,15 +257,10 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
             Groq: 'GROQ_API_KEY',
           };
 
-          console.log('[BaseChat] Variáveis disponíveis:', Object.keys(import.meta.env));
-
           // Carregar as chaves do .env usando import.meta.env
           Object.entries(envMapping).forEach(([provider, envKey]) => {
             const value = (import.meta.env as any)[envKey];
-            console.log(`[BaseChat] Carregando ${provider}:`, { key: envKey, value });
-            
             if (value && typeof value === 'string' && value.trim() !== '') {
-              // Remover qualquer = do início e fazer trim
               const cleanValue = value.trim().replace(/^=+/, '');
               if (cleanValue) {
                 envApiKeys[provider] = cleanValue;
@@ -275,25 +268,29 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
             }
           });
 
-          // Filtrar e salvar apenas as chaves válidas
+          // Salvar apenas as chaves válidas do .env
           const validEnvApiKeys = Object.fromEntries(
             Object.entries(envApiKeys).filter(([_, value]) => 
               value && typeof value === 'string' && value.trim() !== ''
             )
           );
 
-          console.log('[BaseChat] API Keys válidas:', validEnvApiKeys);
-
           if (Object.keys(validEnvApiKeys).length > 0) {
-            // Salvar as chaves válidas nos cookies
-            Cookies.set('apiKeys', JSON.stringify(validEnvApiKeys));
-            parsedApiKeys = validEnvApiKeys;
+            // Salvar as chaves do .env no localStorage
+            saveApiKeysToCookies(validEnvApiKeys);
+            setApiKeys(validEnvApiKeys);
+          } else {
+            // Carregar as chaves salvas do localStorage
+            const savedKeys = getApiKeysFromCookies();
+            if (Object.keys(savedKeys).length > 0) {
+              setApiKeys(savedKeys);
+            }
           }
-          parsedApiKeys = getApiKeysFromCookies();
-          setApiKeys(parsedApiKeys);
-        } catch (error) {
-          console.error('Error loading API keys from cookies:', error);
+
+          // Remover cookies antigos
           Cookies.remove('apiKeys');
+        } catch (error) {
+          console.error('Error loading API keys:', error);
         }
 
         setIsModelLoading('all');
@@ -311,31 +308,6 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
           });
       }
     }, [providerList, provider]);
-
-    const onApiKeysChange = async (providerName: string, apiKey: string) => {
-      const newApiKeys = { ...apiKeys, [providerName]: apiKey };
-      setApiKeys(newApiKeys);
-      Cookies.set('apiKeys', JSON.stringify(newApiKeys));
-
-      setIsModelLoading(providerName);
-
-      let providerModels: ModelInfo[] = [];
-
-      try {
-        const response = await fetch(`/api/models/${encodeURIComponent(providerName)}`);
-        const data = await response.json();
-        providerModels = (data as { modelList: ModelInfo[] }).modelList;
-      } catch (error) {
-        console.error('Error loading dynamic models for:', providerName, error);
-      }
-
-      // Only update models for the specific provider
-      setModelList((prevModels) => {
-        const otherModels = prevModels.filter((model) => model.provider !== providerName);
-        return [...otherModels, ...providerModels];
-      });
-      setIsModelLoading(undefined);
-    };
 
     const startListening = () => {
       if (recognition) {
@@ -534,19 +506,6 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                 apiKeys={apiKeys}
                 modelLoading={isModelLoading}
               />
-
-              {/* Gerenciamento de API Key */}
-              {(providerList || []).length > 0 && provider && (
-                <div className="pt-6 mt-6 border-t border-zinc-800">
-                  <APIKeyManager
-                    provider={provider}
-                    apiKey={apiKeys[provider.name] || ''}
-                    setApiKey={(key) => {
-                      onApiKeysChange(provider.name, key);
-                    }}
-                  />
-                </div>
-              )}
             </div>
 
             <DialogFooter className="border-t border-zinc-800 pt-4">
@@ -688,7 +647,14 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
             </div>
           </div>
           <ClientOnly>
-            {() => <Workbench chatStarted={chatStarted} isStreaming={isStreaming} onSendMessage={sendMessage} />}
+            {() => (
+              <Workbench 
+                chatStarted={chatStarted} 
+                isStreaming={isStreaming} 
+                onSendMessage={sendMessage} 
+                actionRunner={new ActionRunner()} 
+              />
+            )}
           </ClientOnly>
         </div>
       </div>
