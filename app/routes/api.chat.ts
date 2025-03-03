@@ -46,7 +46,43 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
   }>();
 
   const cookieHeader = request.headers.get('Cookie');
-  const apiKeys = JSON.parse(parseCookies(cookieHeader || '').apiKeys || '{}');
+  const cookies = parseCookies(cookieHeader || '');
+  
+  // Ler chaves do sistema
+  const systemApiKeys = JSON.parse(cookies.apiKeys || '{}');
+  
+  // Ler chaves do usuário do cookie específico
+  let userApiKeys = {};
+  if (cookies.prismium_user_api_keys) {
+    try {
+      // Remover aspas extras se existirem
+      let userKeysStr = cookies.prismium_user_api_keys;
+      // Se o valor já for um objeto JSON válido, não precisamos fazer nada
+      if (userKeysStr.startsWith('{') && userKeysStr.endsWith('}')) {
+        userApiKeys = JSON.parse(userKeysStr);
+      } else {
+        // Tenta decodificar o valor se estiver em outro formato
+        try {
+          userKeysStr = decodeURIComponent(userKeysStr);
+          userApiKeys = JSON.parse(userKeysStr);
+        } catch {
+          // Se falhar, tenta remover aspas extras
+          if (userKeysStr.startsWith('"') && userKeysStr.endsWith('"')) {
+            userKeysStr = userKeysStr.slice(1, -1);
+            userApiKeys = JSON.parse(userKeysStr);
+          }
+        }
+      }
+      logger.debug(`Chaves de usuário encontradas: ${Object.keys(userApiKeys).join(', ')}`);
+    } catch (e) {
+      logger.error(`Erro ao parsear cookie prismium_user_api_keys: ${cookies.prismium_user_api_keys}`);
+      logger.error(`Erro detalhado: ${e}`);
+    }
+  }
+  
+  // Combinar, priorizando as chaves do usuário
+  const apiKeys = { ...systemApiKeys, ...userApiKeys };
+  
   const providerSettings: Record<string, IProviderSetting> = JSON.parse(
     parseCookies(cookieHeader || '').providers || '{}',
   );

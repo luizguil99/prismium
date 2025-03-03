@@ -14,7 +14,7 @@ import { classNames } from '~/utils/classNames';
 import { MODEL_LIST, PROVIDER_LIST, initializeModelList } from '~/utils/constants';
 import { Messages } from './Messages.client';
 import { SendButton } from './SendButton.client';
-import { getApiKeysFromCookies, saveApiKeysToCookies } from './APIKeyManager';
+import { getApiKeysFromCookies, saveApiKeysToCookies, getUserApiKeysFromStorage, APIKeyManager } from './APIKeyManager';
 import Cookies from 'js-cookie';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { useTemplateManager } from '~/hooks/useTemplateManager';
@@ -61,11 +61,12 @@ import logoReact from '~/lib/png/logo_react.svg.png';
 import logoVue from '~/lib/png/logo_vue.svg fill@2x.png';
 import { ChevronRight, ChevronLeft, Search, ArrowRight, Github, X, Menu as MenuIcon } from 'lucide-react';
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from '@/components/ui/ui/dialog';
 import { Button } from '@/components/ui/ui/button';
 import { AddImageToYourProject } from './Addimagetoyourproject';
 import { handleChatCommand } from './ChatCommands';
 import { CommandCard } from './CommandCard';
+import { SecureMemoryStorage } from './SecureMemoryStorage';
 
 const TEXTAREA_MIN_HEIGHT = 76;
 
@@ -162,6 +163,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     const { ready, gitClone } = useGit();
     const TEXTAREA_MAX_HEIGHT = chatStarted ? 400 : 200;
     const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
+    const [selectedApiKey, setSelectedApiKey] = useState<string>('');
     const [modelList, setModelList] = useState(MODEL_LIST);
     const [isModelSettingsCollapsed, setIsModelSettingsCollapsed] = useState(false);
     const [isListening, setIsListening] = useState(false);
@@ -491,7 +493,10 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <DialogContent className="bg-[#09090B]/95 border border-zinc-800 text-zinc-100 shadow-2xl [&>button]:text-white [&>button]:bg-transparent [&>button]:border-0 [&>button]:hover:bg-[#09090B] [&>button]:transition-colors [&>button]:p-1.5">
             <DialogHeader className="border-b border-zinc-800 pb-4">
-              <DialogTitle className="text-lg font-semibold text-zinc-100">Configurações do Modelo</DialogTitle>
+              <DialogTitle className="text-lg font-semibold text-zinc-100">Model Settings</DialogTitle>
+              <DialogDescription className="text-sm text-zinc-400">
+                Select a model and configure its API key
+              </DialogDescription>
             </DialogHeader>
 
             <div className="p-6 space-y-6">
@@ -506,6 +511,19 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                 apiKeys={apiKeys}
                 modelLoading={isModelLoading}
               />
+              
+              {provider && (
+                <div className="mt-6 pt-6 border-t border-zinc-800">
+                  <h3 className="text-md font-medium mb-4 text-zinc-100">API Key Configuration</h3>
+                  <APIKeyManager
+                    provider={provider}
+                    apiKey={selectedApiKey}
+                    setApiKey={setSelectedApiKey}
+                    getApiKeyLink={provider.getApiKeyLink}
+                    labelForGetApiKey={provider.labelForGetApiKey}
+                  />
+                </div>
+              )}
             </div>
 
             <DialogFooter className="border-t border-zinc-800 pt-4">
@@ -659,6 +677,24 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
         </div>
       </div>
     );
+
+    // Atualiza a API key selecionada quando o provider muda
+    useEffect(() => {
+      if (provider) {
+        // Tenta obter a chave do usuário primeiro
+        const userKeys = getUserApiKeysFromStorage();
+        const userKey = userKeys[provider.name];
+        
+        if (userKey) {
+          setSelectedApiKey(userKey);
+        } else {
+          // Se não existir chave do usuário, obtem a do sistema
+          const memoryStorage = SecureMemoryStorage.getInstance();
+          const systemKey = memoryStorage.get(provider.name);
+          setSelectedApiKey(systemKey || '');
+        }
+      }
+    }, [provider]);
 
     return (
       <Tooltip.Provider delayDuration={200}>

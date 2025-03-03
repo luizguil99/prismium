@@ -48,6 +48,19 @@ export abstract class BaseProvider implements ProviderInfo {
     const apiKey =
       apiKeys?.[this.name] || serverEnv?.[apiTokenKey] || process?.env?.[apiTokenKey] || manager.env?.[apiTokenKey];
 
+    // Log para verificar qual chave está sendo usada
+    if (apiKeys && this.name in apiKeys) {
+      console.log(`Usando chave API do usuário para ${this.name}`);
+    } else if (serverEnv?.[apiTokenKey]) {
+      console.log(`Usando chave API do servidor para ${this.name}`);
+    } else if (process?.env?.[apiTokenKey]) {
+      console.log(`Usando chave API do processo para ${this.name}`);
+    } else if (manager.env?.[apiTokenKey]) {
+      console.log(`Usando chave API do manager para ${this.name}`);
+    } else {
+      console.log(`Nenhuma chave API encontrada para ${this.name}`);
+    }
+
     return {
       baseUrl,
       apiKey,
