@@ -161,7 +161,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
   ) => {
     const { ready, gitClone } = useGit();
     const TEXTAREA_MAX_HEIGHT = chatStarted ? 400 : 200;
-    const [apiKeys, setApiKeys] = useState<Record<string, string>>(getApiKeysFromCookies());
+    const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
     const [modelList, setModelList] = useState(MODEL_LIST);
     const [isModelSettingsCollapsed, setIsModelSettingsCollapsed] = useState(false);
     const [isListening, setIsListening] = useState(false);
@@ -652,7 +652,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                 chatStarted={chatStarted} 
                 isStreaming={isStreaming} 
                 onSendMessage={sendMessage} 
-                actionRunner={new ActionRunner()} 
+                actionRunner={new ActionRunner({} as any, () => null, () => {})} 
               />
             )}
           </ClientOnly>

@@ -14,86 +14,101 @@ interface APIKeyManagerProps {
   labelForGetApiKey?: string;
 }
 
-const STORAGE_KEY = 'prismium_api_keys';
-const SECRET_KEY = 'prismium-secure';
-
-// Implementação simples de mascaramento das chaves de API
-function simpleEncrypt(text: string): string {
-  if (!text) return '';
+// Sistema de memória em tempo de execução para armazenar as API keys
+// Isto mantém as chaves apenas na memória durante a sessão do navegador
+// e não as armazena em nenhum lugar persistente como localStorage ou cookies
+class SecureMemoryStorage {
+  private static instance: SecureMemoryStorage;
+  private storage: Record<string, string> = {};
+  private static ENV_PREFIX = "ENV_";
   
-  // Converter o texto para bytes e fazer um XOR com a chave
-  const result = [];
-  for (let i = 0; i < text.length; i++) {
-    const charCode = text.charCodeAt(i) ^ SECRET_KEY.charCodeAt(i % SECRET_KEY.length);
-    result.push(String.fromCharCode(charCode));
-  }
+  private constructor() {}
   
-  // Converter para base64 para garantir texto seguro para armazenamento
-  return btoa(result.join(''));
-}
-
-function simpleDecrypt(encrypted: string): string {
-  if (!encrypted) return '';
-  try {
-    // Decodificar o base64
-    const decoded = atob(encrypted);
-    
-    // Reverter o XOR
-    const result = [];
-    for (let i = 0; i < decoded.length; i++) {
-      const charCode = decoded.charCodeAt(i) ^ SECRET_KEY.charCodeAt(i % SECRET_KEY.length);
-      result.push(String.fromCharCode(charCode));
+  static getInstance(): SecureMemoryStorage {
+    if (!SecureMemoryStorage.instance) {
+      SecureMemoryStorage.instance = new SecureMemoryStorage();
     }
+    return SecureMemoryStorage.instance;
+  }
+  
+  // Salva uma chave na memória
+  set(key: string, value: string): void {
+    this.storage[key] = value;
+  }
+  
+  // Obtém uma chave da memória
+  get(key: string): string | undefined {
+    return this.storage[key];
+  }
+  
+  // Salva as chaves de API de forma segura apenas na memória
+  saveApiKeys(apiKeys: Record<string, string>): void {
+    Object.entries(apiKeys).forEach(([provider, key]) => {
+      this.set(provider, key);
+    });
     
-    return result.join('');
-  } catch (error) {
-    console.error('Error decrypting:', error);
-    return '';
+    // Remover cookies antigos para garantir que não há exposição
+    Cookies.remove('apiKeys');
+    Object.keys(apiKeys).forEach(provider => {
+      Cookies.remove(`${provider}_API_KEY`);
+    });
+    
+    // Limpar localStorage também
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('prismium_api_keys');
+    }
+  }
+  
+  // Obtém todas as chaves de API da memória
+  getAllApiKeys(): Record<string, string> {
+    const result: Record<string, string> = {};
+    
+    // Filtrar apenas as chaves que são de providers (não começam com o prefixo especial)
+    Object.entries(this.storage).forEach(([key, value]) => {
+      if (!key.startsWith(SecureMemoryStorage.ENV_PREFIX)) {
+        result[key] = value;
+      }
+    });
+    
+    return result;
+  }
+  
+  // Salva uma variável de ambiente na memória
+  setEnvVar(name: string, value: string): void {
+    this.set(`${SecureMemoryStorage.ENV_PREFIX}${name}`, value);
+  }
+  
+  // Obtém uma variável de ambiente da memória
+  getEnvVar(name: string): string | undefined {
+    return this.get(`${SecureMemoryStorage.ENV_PREFIX}${name}`);
+  }
+  
+  // Limpa todas as chaves da memória
+  clear(): void {
+    this.storage = {};
   }
 }
 
+// Função para obter as chaves da API da memória segura
 export function getApiKeysFromCookies(): Record<string, string> {
   try {
     if (typeof window === 'undefined') return {};
     
-    const encryptedData = localStorage.getItem(STORAGE_KEY);
-    if (!encryptedData) return {};
-    
-    try {
-      // Tenta decodificar os dados como JSON encriptado
-      const decryptedData = simpleDecrypt(encryptedData);
-      return JSON.parse(decryptedData);
-    } catch (e) {
-      // Fallback: tenta interpretar como JSON não encriptado
-      try {
-        const data = JSON.parse(encryptedData);
-        // Salva de volta no formato encriptado
-        saveApiKeysToCookies(data);
-        return data;
-      } catch {
-        console.error('Could not parse API keys');
-        return {};
-      }
-    }
+    // Obtém as chaves da memória segura
+    return SecureMemoryStorage.getInstance().getAllApiKeys();
   } catch (error) {
     console.error('Error loading API keys:', error);
     return {};
   }
 }
 
+// Função para salvar as chaves da API na memória segura
 export function saveApiKeysToCookies(apiKeys: Record<string, string>): void {
   try {
     if (typeof window === 'undefined') return;
     
-    // Encripta o JSON das chaves
-    const encryptedData = simpleEncrypt(JSON.stringify(apiKeys));
-    localStorage.setItem(STORAGE_KEY, encryptedData);
-    
-    // Remover cookies antigos
-    Cookies.remove('apiKeys');
-    Object.keys(apiKeys).forEach(provider => {
-      Cookies.remove(`${provider}_API_KEY`);
-    });
+    // Salva as chaves na memória segura
+    SecureMemoryStorage.getInstance().saveApiKeys(apiKeys);
   } catch (error) {
     console.error('Error saving API keys:', error);
   }
@@ -108,7 +123,7 @@ export const APIKeyManager: React.FC<APIKeyManagerProps> = ({ provider, apiKey, 
     setApiKey(tempKey);
     setIsEditing(false);
     
-    // Atualizar as chaves no localStorage de forma criptografada
+    // Atualizar as chaves na memória segura
     const apiKeys = getApiKeysFromCookies();
     const updatedKeys = {
       ...apiKeys,
