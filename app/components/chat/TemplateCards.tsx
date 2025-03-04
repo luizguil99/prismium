@@ -110,7 +110,7 @@ ${file.content}
     <div className="mt-12 w-full max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-zinc-400 font-['Segoe UI'] text-sm font-medium uppercase tracking-wider">
-          Templates Populares
+          Popular Templates
         </h2>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
