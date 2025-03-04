@@ -77,24 +77,53 @@ const BATCH_SAVE_DELAY = 300; // ms
 async function processBatchSave() {
   if (messageQueue.size === 0) return;
   
+  console.log(`🔄 Processando lote de salvamento com ${messageQueue.size} chats`);
+  
   const supabase = getOrCreateClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
+    console.error('❌ Usuário não autenticado durante salvamento em lote');
     messageQueue.forEach(({reject}) => reject(new Error('User not authenticated')));
     messageQueue.clear();
     return;
   }
 
+  // Verificar e garantir que todos os chats tenham urlId antes de salvar
+  const pendingUrlIdChecks = Array.from(messageQueue.entries())
+    .filter(([_, {payload}]) => !payload.urlId)
+    .map(async ([id, {payload}]) => {
+      try {
+        // Se não tiver urlId, use o ID como urlId
+        payload.urlId = id;
+        console.log(`ℹ️ Atribuído urlId=${id} para chat sem urlId`);
+        return true;
+      } catch (error) {
+        console.error(`❌ Erro ao gerar urlId para chat ${id}:`, error);
+        return false;
+      }
+    });
+
+  await Promise.all(pendingUrlIdChecks);
+  
   const batchPayload = Array.from(messageQueue.entries()).map(([id, {payload}]) => ({
     ...payload,
-    user_id: user.id
+    user_id: user.id,
+    // Garantir que campos essenciais nunca sejam nulos
+    urlId: payload.urlId || id,
+    description: payload.description || 'New Chat'
   }));
 
   try {
+    console.log(`🔄 Salvando lote de ${batchPayload.length} chats no Supabase`);
     const { error } = await supabase.from('chats').upsert(batchPayload);
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Erro ao salvar chats:', error);
+      throw error;
+    }
+    console.log('✅ Lote salvo com sucesso');
     messageQueue.forEach(({resolve}) => resolve());
   } catch (error) {
+    console.error('❌ Erro durante salvamento em lote:', error);
     messageQueue.forEach(({reject}) => reject(error));
   } finally {
     messageQueue.clear();
@@ -111,6 +140,13 @@ export async function setMessages(
   timestamp?: string
 ): Promise<void> {
   return new Promise((resolve, reject) => {
+    // Se não houver ID, rejeite imediatamente
+    if (!id) {
+      console.error('❌ Tentativa de salvar mensagens sem ID');
+      reject(new Error('ID é obrigatório para salvar mensagens'));
+      return;
+    }
+
     const payload = {
       id,
       messages,
@@ -118,6 +154,9 @@ export async function setMessages(
       description,
       timestamp: timestamp ?? new Date().toISOString()
     };
+
+    // Log mais detalhado para diagnóstico
+    console.log(`🔄 Enfileirando salvamento para chat ${id}, urlId: ${urlId || 'não definido'}, description: ${description || 'não definida'}`);
 
     messageQueue.set(id, { payload, resolve, reject });
 
@@ -187,48 +226,105 @@ export async function createChatFromMessages(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
+  // Gerar ID de forma sincronizada
+  let chatId = '';
+  if (crypto && typeof crypto.randomUUID === 'function') {
+    chatId = crypto.randomUUID();
+  } else {
+    chatId = 'id-' + new Date().getTime() + '-' + Math.floor(Math.random() * 10000);
+  }
+
+  console.log(`🔄 Criando novo chat com ID ${chatId}`);
+
+  // Use o mesmo valor para urlId e id inicialmente
+  const urlId = chatId;
+  
   const { data, error } = await supabase
     .from('chats')
     .insert({
+      id: chatId,
       user_id: user.id,
       messages,
-      description,
+      description: description || 'New Chat', // Garantir que description nunca seja null
+      urlId: urlId, // Definir urlId explicitamente
       timestamp: new Date().toISOString(),
     })
     .select();
 
-  if (error) throw error;
-  const chat = (data && data[0]) as any;
-  const newUrlId = chat.urlId ? chat.urlId : chat.id;
-  if (!chat.urlId) {
-    const { error: updateError } = await supabase.from('chats').update({ urlId: newUrlId }).eq('id', chat.id);
-    if (updateError) throw updateError;
+  if (error) {
+    console.error('❌ Erro ao criar chat:', error);
+    throw error;
   }
-  return newUrlId;
+  
+  console.log(`✅ Chat criado com sucesso: ID=${chatId}, urlId=${urlId}`);
+  return urlId;
 }
 
 export async function duplicateChat(_db: any, id: string): Promise<string> {
-  const chat = await getMessages(_db, id);
-  if (!chat) throw new Error('Chat not found');
-  return createChatFromMessages(
-    _db,
-    chat.description ? `${chat.description} (copy)` : 'Chat (copy)',
-    chat.messages
-  );
+  console.log(`🔄 Duplicando chat com ID ${id}`);
+  try {
+    const chat = await getMessages(_db, id);
+    if (!chat) {
+      console.error('❌ Chat não encontrado para duplicação');
+      throw new Error('Chat not found');
+    }
+    
+    // Garantir que temos uma descrição válida
+    const description = chat.description ? `${chat.description} (copy)` : 'Chat (copy)';
+    console.log(`🔄 Descrição para duplicação: ${description}`);
+    
+    // Usar a função melhorada de createChatFromMessages
+    const newUrlId = await createChatFromMessages(
+      _db,
+      description,
+      Array.isArray(chat.messages) ? chat.messages : []
+    );
+    
+    console.log(`✅ Chat duplicado com sucesso: ${newUrlId}`);
+    return newUrlId;
+  } catch (error) {
+    console.error('❌ Erro ao duplicar chat:', error);
+    throw error;
+  }
 }
 
 export async function forkChat(_db: any, chatId: string, messageId: string): Promise<string> {
-  const chat = await getMessages(_db, chatId);
-  if (!chat) throw new Error('Chat not found');
-  const messages: Message[] = Array.isArray(chat.messages) ? chat.messages : [];
-  const messageIndex = messages.findIndex((msg: any) => msg.id === messageId);
-  if (messageIndex === -1) throw new Error('Message not found');
-  const forkMessages = messages.slice(0, messageIndex + 1);
-  return createChatFromMessages(
-    _db,
-    chat.description ? `${chat.description} (fork)` : 'Forked chat',
-    forkMessages
-  );
+  console.log(`🔄 Criando fork do chat ${chatId} a partir da mensagem ${messageId}`);
+  try {
+    const chat = await getMessages(_db, chatId);
+    if (!chat) {
+      console.error('❌ Chat não encontrado para fork');
+      throw new Error('Chat not found');
+    }
+    
+    const messages: Message[] = Array.isArray(chat.messages) ? chat.messages : [];
+    const messageIndex = messages.findIndex((msg: any) => msg.id === messageId);
+    
+    if (messageIndex === -1) {
+      console.error('❌ Mensagem não encontrada no chat');
+      throw new Error('Message not found');
+    }
+    
+    // Garantir que temos uma descrição válida
+    const description = chat.description ? `${chat.description} (fork)` : 'Forked chat';
+    console.log(`🔄 Descrição para fork: ${description}`);
+    
+    const forkMessages = messages.slice(0, messageIndex + 1);
+    console.log(`🔄 Fork com ${forkMessages.length} mensagens`);
+    
+    // Usar a função melhorada de createChatFromMessages
+    const newUrlId = await createChatFromMessages(
+      _db,
+      description,
+      forkMessages
+    );
+    
+    console.log(`✅ Chat fork criado com sucesso: ${newUrlId}`);
+    return newUrlId;
+  } catch (error) {
+    console.error('❌ Erro ao criar fork do chat:', error);
+    throw error;
+  }
 }
 
 export async function updateChatDescription(_db: any, id: string, description: string): Promise<void> {
