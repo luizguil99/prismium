@@ -49,33 +49,46 @@ export const CodeBlock = memo(
     }, [code]);
 
     return (
-      <div className={classNames('relative group text-left', className)}>
-        <div
-          className={classNames(
-            styles.CopyButtonContainer,
-            'bg-transparant absolute top-[10px] right-[10px] rounded-md z-10 text-lg flex items-center justify-center opacity-0 group-hover:opacity-100',
-            {
-              'rounded-l-0 opacity-100': copied,
-            },
-          )}
-        >
-          {!disableCopy && (
-            <button
-              className={classNames(
-                'flex items-center bg-accent-500 p-[6px] justify-center before:bg-white before:rounded-l-md before:text-gray-500 before:border-r before:border-gray-300 rounded-md transition-theme',
-                {
-                  'before:opacity-0': !copied,
-                  'before:opacity-100': copied,
-                },
-              )}
-              title="Copy Code"
-              onClick={() => copyToClipboard()}
-            >
-              <div className="i-ph:clipboard-text-duotone"></div>
-            </button>
-          )}
+      <div className={classNames('relative group text-left rounded-lg overflow-hidden border border-bolt-elements-borderColor', className)}>
+        <div className="flex items-center justify-between px-4 py-2 bg-bolt-elements-bg-depth-2 border-b border-bolt-elements-borderColor">
+          <div className="flex items-center space-x-2">
+            <span className="text-xs text-bolt-elements-textSecondary uppercase">{language}</span>
+          </div>
+          <div
+            className={classNames(
+              'flex items-center transition-all duration-200',
+              {
+                'opacity-100': copied || !disableCopy,
+                'opacity-0': !copied && disableCopy,
+              }
+            )}
+          >
+            {!disableCopy && (
+              <button
+                className={classNames(
+                  'flex items-center gap-2 px-2 py-1 rounded-md transition-all duration-200 bg-transparent',
+                  {
+                    'bg-green-500/10 text-green-500': copied,
+                    'hover:bg-bolt-elements-bg-depth-3': !copied,
+                  }
+                )}
+                title={copied ? "Copied!" : "Copy Code"}
+                onClick={() => copyToClipboard()}
+              >
+                <div className={classNames(
+                  'transition-all duration-200',
+                  copied ? 'i-ph:check-circle-duotone' : 'i-ph:clipboard-text-duotone'
+                )}></div>
+                <span className="text-xs">
+                  {copied ? 'Copied!' : 'Copy'}
+                </span>
+              </button>
+            )}
+          </div>
         </div>
-        <div dangerouslySetInnerHTML={{ __html: html ?? '' }}></div>
+        <div className="p-4 overflow-x-auto">
+          <div dangerouslySetInnerHTML={{ __html: html ?? '' }}></div>
+        </div>
       </div>
     );
   },
