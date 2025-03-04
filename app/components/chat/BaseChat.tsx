@@ -3,7 +3,7 @@
  * Preventing TS checks with files presented in the video for a better presentation.
  */
 import type { JSONValue, Message } from 'ai';
-import React, { type RefCallback, useCallback, useEffect, useState } from 'react';
+import React, { type RefCallback, useCallback, useEffect, useState, useMemo } from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
 import { Menu } from '~/components/sidebar/Menu.client';
 import { DynamicMenu } from '~/components/sidebar/DynamicMenu';
@@ -486,7 +486,9 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
 
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    const SettingsModal = () => {
+    // Renderizado condicionalmente para evitar problemas de renderização excessiva
+    const renderSettingsModal = () => {
+      // Só renderizar o conteúdo do modal quando estiver aberto
       if (!isModalOpen) return null;
 
       return (
@@ -516,6 +518,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                 <div className="mt-6 pt-6 border-t border-zinc-800">
                   <h3 className="text-md font-medium mb-4 text-zinc-100">API Key Configuration</h3>
                   <APIKeyManager
+                    key={`api-key-manager-${provider.name}`}
                     provider={provider}
                     apiKey={selectedApiKey}
                     setApiKey={setSelectedApiKey}
@@ -698,7 +701,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
 
     return (
       <Tooltip.Provider delayDuration={200}>
-        <SettingsModal />
+        {renderSettingsModal()}
         <ScreenshotStateManager 
           setUploadedFiles={setUploadedFiles}
           setImageDataList={setImageDataList}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '~/components/supabase/auth-context';
 import { classNames } from '~/utils/classNames';
 import { ClientOnly } from 'remix-utils/client-only';
@@ -44,7 +44,10 @@ interface AuthenticatedChatInputProps {
   setIsModalOpen?: (isOpen: boolean) => void;
 }
 
-export const AuthenticatedChatInput = ({
+// Adicionar um contador de renderizações para debug
+let renderCount = 0;
+
+export const AuthenticatedChatInput = React.memo(({
   textareaRef,
   input,
   enhancingPrompt,
@@ -80,6 +83,27 @@ export const AuthenticatedChatInput = ({
   const [fileExplorerOpen, setFileExplorerOpen] = useState(false);
   const TEXTAREA_MIN_HEIGHT = 55;
   const TEXTAREA_MAX_HEIGHT = chatStarted ? 280 : 140;
+  
+  // Controle de debug - ajuda a verificar causas de re-renders
+  useEffect(() => {
+    renderCount++;
+    console.log(
+      `[${new Date().toISOString()}] [AuthenticatedChatInput] [render] Renderizando componente (${renderCount})`,
+      {
+        inputLength: input.length,
+        isStreaming,
+        showCommands,
+        isListening,
+        chatStarted,
+        isModelSettingsCollapsed
+      }
+    );
+    
+    // Cleanup para detectar desmontagem
+    return () => {
+      console.log(`[${new Date().toISOString()}] [AuthenticatedChatInput] Componente desmontado`);
+    };
+  }, [input.length, isStreaming, showCommands, isListening, chatStarted, isModelSettingsCollapsed]);
 
   useEffect(() => {
     // Small delay to ensure authentication state is loaded
@@ -90,7 +114,7 @@ export const AuthenticatedChatInput = ({
     return () => clearTimeout(timer);
   }, []);
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === '@') {
       setShowCommands?.(true);
     } else if (event.key === 'Escape') {
@@ -120,9 +144,9 @@ export const AuthenticatedChatInput = ({
 
       handleSendMessage?.(event);
     }
-  };
+  }, [isStreaming, handleStop, handleSendMessage, user, setShowCommands]);
 
-  const handleLocalInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleLocalInputChange = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => {
     // Pegar a posição do cursor
     const cursorPosition = event.target.selectionStart;
     const text = event.target.value;
@@ -139,9 +163,9 @@ export const AuthenticatedChatInput = ({
     }
     
     handleInputChange?.(event);
-  };
+  }, [handleInputChange, setShowCommands]);
 
-  const handlePaste = async (e: React.ClipboardEvent) => {
+  const handlePaste = useCallback(async (e: React.ClipboardEvent) => {
     const items = e.clipboardData?.items;
 
     if (!items) {
@@ -174,7 +198,7 @@ export const AuthenticatedChatInput = ({
         break;
       }
     }
-  };
+  }, [user, uploadedFiles, imageDataList, setUploadedFiles, setImageDataList]);
 
   const renderStyledInput = () => {
     if (!input) return '';
@@ -190,8 +214,11 @@ export const AuthenticatedChatInput = ({
     });
   };
 
-  // Login Modal Component
-  const LoginModal = () => (
+  // Memoizando o output visual para não recalcular em re-renders
+  const styledInput = useMemo(() => renderStyledInput(), [input]);
+  
+  // Memoizando o modal de login
+  const LoginModal = useMemo(() => (
     <Dialog open={showLoginModal} onOpenChange={setShowLoginModal}>
       <DialogContent className="bg-[#09090B]/95 border border-zinc-800 text-zinc-100 shadow-2xl [&>button]:text-white [&>button]:bg-transparent [&>button]:border-0 [&>button]:hover:bg-[#09090B] [&>button]:transition-colors [&>button]:p-1.5">
         <DialogHeader className="border-b border-zinc-800 pb-4">
@@ -225,7 +252,7 @@ export const AuthenticatedChatInput = ({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
+  ), [showLoginModal]);
 
   return (
     <div
@@ -235,7 +262,7 @@ export const AuthenticatedChatInput = ({
         'text-sm'
       )}
     >
-      <LoginModal />
+      {LoginModal}
       
       <CommandCard
         isVisible={showCommands || false}
@@ -311,7 +338,7 @@ export const AuthenticatedChatInput = ({
             wordBreak: 'break-word',
           }}
         >
-          {renderStyledInput()}
+          {styledInput}
         </div>
         
         <textarea
@@ -551,4 +578,25 @@ export const AuthenticatedChatInput = ({
       </div>
     </div>
   );
-}; 
+}, (prevProps, nextProps) => {
+  // Verificação mais precisa para evitar renderizações desnecessárias
+  if (prevProps.input !== nextProps.input) return false;
+  if (prevProps.isStreaming !== nextProps.isStreaming) return false;
+  if (prevProps.enhancingPrompt !== nextProps.enhancingPrompt) return false;
+  if (prevProps.showCommands !== nextProps.showCommands) return false;
+  if (prevProps.isListening !== nextProps.isListening) return false;
+  if (prevProps.chatStarted !== nextProps.chatStarted) return false;
+  if (prevProps.isModelSettingsCollapsed !== nextProps.isModelSettingsCollapsed) return false;
+  if (prevProps.model !== nextProps.model) return false;
+  
+  // Comparações mais profundas para arrays
+  if (prevProps.uploadedFiles?.length !== nextProps.uploadedFiles?.length) return false;
+  if (prevProps.imageDataList?.length !== nextProps.imageDataList?.length) return false;
+  
+  // Para listas maiores, pode ser mais eficiente comparar apenas o comprimento
+  // se sempre atualizar toda a lista de uma vez
+  if (prevProps.providerList?.length !== nextProps.providerList?.length) return false;
+  
+  // Se chegou até aqui, as props são iguais
+  return true;
+}); 
