@@ -1,5 +1,5 @@
 import React from 'react';
-import { GitPullRequest, GitBranch, GitMerge } from 'lucide-react';
+import { GitPullRequest, GitBranch, GitMerge, Menu } from 'lucide-react';
 import { classNames } from '~/utils/classNames';
 
 interface NewHeaderProps {
@@ -10,6 +10,9 @@ export function NewHeader({ className }: NewHeaderProps) {
   return (
     <div className={classNames("sticky top-0 z-10 flex items-center justify-between px-4 py-2.5 border-b border-bolt-elements-borderColor bg-[#09090B]/95 backdrop-blur-sm", className)}>
       <div className="flex items-center gap-2">
+        <button className="flex items-center justify-center w-7 h-7 rounded-full bg-zinc-800/50 hover:bg-zinc-800 transition-colors">
+          <Menu size={14} className="text-zinc-300" />
+        </button>
         <div className="flex items-center justify-center w-7 h-7 rounded-full bg-blue-500/10">
           <GitPullRequest size={14} className="text-blue-400" />
         </div>
@@ -32,4 +35,4 @@ export function NewHeader({ className }: NewHeaderProps) {
       </div>
     </div>
   );
-} 
+}
