@@ -83,16 +83,32 @@ export function saveUserApiKeysToStorage(apiKeys: Record<string, string>): void 
 }
 
 /**
- * Obtém as chaves da API da memória segura
- * Mantém a compatibilidade com o sistema existente
+ * Obtém as chaves da API da memória segura e cookies
+ * Nome mantido por compatibilidade com o código existente
  */
 export function getApiKeysFromCookies(): Record<string, string> {
   try {
     if (typeof window === 'undefined') return {};
     
-    // Combinar chaves da memória segura com chaves do usuário
+    // Obter chaves da memória segura (chaves do sistema)
     const memoryKeys = SecureMemoryStorage.getInstance().getAllApiKeys();
-    const userKeys = getUserApiKeysFromStorage();
+    
+    // Obter chaves do usuário dos cookies ou localStorage
+    let userKeys: Record<string, string> = {};
+    const cookieUserKeys = Cookies.get('prismium_user_api_keys');
+    
+    if (cookieUserKeys) {
+      try {
+        userKeys = JSON.parse(cookieUserKeys);
+      } catch (e) {
+        console.error('Erro ao analisar chaves de API dos cookies:', e);
+        // Fallback para localStorage se os cookies falharem
+        userKeys = getUserApiKeysFromStorage();
+      }
+    } else {
+      // Se não houver cookies, usar localStorage
+      userKeys = getUserApiKeysFromStorage();
+    }
     
     // Prioridade para as chaves do usuário (substituem as da memória)
     return { ...memoryKeys, ...userKeys };
@@ -104,7 +120,7 @@ export function getApiKeysFromCookies(): Record<string, string> {
 
 /**
  * Salva as chaves da API na memória segura
- * Mantém a compatibilidade com o sistema existente
+ * Nome mantido por compatibilidade com o código existente
  */
 export function saveApiKeysToCookies(apiKeys: Record<string, string>): void {
   try {
@@ -114,6 +130,7 @@ export function saveApiKeysToCookies(apiKeys: Record<string, string>): void {
     SecureMemoryStorage.getInstance().saveApiKeys(apiKeys);
     
     // As chaves do usuário são salvas separadamente via saveUserApiKeysToStorage
+    // NÃO salvar as chaves do sistema em cookies para garantir segurança
   } catch (error) {
     console.error('Erro ao salvar chaves API:', error);
   }
