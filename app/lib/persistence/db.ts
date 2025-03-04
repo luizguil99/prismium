@@ -349,21 +349,50 @@ export async function getNextId(_db: any): Promise<string> {
 // Adicionando getUrlId para compatibilidade com useChatHistory.ts
 export async function getUrlId(_db: any, id: string): Promise<string> {
   const supabase = getOrCreateClient();
-  let candidate = id;
+  
+  // Obter o ID do usuário para incorporar ao urlId
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    console.error('❌ Usuário não autenticado ao gerar urlId');
+    throw new Error('User not authenticated');
+  }
+  
+  // Criar um prefixo que inclua os primeiros caracteres do ID do usuário
+  // para garantir unicidade entre usuários
+  const userPrefix = user.id.slice(0, 6);
+  
+  // Incorporar o prefixo do usuário ao ID base
+  let baseCandidate = `${userPrefix}-${id}`;
+  
+  // Limitar o tamanho para evitar URLs muito longas
+  if (baseCandidate.length > 36) {
+    baseCandidate = baseCandidate.slice(0, 36);
+  }
+  
+  console.log(`🔄 Tentando gerar urlId com base em: ${baseCandidate}`);
+  
+  let candidate = baseCandidate;
   let suffix = 2;
   while (true) {
+    console.log(`  - Verificando candidato: ${candidate}`);
     const { data, error } = await supabase
       .from('chats')
       .select('id')
       .eq('urlId', candidate)
       .maybeSingle();
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Erro ao verificar urlId:', error);
+      throw error;
+    }
     if (!data) {
+      console.log(`✅ urlId único encontrado: ${candidate}`);
       return candidate;
     }
-    candidate = `${id}-${suffix}`;
+    console.log(`  - Candidato ${candidate} já existe, tentando próximo...`);
+    candidate = `${baseCandidate}-${suffix}`;
     suffix++;
     if (suffix > 100) {
+      console.error('❌ Não foi possível gerar urlId único após 100 tentativas');
       throw new Error('Unable to generate unique urlId');
     }
   }
