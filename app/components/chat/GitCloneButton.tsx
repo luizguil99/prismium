@@ -158,7 +158,7 @@ ${file.content}
       <button
         onClick={onClick}
         title="Clone a Git Repo"
-        className="flex items-center gap-2 px-3 py-2 text-gray-300  hover:bg-[#2A2F3A]/20 rounded-lg transition-all bg-[#2A2F3A]/10"
+        className="flex items-center gap-2 px-3 py-2 text-gray-300  hover:bg-[#2A2F3A]/20 rounded-lg transition-all bg-transparent"
       >
         <Github className="w-4 h-4 text-blue-500" />
         <span>Git Clone</span>

@@ -53,14 +53,14 @@ export function ImportButtons(importChat: ((description: string, messages: Messa
           const input = document.getElementById('chat-import');
           input?.click();
         }}
-        className="flex items-center gap-2 px-3 py-2 text-gray-300 hover:bg-[#2A2F3A]/20 rounded-lg transition-all bg-[#2A2F3A]/10"
+        className="flex items-center gap-2 px-3 py-2 text-gray-300 hover:bg-[#2A2F3A]/20 rounded-lg transition-all bg-transparent"
       >
         <Upload className="w-4 h-4 text-blue-500" />
         <span>Import Chat</span>
       </button>
       <ImportFolderButton
         importChat={importChat}
-        className="flex items-center gap-2 px-3 py-2 text-gray-300 hover:bg-[#2A2F3A]/20 rounded-lg transition-all bg-[#2A2F3A]/10"
+        className="flex items-center gap-2 px-3 py-2 text-gray-300 hover:bg-[#2A2F3A]/20 rounded-lg transition-all bg-transparent"
       >
         <FolderUp className="w-4 h-4 text-blue-500" />
         <span>Import Folder</span>
