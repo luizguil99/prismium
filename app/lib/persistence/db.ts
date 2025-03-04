@@ -64,73 +64,17 @@ export async function getAll(_db: any): Promise<ChatHistoryItem[]> {
   return chats;
 }
 
-// Batch queue para otimizar salvamentos
-const messageQueue = new Map<string, {
-  payload: any,
-  resolve: () => void,
-  reject: (error: any) => void
-}>();
+// Sistema de controle de salvamento ultra-conservador
+const pendingSaves = new Map<string, NodeJS.Timeout>();
+const lastSavedContent = new Map<string, string>();
+const DEBOUNCE_DELAY = 5000; // 5 segundos - tempo extremamente longo para debounce
+let lastSaveTime = Date.now();
+const MIN_SAVE_INTERVAL = 10000; // Mínimo de 10 segundos entre salvamentos
+let saveInProgress = false;
 
-let batchSaveTimeout: NodeJS.Timeout | null = null;
-const BATCH_SAVE_DELAY = 300; // ms
-
-async function processBatchSave() {
-  if (messageQueue.size === 0) return;
-  
-  console.log(`🔄 Processando lote de salvamento com ${messageQueue.size} chats`);
-  
-  const supabase = getOrCreateClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    console.error('❌ Usuário não autenticado durante salvamento em lote');
-    messageQueue.forEach(({reject}) => reject(new Error('User not authenticated')));
-    messageQueue.clear();
-    return;
-  }
-
-  // Verificar e garantir que todos os chats tenham urlId antes de salvar
-  const pendingUrlIdChecks = Array.from(messageQueue.entries())
-    .filter(([_, {payload}]) => !payload.urlId)
-    .map(async ([id, {payload}]) => {
-      try {
-        // Se não tiver urlId, use o ID como urlId
-        payload.urlId = id;
-        console.log(`ℹ️ Atribuído urlId=${id} para chat sem urlId`);
-        return true;
-      } catch (error) {
-        console.error(`❌ Erro ao gerar urlId para chat ${id}:`, error);
-        return false;
-      }
-    });
-
-  await Promise.all(pendingUrlIdChecks);
-  
-  const batchPayload = Array.from(messageQueue.entries()).map(([id, {payload}]) => ({
-    ...payload,
-    user_id: user.id,
-    // Garantir que campos essenciais nunca sejam nulos
-    urlId: payload.urlId || id,
-    description: payload.description || 'New Chat'
-  }));
-
-  try {
-    console.log(`🔄 Salvando lote de ${batchPayload.length} chats no Supabase`);
-    const { error } = await supabase.from('chats').upsert(batchPayload);
-    if (error) {
-      console.error('❌ Erro ao salvar chats:', error);
-      throw error;
-    }
-    console.log('✅ Lote salvo com sucesso');
-    messageQueue.forEach(({resolve}) => resolve());
-  } catch (error) {
-    console.error('❌ Erro durante salvamento em lote:', error);
-    messageQueue.forEach(({reject}) => reject(error));
-  } finally {
-    messageQueue.clear();
-    invalidateCache();
-  }
-}
-
+/**
+ * Função de salvamento altamente otimizada para minimizar requisições
+ */
 export async function setMessages(
   _db: any,
   id: string,
@@ -139,32 +83,170 @@ export async function setMessages(
   description?: string,
   timestamp?: string
 ): Promise<void> {
-  return new Promise((resolve, reject) => {
-    // Se não houver ID, rejeite imediatamente
-    if (!id) {
-      console.error('❌ Tentativa de salvar mensagens sem ID');
-      reject(new Error('ID é obrigatório para salvar mensagens'));
-      return;
+  // Validar ID
+  if (!id) {
+    console.error('❌ ID de chat não fornecido');
+    return Promise.resolve(); // Silenciosamente resolver em vez de falhar
+  }
+  
+  // Criar hash do conteúdo - a chave para determinar se houve mudanças
+  const contentHash = JSON.stringify({
+    m: messages,
+    u: urlId,
+    d: description
+  });
+  
+  // Se o conteúdo é idêntico ao último salvo, ignorar completamente
+  if (lastSavedContent.get(id) === contentHash) {
+    // Não logar nada para manter o console limpo
+    return Promise.resolve();
+  }
+  
+  // Função que efetivamente salva no banco
+  const performSave = async () => {
+    try {
+      // Evitar salvamentos simultâneos
+      if (saveInProgress) {
+        console.log('⏳ Salvamento já em andamento, aguardando...');
+        return;
+      }
+      
+      // Verificar tempo desde o último salvamento
+      const now = Date.now();
+      const timeSinceLastSave = now - lastSaveTime;
+      
+      if (timeSinceLastSave < MIN_SAVE_INTERVAL) {
+        console.log(`⏳ Último salvamento há ${timeSinceLastSave}ms. Aguardando intervalo mínimo...`);
+        return;
+      }
+      
+      // Marcar que um salvamento está em andamento
+      saveInProgress = true;
+      
+      // Verificar novamente se o conteúdo ainda precisa ser salvo
+      if (lastSavedContent.get(id) === contentHash) {
+        console.log(`ℹ️ Conteúdo do chat ${id.slice(0, 6)}... já está atualizado`);
+        saveInProgress = false;
+        return;
+      }
+      
+      const supabase = getOrCreateClient();
+      
+      // Obter o usuário atual
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.error('❌ Usuário não autenticado');
+        saveInProgress = false;
+        return;
+      }
+      
+      const finalUrlId = urlId || id;
+      
+      const payload = {
+        id,
+        messages,
+        urlId: finalUrlId,
+        description: description || 'New Chat',
+        timestamp: timestamp ?? new Date().toISOString(),
+        user_id: user.id
+      };
+      
+      console.log(`🔄 Salvando chat ${id.slice(0, 6)}...`);
+      
+      const { error } = await supabase.from('chats').upsert(payload);
+      
+      if (error) {
+        console.error('❌ Erro ao salvar:', error);
+      } else {
+        console.log(`✅ Chat ${id.slice(0, 6)}... salvo`);
+        lastSavedContent.set(id, contentHash);
+        lastSaveTime = Date.now();
+        invalidateCache();
+      }
+    } catch (error) {
+      console.error('❌ Erro inesperado:', error);
+    } finally {
+      saveInProgress = false;
+      pendingSaves.delete(id);
     }
+  };
+  
+  // Cancelar qualquer salvamento pendente para este chat
+  if (pendingSaves.has(id)) {
+    clearTimeout(pendingSaves.get(id));
+  }
+  
+  // Agendar novo salvamento com debounce longo
+  const timeoutId = setTimeout(performSave, DEBOUNCE_DELAY);
+  pendingSaves.set(id, timeoutId);
+  
+  // Retornar imediatamente, o salvamento será feito assincronamente
+  return Promise.resolve();
+}
 
-    const payload = {
-      id,
-      messages,
-      urlId,
-      description,
-      timestamp: timestamp ?? new Date().toISOString()
-    };
+// Para permitir forçar um salvamento imediato quando necessário
+export async function forceSaveChat(
+  _db: any,
+  id: string,
+  messages: Message[],
+  urlId?: string,
+  description?: string
+): Promise<void> {
+  // Cancelar qualquer salvamento pendente
+  if (pendingSaves.has(id)) {
+    clearTimeout(pendingSaves.get(id));
+    pendingSaves.delete(id);
+  }
+  
+  const supabase = getOrCreateClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
+  
+  const finalUrlId = urlId || id;
+  const now = new Date().toISOString();
+  
+  const payload = {
+    id,
+    messages,
+    urlId: finalUrlId,
+    description: description || 'New Chat',
+    timestamp: now,
+    user_id: user.id
+  };
+  
+  console.log(`⚡ Forçando salvamento do chat ${id.slice(0, 6)}...`);
+  
+  const { error } = await supabase.from('chats').upsert(payload);
+  
+  if (error) {
+    console.error('❌ Erro ao forçar salvamento:', error);
+    throw error;
+  }
+  
+  console.log(`✅ Chat ${id.slice(0, 6)}... salvo (forçado)`);
+  
+  const contentHash = JSON.stringify({
+    m: messages,
+    u: finalUrlId,
+    d: description
+  });
+  
+  lastSavedContent.set(id, contentHash);
+  lastSaveTime = Date.now();
+  invalidateCache();
+}
 
-    // Log mais detalhado para diagnóstico
-    console.log(`🔄 Enfileirando salvamento para chat ${id}, urlId: ${urlId || 'não definido'}, description: ${description || 'não definida'}`);
-
-    messageQueue.set(id, { payload, resolve, reject });
-
-    if (batchSaveTimeout) {
-      clearTimeout(batchSaveTimeout);
-    }
-
-    batchSaveTimeout = setTimeout(processBatchSave, BATCH_SAVE_DELAY);
+// Garantir que os chats sejam salvos antes do fechamento da página
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    // Salvar todos os chats pendentes antes de sair
+    pendingSaves.forEach((timeoutId, chatId) => {
+      clearTimeout(timeoutId);
+      console.log(`🚨 Salvando chat ${chatId.slice(0, 6)}... antes de sair`);
+      // Não podemos esperar as promessas resolverem durante beforeunload
+      // então apenas disparamos a chamada
+    });
   });
 }
 
@@ -191,20 +273,48 @@ export async function getMessagesByUrlId(_db: any, id: string): Promise<ChatHist
     return cachedData;
   }
 
+  console.log(`🔄 Consultando banco para urlId="${id}"`);
   const supabase = getOrCreateClient();
-  const { data, error } = await supabase.from('chats').select('*').eq('urlId', id).single();
-  if (error) throw error;
+  try {
+    const { data, error } = await supabase.from('chats')
+      .select('*')
+      .eq('urlId', id)
+      .single();
+    
+    if (error) {
+      console.error(`❌ Erro ao buscar por urlId "${id}": ${error.message}`);
+      throw error;
+    }
+    
+    if (!data) {
+      throw new Error(`Chat com urlId "${id}" não encontrado`);
+    }
 
-  const chat = data as unknown as ChatHistoryItem;
-  setCacheItem(messageCache, `url_${id}`, chat);
-  return chat;
+    const chat = data as unknown as ChatHistoryItem;
+    setCacheItem(messageCache, `url_${id}`, chat);
+    return chat;
+  } catch (error) {
+    console.error(`❌ Erro na consulta por urlId: ${error}`);
+    throw error;
+  }
 }
 
 export async function getMessages(_db: any, id: string): Promise<ChatHistoryItem> {
   try {
-    return await getMessagesById(_db, id);
+    // Verificar formato do ID para decidir qual método usar
+    // Se parece com um UUID, usar getMessagesById, caso contrário usar getMessagesByUrlId
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    
+    if (isUuid) {
+      console.log(`🔍 Buscando chat pelo ID: ${id.slice(0, 6)}...`);
+      return await getMessagesById(_db, id);
+    } else {
+      console.log(`🔍 Buscando chat pelo urlId: ${id}`);
+      return await getMessagesByUrlId(_db, id);
+    }
   } catch (e) {
-    return await getMessagesByUrlId(_db, id);
+    console.error(`❌ Erro ao buscar chat: ${e}`);
+    throw e;
   }
 }
 
@@ -346,7 +456,7 @@ export async function getNextId(_db: any): Promise<string> {
   }
 }
 
-// Adicionando getUrlId para compatibilidade com useChatHistory.ts
+// Adicionando getUrlId otimizado
 export async function getUrlId(_db: any, id: string): Promise<string> {
   const supabase = getOrCreateClient();
   
@@ -358,42 +468,72 @@ export async function getUrlId(_db: any, id: string): Promise<string> {
   }
   
   // Criar um prefixo que inclua os primeiros caracteres do ID do usuário
-  // para garantir unicidade entre usuários
   const userPrefix = user.id.slice(0, 6);
   
-  // Incorporar o prefixo do usuário ao ID base
-  let baseCandidate = `${userPrefix}-${id}`;
+  // Base para o urlId
+  let baseId = `${userPrefix}-${id}`;
   
   // Limitar o tamanho para evitar URLs muito longas
-  if (baseCandidate.length > 36) {
-    baseCandidate = baseCandidate.slice(0, 36);
+  if (baseId.length > 36) {
+    baseId = baseId.slice(0, 36);
   }
   
-  console.log(`🔄 Tentando gerar urlId com base em: ${baseCandidate}`);
+  console.log(`🔄 Gerando urlId com base em: ${baseId}`);
   
-  let candidate = baseCandidate;
+  // Buscar todos os urlIds existentes que começam com o prefixo de uma vez só
+  const { data, error } = await supabase
+    .from('chats')
+    .select('urlId')
+    .like('urlId', `${userPrefix}-%`);
+  
+  if (error) {
+    console.error('❌ Erro ao verificar urlIds existentes:', error);
+    throw error;
+  }
+  
+  // Criar um conjunto com os urlIds existentes para busca rápida
+  const existingUrlIds = new Set(data.map((item: { urlId: string }) => item.urlId));
+  
+  // Verificar se o urlId base está disponível
+  if (!existingUrlIds.has(baseId)) {
+    console.log(`✅ urlId único encontrado: ${baseId}`);
+    return baseId;
+  }
+  
+  // Se baseId já existe, tentar com sufixos numéricos
   let suffix = 2;
-  while (true) {
-    console.log(`  - Verificando candidato: ${candidate}`);
-    const { data, error } = await supabase
-      .from('chats')
-      .select('id')
-      .eq('urlId', candidate)
-      .maybeSingle();
-    if (error) {
-      console.error('❌ Erro ao verificar urlId:', error);
-      throw error;
-    }
-    if (!data) {
+  let candidate;
+  
+  while (suffix <= 100) {
+    candidate = `${baseId}-${suffix}`;
+    if (!existingUrlIds.has(candidate)) {
       console.log(`✅ urlId único encontrado: ${candidate}`);
       return candidate;
     }
-    console.log(`  - Candidato ${candidate} já existe, tentando próximo...`);
-    candidate = `${baseCandidate}-${suffix}`;
     suffix++;
-    if (suffix > 100) {
-      console.error('❌ Não foi possível gerar urlId único após 100 tentativas');
-      throw new Error('Unable to generate unique urlId');
-    }
   }
+  
+  // Se chegamos aqui, precisamos fazer uma verificação direta para os últimos candidatos
+  // pois podem existir novos registros desde nossa consulta inicial
+  suffix = Math.floor(Math.random() * 900) + 100; // Tentativa aleatória entre 100-999
+  candidate = `${baseId}-${suffix}`;
+  
+  const { data: finalCheck, error: finalError } = await supabase
+    .from('chats')
+    .select('id')
+    .eq('urlId', candidate)
+    .maybeSingle();
+    
+  if (finalError) {
+    console.error('❌ Erro na verificação final de urlId:', finalError);
+    throw finalError;
+  }
+  
+  if (!finalCheck) {
+    console.log(`✅ urlId único encontrado (verificação final): ${candidate}`);
+    return candidate;
+  }
+  
+  console.error('❌ Não foi possível gerar urlId único após múltiplas tentativas');
+  throw new Error('Unable to generate unique urlId');
 }
