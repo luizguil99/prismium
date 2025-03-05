@@ -52,7 +52,7 @@ interface WorkspaceProps {
   metadata?: {
     gitUrl?: string;
   };
-  updateChatMestaData?: (metadata: any) => void;
+  updateChatMetadata?: (metadata: any) => void;
   onSendMessage?: (event: React.UIEvent, message: string) => void; // Callback para enviar mensagem
 }
 
@@ -276,7 +276,7 @@ export const Workbench = memo(({
   actionRunner,
   metadata,
   onSendMessage,
-  updateChatMestaData
+  updateChatMetadata
 }: WorkspaceProps) => {
   renderLogger.trace('Workbench'); // Log de renderização
 

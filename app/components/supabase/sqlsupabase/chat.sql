@@ -54,3 +54,10 @@ create trigger on_chat_updated
 
 -- Set up realtime
 alter publication supabase_realtime add table public.chats;
+ALTER TABLE public.chats ADD COLUMN metadata JSONB DEFAULT NULL;
+
+-- Adicionar índice para otimizar consultas na coluna metadata
+CREATE INDEX chats_metadata_idx ON public.chats USING GIN (metadata);
+
+-- Comentário explicativo
+COMMENT ON COLUMN public.chats.metadata IS 'Armazena metadados adicionais do chat em formato JSON';
