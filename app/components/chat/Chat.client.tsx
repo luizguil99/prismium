@@ -24,6 +24,8 @@ import { useSearchParams } from '@remix-run/react';
 import { createSampler } from '~/utils/sampler';
 import { getTemplates, selectStarterTemplate } from '~/utils/selectStarterTemplate';
 import { filesToArtifacts } from '~/utils/fileUtils';
+import { updateRevertDropdownMessages, updateRevertDropdownChatId } from '~/lib/stores/revertDropdown';
+import { chatId } from '~/lib/persistence/useChatHistory';
 
 const toastAnimation = cssTransition({
   enter: 'animated fadeInRight',
@@ -37,9 +39,23 @@ export function Chat() {
 
   const { ready, initialMessages, storeMessageHistory, importChat, exportChat } = useChatHistory();
   const title = useStore(description);
+  const chatIdValue = useStore(chatId);
+  const prevChatIdRef = useRef<string | undefined>(undefined);
+  
   useEffect(() => {
     workbenchStore.setReloadedMessages(initialMessages.map((m) => m.id));
-  }, [initialMessages]);
+    
+    // Inicializa o store global com as mensagens iniciais
+    if (initialMessages.length > 0) {
+      updateRevertDropdownMessages(initialMessages);
+    }
+    
+    // Inicializa o store global com o chatId apenas se ele mudou
+    if (chatIdValue && chatIdValue !== prevChatIdRef.current) {
+      updateRevertDropdownChatId(chatIdValue);
+      prevChatIdRef.current = chatIdValue;
+    }
+  }, [initialMessages, chatIdValue]);
 
   return (
     <>
@@ -93,6 +109,9 @@ const processSampledMessages = createSampler(
   }) => {
     const { messages, initialMessages, isLoading, parseMessages, storeMessageHistory } = options;
     parseMessages(messages, isLoading);
+
+    // Atualiza o store global com as mensagens atuais
+    updateRevertDropdownMessages(messages);
 
     if (messages.length > initialMessages.length) {
       storeMessageHistory(messages).catch((error) => toast.error(error.message));
@@ -479,6 +498,13 @@ export const ChatImpl = memo(
       setProvider(newProvider);
       Cookies.set('selectedProvider', newProvider.name, { expires: 30 });
     };
+
+    // Efeito para atualizar o store global de mensagens do RevertDropdown
+    useEffect(() => {
+      if (messages.length > 0) {
+        updateRevertDropdownMessages(messages);
+      }
+    }, [messages]);
 
     return (
       <BaseChat
