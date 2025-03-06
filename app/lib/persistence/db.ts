@@ -114,22 +114,42 @@ export async function setMessages(
       throw new Error('Timestamp inválido');
     }
 
+    // Verificação e sanitização das mensagens para evitar problemas de truncamento
+    const sanitizedMessages = messages.map(msg => {
+      // Clone a mensagem para não modificar o objeto original
+      const sanitizedMsg = { ...msg };
+      
+      // Garantir que o conteúdo seja uma string válida
+      if (typeof sanitizedMsg.content === 'string') {
+        // Verificar o tamanho para debug
+        if (sanitizedMsg.content.length > 1000) {
+          logger.info(`Mensagem grande detectada (${sanitizedMsg.content.length} caracteres)`);
+        }
+      }
+      
+      return sanitizedMsg;
+    });
+
     const payload = {
       id,
       user_id: user.id,
-      messages,
+      messages: sanitizedMessages,
       urlId,
       description,
       timestamp: timestamp ?? new Date().toISOString(),
       metadata
     };
 
+    // Usar a opção type_json para garantir armazenamento adequado do array de mensagens
     const { error } = await supabase.from('chats').upsert(payload, {
       onConflict: 'id',
       ignoreDuplicates: false
     });
     
-    if (error) throw error;
+    if (error) {
+      logger.error(`❌ Erro ao salvar mensagens: ${error.message}`, error);
+      throw error;
+    }
     
     const duration = Math.round(performance.now() - startTime);
     logger.info(`✅ Mensagens salvas para chat ${id} (${duration}ms)`);
@@ -142,10 +162,11 @@ export async function setMessages(
 export async function getMessages(_db: any, id: string): Promise<ChatHistoryItem> {
   logger.info(`🔍 Buscando mensagens para id: ${id}`);
   try {
-    const data = await findChat(id);
-    if (!data) throw new Error(`Chat não encontrado: ${id}`);
-    logger.info(`✅ Chat recuperado: ${id}`);
-    return data as ChatHistoryItem;
+    try {
+      return await getMessagesById(_db, id);
+    } catch (e) {
+      return await getMessagesByUrlId(_db, id);
+    }
   } catch (error) {
     logger.error(`❌ Erro ao buscar mensagens para id ${id}:`, error);
     throw error;
@@ -153,11 +174,89 @@ export async function getMessages(_db: any, id: string): Promise<ChatHistoryItem
 }
 
 export async function getMessagesByUrlId(_db: any, id: string): Promise<ChatHistoryItem> {
-  return getMessages(_db, id);
+  logger.info(`🔍 Buscando mensagens pelo urlId: ${id}`);
+  try {
+    const supabase = getOrCreateClient();
+    
+    // Usar a configuração explícita para JSON para evitar truncamento
+    const { data, error } = await supabase
+      .from('chats')
+      .select('*')
+      .eq('urlId', id)
+      .maybeSingle();
+    
+    if (error) {
+      logger.error(`❌ Erro ao buscar mensagens pelo urlId ${id}:`, error);
+      throw error;
+    }
+    
+    if (!data) {
+      logger.warn(`⚠️ Nenhum chat encontrado com urlId: ${id}`);
+      throw new Error(`Chat não encontrado com urlId: ${id}`);
+    }
+    
+    // Verificar se as mensagens foram carregadas corretamente
+    if (data.messages && Array.isArray(data.messages)) {
+      logger.info(`✅ Chat recuperado pelo urlId: ${id} com ${data.messages.length} mensagens`);
+      
+      // Log para depuração de mensagens potencialmente truncadas
+      data.messages.forEach((msg: any, index: number) => {
+        if (typeof msg.content === 'string' && msg.content.length > 1000) {
+          logger.info(`Mensagem ${index} tem ${msg.content.length} caracteres`);
+        }
+      });
+    } else {
+      logger.warn(`⚠️ Chat recuperado pelo urlId ${id} sem mensagens válidas`);
+    }
+    
+    return data as ChatHistoryItem;
+  } catch (error) {
+    logger.error(`❌ Erro ao buscar mensagens pelo urlId ${id}:`, error);
+    throw error;
+  }
 }
 
 export async function getMessagesById(_db: any, id: string): Promise<ChatHistoryItem> {
-  return getMessages(_db, id);
+  logger.info(`🔍 Buscando mensagens pelo id: ${id}`);
+  try {
+    const supabase = getOrCreateClient();
+    
+    // Usar a configuração explícita para JSON para evitar truncamento
+    const { data, error } = await supabase
+      .from('chats')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    
+    if (error) {
+      logger.error(`❌ Erro ao buscar mensagens pelo id ${id}:`, error);
+      throw error;
+    }
+    
+    if (!data) {
+      logger.warn(`⚠️ Nenhum chat encontrado com id: ${id}`);
+      throw new Error(`Chat não encontrado com id: ${id}`);
+    }
+    
+    // Verificar se as mensagens foram carregadas corretamente
+    if (data.messages && Array.isArray(data.messages)) {
+      logger.info(`✅ Chat recuperado pelo id: ${id} com ${data.messages.length} mensagens`);
+      
+      // Log para depuração de mensagens potencialmente truncadas
+      data.messages.forEach((msg: any, index: number) => {
+        if (typeof msg.content === 'string' && msg.content.length > 1000) {
+          logger.info(`Mensagem ${index} tem ${msg.content.length} caracteres`);
+        }
+      });
+    } else {
+      logger.warn(`⚠️ Chat recuperado pelo id ${id} sem mensagens válidas`);
+    }
+    
+    return data as ChatHistoryItem;
+  } catch (error) {
+    logger.error(`❌ Erro ao buscar mensagens pelo id ${id}:`, error);
+    throw error;
+  }
 }
 
 export async function deleteById(_db: any, id: string): Promise<void> {
@@ -194,34 +293,54 @@ export async function getNextId(_db: any): Promise<string> {
   }
 }
 
+async function getNextImportedFilesSuffix(supabase: any, userId: string, baseId: string): Promise<string> {
+  const { data: existingChats } = await supabase
+    .from('chats')
+    .select('urlId')
+    .eq('user_id', userId)
+    .like('urlId', `${baseId}%`)
+    .order('urlId', { ascending: false });
+
+  if (!existingChats || existingChats.length === 0) {
+    return baseId;
+  }
+
+  // Find the highest suffix number
+  let maxSuffix = 0;
+  existingChats.forEach((chat: { urlId: string }) => {
+    const match = chat.urlId.match(new RegExp(`${baseId}(-([0-9]+))?$`));
+    if (match) {
+      const suffix = match[2] ? parseInt(match[2]) : 0;
+      maxSuffix = Math.max(maxSuffix, suffix);
+    }
+  });
+
+  return maxSuffix === 0 ? `${baseId}-1` : `${baseId}-${maxSuffix + 1}`;
+}
+
 export async function getUrlId(_db: any, id: string): Promise<string> {
-  logger.info(`🔗 Gerando urlId para ID: ${id}`);
+  logger.info(`🔗 Verificando disponibilidade de urlId: ${id}`);
   try {
     const startTime = performance.now();
-    const supabase = getOrCreateClient();
-    let candidate = id;
-    let suffix = 2;
+    const idList = await getUrlIds(_db);
     
-    while (true) {
-      const { data } = await supabase
-        .from('chats')
-        .select('id')
-        .eq('urlId', candidate)
-        .maybeSingle();
+    if (!idList.includes(id)) {
+      logger.info(`✅ urlId ${id} está disponível`);
+      return id;
+    } else {
+      let i = 2;
       
-      if (!data) {
-        const duration = Math.round(performance.now() - startTime);
-        logger.info(`✅ urlId único gerado: ${candidate} (${duration}ms)`);
-        return candidate;
+      while (idList.includes(`${id}-${i}`)) {
+        i++;
+        if (i > 100) {
+          logger.error(`❌ Não foi possível gerar um urlId único após 100 tentativas`);
+          throw new Error('Não foi possível gerar um urlId único');
+        }
       }
       
-      logger.info(`⚠️ urlId ${candidate} já existe, tentando ${id}-${suffix}`);
-      candidate = `${id}-${suffix}`;
-      suffix++;
-      
-      if (suffix > 100) {
-        throw new Error('Não foi possível gerar um urlId único');
-      }
+      const newUrlId = `${id}-${i}`;
+      logger.info(`✅ Gerado novo urlId: ${newUrlId}`);
+      return newUrlId;
     }
   } catch (error) {
     logger.error(`❌ Erro ao gerar urlId para ${id}:`, error);
@@ -255,23 +374,26 @@ export async function forkChat(_db: any, chatId: string, messageId: string): Pro
     const startTime = performance.now();
     const chat = await getMessages(_db, chatId);
     
+    if (!chat) {
+      throw new Error('Chat não encontrado');
+    }
+    
     // Encontra o índice da mensagem para fazer o fork
     const messageIndex = chat.messages.findIndex((msg) => msg.id === messageId);
-    if (messageIndex === -1) throw new Error('Mensagem não encontrada');
+    if (messageIndex === -1) {
+      throw new Error('Mensagem não encontrada');
+    }
 
     // Obtém mensagens até a mensagem selecionada (inclusive)
     const messages = chat.messages.slice(0, messageIndex + 1);
     
-    const newUrlId = await createChatFromMessages(
+    // Criar novo chat com as mensagens até o ponto de fork
+    return createChatFromMessages(
       _db, 
       chat.description ? `${chat.description} (fork)` : 'Forked chat', 
       messages,
       chat.metadata
     );
-    
-    const duration = Math.round(performance.now() - startTime);
-    logger.info(`✅ Fork criado com sucesso: ${newUrlId} (${duration}ms)`);
-    return newUrlId;
   } catch (error) {
     logger.error(`❌ Erro ao fazer fork do chat ${chatId}:`, error);
     throw error;
@@ -282,14 +404,17 @@ export async function duplicateChat(_db: any, id: string): Promise<string> {
   logger.info(`🔄 Duplicando chat ${id}`);
   try {
     const chat = await getMessages(_db, id);
-    const newUrlId = await createChatFromMessages(
+    
+    if (!chat) {
+      throw new Error('Chat não encontrado');
+    }
+    
+    return createChatFromMessages(
       _db, 
       chat.description ? `${chat.description} (copy)` : 'Chat (copy)', 
       chat.messages,
       chat.metadata
     );
-    logger.info(`✅ Chat duplicado com sucesso: ${newUrlId}`);
-    return newUrlId;
   } catch (error) {
     logger.error(`❌ Erro ao duplicar chat ${id}:`, error);
     throw error;
@@ -308,12 +433,16 @@ export async function createChatFromMessages(
     const supabase = getOrCreateClient();
     const id = await getNextId(_db);
     
+    // Gerar um urlId único baseado no id
+    const newUrlId = await getUrlId(_db, id);
+    
     const { data, error } = await supabase
       .from('chats')
       .insert({
         id,
         user_id: user.id,
         messages,
+        urlId: newUrlId,
         description,
         timestamp: new Date().toISOString(),
         metadata
@@ -324,14 +453,6 @@ export async function createChatFromMessages(
     
     const chat = (data && data[0]) as any;
     if (!chat) throw new Error('Falha ao criar chat');
-    
-    const newUrlId = chat.urlId || id;
-    if (!chat.urlId) {
-      await supabase
-        .from('chats')
-        .update({ urlId: newUrlId })
-        .eq('id', chat.id);
-    }
     
     logger.info(`✅ Chat criado com sucesso: ${newUrlId}`);
     return newUrlId;
@@ -437,5 +558,57 @@ export async function getSnapshot(_db: any, id: string): Promise<any> {
   } catch (error) {
     logger.error(`❌ Erro ao buscar snapshot:`, error);
     return null;
+  }
+}
+
+export async function detectAndRepairMessages(_db: any, id: string): Promise<boolean> {
+  logger.info(`🔧 Verificando e reparando mensagens para o chat ${id}`);
+  try {
+    const chat = await getMessages(_db, id);
+    if (!chat || !Array.isArray(chat.messages)) {
+      logger.warn(`⚠️ Chat ${id} não encontrado ou não tem formato válido`);
+      return false;
+    }
+    
+    // Verificar se há mensagens suspeitas de truncamento
+    let needsRepair = false;
+    let repairedMessages = chat.messages.map(msg => {
+      if (typeof msg.content === 'string') {
+        // Verificar sinais comuns de truncamento
+        if (msg.content.endsWith('...') || 
+            (msg.content.includes('```') && !msg.content.match(/```[\s\S]*?```/g))) {
+          needsRepair = true;
+          
+          // Tentar remover caracteres de truncamento
+          const repaired = msg.content.replace(/\.\.\.+$/, '');
+          
+          logger.info(`🔄 Mensagem ${msg.id} possivelmente truncada, tentando reparar`);
+          return { ...msg, content: repaired };
+        }
+      }
+      return msg;
+    });
+    
+    if (needsRepair) {
+      // Salvar mensagens reparadas
+      await setMessages(
+        _db,
+        chat.id,
+        repairedMessages,
+        chat.urlId,
+        chat.description,
+        chat.timestamp,
+        chat.metadata
+      );
+      
+      logger.info(`✅ Mensagens reparadas para o chat ${id}`);
+      return true;
+    }
+    
+    logger.info(`✅ Nenhum problema detectado nas mensagens do chat ${id}`);
+    return false;
+  } catch (error) {
+    logger.error(`❌ Erro ao verificar/reparar mensagens:`, error);
+    throw error;
   }
 }

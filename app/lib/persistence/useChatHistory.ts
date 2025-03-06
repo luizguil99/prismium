@@ -17,6 +17,7 @@ import {
   saveSnapshot,
   getSnapshot
 } from './db';
+import { acquireLock, releaseLock } from './locks';
 import type { FileMap } from '~/lib/stores/files';
 import type { Snapshot } from './types';
 import { webcontainer } from '~/lib/webcontainer';
@@ -206,7 +207,15 @@ ${value.content}
             setUrlId(storedMessages.urlId);
             description.set(storedMessages.description);
             chatId.set(storedMessages.id);
-            chatMetadata.set(storedMessages.metadata);
+            
+            // Garantir que temos um objeto metadata válido
+            if (storedMessages.metadata) {
+              console.log('Metadata carregado:', storedMessages.metadata);
+              chatMetadata.set(storedMessages.metadata);
+            } else {
+              console.log('Nenhum metadata encontrado, inicializando vazio');
+              chatMetadata.set({});
+            }
           } else {
             navigate('/', { replace: true });
           }
@@ -226,25 +235,38 @@ ${value.content}
     async (chatIdx: string, files: FileMap, _chatId?: string | undefined, chatSummary?: string) => {
       const id = _chatId || chatId.get();
 
-      if (!id) {
+      if (!id || !acquireLock(`snapshot-${id}`)) {
         return;
       }
 
-      const snapshot: Snapshot = {
-        chatIndex: chatIdx,
-        files,
-        summary: chatSummary,
-      };
-      
-      if (db) {
-        try {
+      try {
+        const snapshot: Snapshot = {
+          chatIndex: chatIdx,
+          files,
+          summary: chatSummary,
+        };
+        
+        if (db) {
           await saveSnapshot(db, id, snapshot);
-        } catch (error) {
-          console.error('Falha ao salvar snapshot no Supabase:', error);
+          
+          const currentMetadata = chatMetadata.get() || {};
+          chatMetadata.set({
+            ...currentMetadata,
+            snapshot
+          });
+        } else {
           localStorage.setItem(`snapshot:${id}`, JSON.stringify(snapshot));
         }
-      } else {
+      } catch (error) {
+        console.error('Falha ao salvar snapshot:', error);
+        const snapshot: Snapshot = {
+          chatIndex: chatIdx,
+          files,
+          summary: chatSummary,
+        };
         localStorage.setItem(`snapshot:${id}`, JSON.stringify(snapshot));
+      } finally {
+        releaseLock(`snapshot-${id}`);
       }
     },
     [chatId, db],
@@ -302,7 +324,7 @@ ${value.content}
   return {
     ready: !mixedId || ready,
     initialMessages,
-    updateChatMestaData: async (metadata: IChatMetadata) => {
+    updateChatMetadata: async (metadata: IChatMetadata) => {
       const id = chatId.get();
 
       if (!db || !id) {
@@ -310,11 +332,12 @@ ${value.content}
       }
 
       try {
+        console.log('Atualizando metadata do chat:', metadata);
         await setMessages(db, id, initialMessages, urlId, description.get(), undefined, metadata);
         chatMetadata.set(metadata);
       } catch (error) {
-        toast.error('Failed to update chat metadata');
-        console.error(error);
+        console.error('Erro ao atualizar metadata do chat:', error);
+        toast.error('Falha ao atualizar metadata do chat');
       }
     },
     storeMessageHistory: async (messages: Message[]) => {
@@ -323,57 +346,62 @@ ${value.content}
       }
 
       const { firstArtifact } = workbenchStore;
-      messages = messages.filter((m) => !m.annotations?.includes('no-store'));
-
-      let _urlId = urlId;
+      
+      // Log para debug do tamanho das mensagens
+      const totalContentSize = messages.reduce((sum, msg) => {
+        return sum + (typeof msg.content === 'string' ? msg.content.length : 0);
+      }, 0);
+      console.log(`Salvando mensagens: ${messages.length} mensagens, tamanho total: ${totalContentSize} caracteres`);
 
       if (!urlId && firstArtifact?.id) {
-        const urlId = await getUrlId(db, firstArtifact.id);
-        _urlId = urlId;
-        navigateChat(urlId);
-        setUrlId(urlId);
-      }
-
-      let chatSummary: string | undefined = undefined;
-      const lastMessage = messages[messages.length - 1];
-
-      if (lastMessage.role === 'assistant') {
-        const annotations = lastMessage.annotations as JSONValue[];
-        const filteredAnnotations = (annotations?.filter(
-          (annotation: JSONValue) =>
-            annotation && typeof annotation === 'object' && Object.keys(annotation).includes('type'),
-        ) || []) as { type: string; value: any } & { [key: string]: any }[];
-
-        if (filteredAnnotations.find((annotation) => annotation.type === 'chatSummary')) {
-          chatSummary = filteredAnnotations.find((annotation) => annotation.type === 'chatSummary')?.summary;
+        try {
+          const newUrlId = await getUrlId(db, firstArtifact.id);
+          navigateChat(newUrlId);
+          setUrlId(newUrlId);
+        } catch (error) {
+          console.error('Erro ao gerar urlId:', error);
+          logStore.logError('Erro ao gerar urlId', error);
         }
       }
-
-      takeSnapshot(messages[messages.length - 1].id, workbenchStore.files.get(), _urlId, chatSummary);
 
       if (!description.get() && firstArtifact?.title) {
         description.set(firstArtifact?.title);
       }
 
       if (initialMessages.length === 0 && !chatId.get()) {
-        const nextId = await getNextId(db);
+        try {
+          const nextId = await getNextId(db);
+          chatId.set(nextId);
 
-        chatId.set(nextId);
-
-        if (!urlId) {
-          navigateChat(nextId);
+          if (!urlId) {
+            navigateChat(nextId);
+          }
+        } catch (error) {
+          console.error('Erro ao gerar id:', error);
+          logStore.logError('Erro ao gerar id', error);
         }
       }
 
-      await setMessages(
-        db,
-        chatId.get() as string,
-        [...archivedMessages, ...messages],
-        urlId,
-        description.get(),
-        undefined,
-        chatMetadata.get(),
-      );
+      try {
+        const currentChatId = chatId.get() as string;
+        const currentMetadata = chatMetadata.get();
+        
+        await setMessages(
+          db, 
+          currentChatId, 
+          messages, 
+          urlId, 
+          description.get(), 
+          undefined, // timestamp
+          currentMetadata
+        );
+        
+        console.log(`Mensagens salvas com sucesso para chat ${currentChatId}`);
+      } catch (error) {
+        console.error('Erro ao salvar mensagens:', error);
+        logStore.logError('Erro ao salvar mensagens', error);
+        toast.error('Falha ao salvar o histórico de chat');
+      }
     },
     duplicateCurrentChat: async (listItemId: string) => {
       if (!db || (!mixedId && !listItemId)) {
