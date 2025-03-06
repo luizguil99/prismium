@@ -1,6 +1,7 @@
 import React from 'react';
-import { GitPullRequest, GitBranch, GitMerge, Menu } from 'lucide-react';
+import { GitPullRequest, GitMerge, Menu } from 'lucide-react';
 import { classNames } from '~/utils/classNames';
+import { RevertDropdown } from './revertdropdown';
 
 interface NewHeaderProps {
   className?: string;
@@ -24,10 +25,7 @@ export function NewHeader({ className }: NewHeaderProps) {
           <div className="w-2 h-2 rounded-full bg-green-500"></div>
           <span>CI Passing</span>
         </div>
-        <button className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-zinc-300 bg-zinc-800/50 hover:bg-zinc-800 rounded-md transition-colors">
-          <GitBranch size={14} />
-          <span>main</span>
-        </button>
+        <RevertDropdown />
         <button className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 rounded-md transition-colors">
           <GitMerge size={14} />
           <span>Merge PR</span>

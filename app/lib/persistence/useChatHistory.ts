@@ -13,13 +13,9 @@ import {
   setMessages,
   duplicateChat,
   createChatFromMessages,
-  type IChatMetadata,
-  saveSnapshot,
-  getSnapshot
+  type IChatMetadata
 } from './db';
-import { acquireLock, releaseLock } from './locks';
 import type { FileMap } from '~/lib/stores/files';
-import type { Snapshot } from './types';
 import { webcontainer } from '~/lib/webcontainer';
 import { createCommandsMessage, detectProjectCommands } from '~/utils/projectCommands';
 import type { ContextAnnotation } from '~/types/context';
@@ -40,6 +36,7 @@ export const db = persistenceEnabled ? await openDatabase() : undefined;
 export const chatId = atom<string | undefined>(undefined);
 export const description = atom<string | undefined>(undefined);
 export const chatMetadata = atom<IChatMetadata | undefined>(undefined);
+
 export function useChatHistory() {
   const navigate = useNavigate();
   const { id: mixedId } = useLoaderData<{ id?: string }>();
@@ -67,143 +64,12 @@ export function useChatHistory() {
       getMessages(db, mixedId)
         .then(async (storedMessages) => {
           if (storedMessages && storedMessages.messages.length > 0) {
-            let snapshot: Snapshot = { chatIndex: "0", files: {} };
-            try {
-              const retrievedSnapshot = await getSnapshot(db, mixedId);
-              if (retrievedSnapshot) {
-                snapshot = retrievedSnapshot;
-              } else {
-                const snapshotStr = localStorage.getItem(`snapshot:${mixedId}`);
-                if (snapshotStr) {
-                  snapshot = JSON.parse(snapshotStr);
-                }
-              }
-            } catch (error) {
-              console.error('Erro ao recuperar snapshot:', error);
-              const snapshotStr = localStorage.getItem(`snapshot:${mixedId}`);
-              if (snapshotStr) {
-                snapshot = JSON.parse(snapshotStr);
-              }
-            }
-            
-            const summary = snapshot.summary;
-
             const rewindId = searchParams.get('rewindTo');
-            let startingIdx = 0;
-            const endingIdx = rewindId
-              ? storedMessages.messages.findIndex((m) => m.id === rewindId) + 1
-              : storedMessages.messages.length;
-            const snapshotIndex = storedMessages.messages.findIndex((m) => m.id === snapshot.chatIndex);
-
-            if (snapshotIndex >= 0 && snapshotIndex < endingIdx) {
-              startingIdx = snapshotIndex;
-            }
-
-            if (snapshotIndex > 0 && storedMessages.messages[snapshotIndex].id == rewindId) {
-              startingIdx = 0;
-            }
-
-            let filteredMessages = storedMessages.messages.slice(startingIdx + 1, endingIdx);
-            let archivedMessages: Message[] = [];
-
-            if (startingIdx > 0) {
-              archivedMessages = storedMessages.messages.slice(0, startingIdx + 1);
-            }
-
-            setArchivedMessages(archivedMessages);
-
-            if (startingIdx > 0) {
-              const files = Object.entries(snapshot?.files || {})
-                .map(([key, value]) => {
-                  if (value?.type !== 'file') {
-                    return null;
-                  }
-
-                  return {
-                    content: value.content,
-                    path: key,
-                  };
-                })
-                .filter((x) => !!x);
-              const projectCommands = await detectProjectCommands(files);
-              const commands = createCommandsMessage(projectCommands);
-
-              filteredMessages = [
-                {
-                  id: generateId(),
-                  role: 'user',
-                  content: `Restore project from snapshot
-                  `,
-                  annotations: ['no-store', 'hidden'],
-                },
-                {
-                  id: storedMessages.messages[snapshotIndex].id,
-                  role: 'assistant',
-                  content: ` 📦 Chat Restored from snapshot, You can revert this message to load the full chat history
-                  <boltArtifact id="imported-files" title="Project Files Snapshot" type="bundled">
-                  ${Object.entries(snapshot?.files || {})
-                    .filter((x) => !x[0].endsWith('lock.json'))
-                    .map(([key, value]) => {
-                      if (value?.type === 'file') {
-                        return `
-                      <boltAction type="file" filePath="${key}">
-${value.content}
-                      </boltAction>
-                      `;
-                      } else {
-                        return ``;
-                      }
-                    })
-                    .join('\n')}
-                  </boltArtifact>
-                  `,
-                  annotations: [
-                    'no-store',
-                    ...(summary
-                      ? [
-                          {
-                            chatId: storedMessages.messages[snapshotIndex].id,
-                            type: 'chatSummary',
-                            summary,
-                          } satisfies ContextAnnotation,
-                        ]
-                      : []),
-                  ],
-                },
-                ...(commands !== null
-                  ? [
-                      {
-                        id: `${storedMessages.messages[snapshotIndex].id}-2`,
-                        role: 'user' as const,
-                        content: `setup project`,
-                        annotations: ['no-store', 'hidden'],
-                      },
-                      {
-                        ...commands,
-                        id: `${storedMessages.messages[snapshotIndex].id}-3`,
-                        annotations: [
-                          'no-store',
-                          ...(commands.annotations || []),
-                          ...(summary
-                            ? [
-                                {
-                                  chatId: `${storedMessages.messages[snapshotIndex].id}-3`,
-                                  type: 'chatSummary',
-                                  summary,
-                                } satisfies ContextAnnotation,
-                              ]
-                            : []),
-                        ],
-                      },
-                    ]
-                  : []),
-                ...filteredMessages,
-              ];
-              restoreSnapshot(mixedId);
-            }
+            const filteredMessages = rewindId
+              ? storedMessages.messages.slice(0, storedMessages.messages.findIndex((m) => m.id === rewindId) + 1)
+              : storedMessages.messages;
 
             setInitialMessages(filteredMessages);
-
             setUrlId(storedMessages.urlId);
             description.set(storedMessages.description);
             chatId.set(storedMessages.id);
@@ -231,102 +97,11 @@ ${value.content}
     }
   }, [mixedId]);
 
-  const takeSnapshot = useCallback(
-    async (chatIdx: string, files: FileMap, _chatId?: string | undefined, chatSummary?: string) => {
-      const id = _chatId || chatId.get();
-
-      if (!id || !acquireLock(`snapshot-${id}`)) {
-        return;
-      }
-
-      try {
-        const snapshot: Snapshot = {
-          chatIndex: chatIdx,
-          files,
-          summary: chatSummary,
-        };
-        
-        if (db) {
-          await saveSnapshot(db, id, snapshot);
-          
-          const currentMetadata = chatMetadata.get() || {};
-          chatMetadata.set({
-            ...currentMetadata,
-            snapshot
-          });
-        } else {
-          localStorage.setItem(`snapshot:${id}`, JSON.stringify(snapshot));
-        }
-      } catch (error) {
-        console.error('Falha ao salvar snapshot:', error);
-        const snapshot: Snapshot = {
-          chatIndex: chatIdx,
-          files,
-          summary: chatSummary,
-        };
-        localStorage.setItem(`snapshot:${id}`, JSON.stringify(snapshot));
-      } finally {
-        releaseLock(`snapshot-${id}`);
-      }
-    },
-    [chatId, db],
-  );
-
-  const restoreSnapshot = useCallback(async (id: string) => {
-    let snapshot: Snapshot = { chatIndex: "0", files: {} };
-    
-    if (db) {
-      try {
-        const supabaseSnapshot = await getSnapshot(db, id);
-        if (supabaseSnapshot) {
-          snapshot = supabaseSnapshot;
-        }
-      } catch (error) {
-        console.error('Falha ao obter snapshot do Supabase:', error);
-        const snapshotStr = localStorage.getItem(`snapshot:${id}`);
-        if (snapshotStr) {
-          snapshot = JSON.parse(snapshotStr);
-        }
-      }
-    } else {
-      const snapshotStr = localStorage.getItem(`snapshot:${id}`);
-      if (snapshotStr) {
-        snapshot = JSON.parse(snapshotStr);
-      }
-    }
-    
-    const container = await webcontainer;
-
-    if (!snapshot?.files) {
-      return;
-    }
-
-    Object.entries(snapshot.files).forEach(async ([key, value]) => {
-      if (key.startsWith(container.workdir)) {
-        key = key.replace(container.workdir, '');
-      }
-
-      if (value?.type === 'folder') {
-        await container.fs.mkdir(key, { recursive: true });
-      }
-    });
-    Object.entries(snapshot.files).forEach(async ([key, value]) => {
-      if (value?.type === 'file') {
-        if (key.startsWith(container.workdir)) {
-          key = key.replace(container.workdir, '');
-        }
-
-        await container.fs.writeFile(key, value.content, { encoding: value.isBinary ? undefined : 'utf8' });
-      }
-    });
-  }, [db]);
-
   return {
     ready: !mixedId || ready,
     initialMessages,
-    updateChatMetadata: async (metadata: IChatMetadata) => {
-      const id = chatId.get();
-
+    archivedMessages,
+    updateChatMetadata: async (metadata: IChatMetadata, id = chatId.get()) => {
       if (!db || !id) {
         return;
       }
@@ -417,13 +192,13 @@ ${value.content}
         console.log(error);
       }
     },
-    importChat: async (description: string, messages: Message[], metadata?: IChatMetadata) => {
+    importChat: async (description: string, messages: Message[]) => {
       if (!db) {
         return;
       }
 
       try {
-        const newId = await createChatFromMessages(db, description, messages, metadata);
+        const newId = await createChatFromMessages(db, description, messages);
         window.location.href = `/chat/${newId}`;
         toast.success('Chat imported successfully');
       } catch (error) {
@@ -460,9 +235,14 @@ ${value.content}
 }
 
 function navigateChat(nextId: string) {
+  /**
+   * FIXME: Using the intended navigate function causes a rerender for <Chat /> that breaks the app.
+   *
+   * `navigate(`/chat/${nextId}`, { replace: true });`
+   */
   const url = new URL(window.location.href);
   url.pathname = `/chat/${nextId}`;
-  
+
   window.history.replaceState({}, '', url);
 }
 
