@@ -1,7 +1,7 @@
 import { useLoaderData, useNavigate, useSearchParams } from '@remix-run/react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { atom } from 'nanostores';
-import { generateId, type JSONValue, type Message } from 'ai';
+import type { Message } from 'ai';
 import { toast } from 'react-toastify';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { logStore } from '~/lib/stores/logs'; // Import logStore
@@ -13,12 +13,7 @@ import {
   setMessages,
   duplicateChat,
   createChatFromMessages,
-  type IChatMetadata
 } from './db';
-import type { FileMap } from '~/lib/stores/files';
-import { webcontainer } from '~/lib/webcontainer';
-import { createCommandsMessage, detectProjectCommands } from '~/utils/projectCommands';
-import type { ContextAnnotation } from '~/types/context';
 
 export interface ChatHistoryItem {
   id: string;
@@ -26,7 +21,6 @@ export interface ChatHistoryItem {
   description?: string;
   messages: Message[];
   timestamp: string;
-  metadata?: IChatMetadata;
 }
 
 const persistenceEnabled = !import.meta.env.VITE_DISABLE_PERSISTENCE;
@@ -35,14 +29,12 @@ export const db = persistenceEnabled ? await openDatabase() : undefined;
 
 export const chatId = atom<string | undefined>(undefined);
 export const description = atom<string | undefined>(undefined);
-export const chatMetadata = atom<IChatMetadata | undefined>(undefined);
 
 export function useChatHistory() {
   const navigate = useNavigate();
   const { id: mixedId } = useLoaderData<{ id?: string }>();
   const [searchParams] = useSearchParams();
 
-  const [archivedMessages, setArchivedMessages] = useState<Message[]>([]);
   const [initialMessages, setInitialMessages] = useState<Message[]>([]);
   const [ready, setReady] = useState<boolean>(false);
   const [urlId, setUrlId] = useState<string | undefined>();
@@ -62,7 +54,7 @@ export function useChatHistory() {
 
     if (mixedId) {
       getMessages(db, mixedId)
-        .then(async (storedMessages) => {
+        .then((storedMessages) => {
           if (storedMessages && storedMessages.messages.length > 0) {
             const rewindId = searchParams.get('rewindTo');
             const filteredMessages = rewindId
@@ -73,15 +65,6 @@ export function useChatHistory() {
             setUrlId(storedMessages.urlId);
             description.set(storedMessages.description);
             chatId.set(storedMessages.id);
-            
-            // Garantir que temos um objeto metadata válido
-            if (storedMessages.metadata) {
-              console.log('Metadata carregado:', storedMessages.metadata);
-              chatMetadata.set(storedMessages.metadata);
-            } else {
-              console.log('Nenhum metadata encontrado, inicializando vazio');
-              chatMetadata.set({});
-            }
           } else {
             navigate('/', { replace: true });
           }
@@ -89,54 +72,27 @@ export function useChatHistory() {
           setReady(true);
         })
         .catch((error) => {
-          console.error(error);
-
           logStore.logError('Failed to load chat messages', error);
           toast.error(error.message);
         });
     }
-  }, [mixedId]);
+  }, []);
 
   return {
     ready: !mixedId || ready,
     initialMessages,
-    archivedMessages,
-    updateChatMetadata: async (metadata: IChatMetadata, id = chatId.get()) => {
-      if (!db || !id) {
-        return;
-      }
-
-      try {
-        console.log('Atualizando metadata do chat:', metadata);
-        await setMessages(db, id, initialMessages, urlId, description.get(), undefined, metadata);
-        chatMetadata.set(metadata);
-      } catch (error) {
-        console.error('Erro ao atualizar metadata do chat:', error);
-        toast.error('Falha ao atualizar metadata do chat');
-      }
-    },
     storeMessageHistory: async (messages: Message[]) => {
       if (!db || messages.length === 0) {
         return;
       }
 
       const { firstArtifact } = workbenchStore;
-      
-      // Log para debug do tamanho das mensagens
-      const totalContentSize = messages.reduce((sum, msg) => {
-        return sum + (typeof msg.content === 'string' ? msg.content.length : 0);
-      }, 0);
-      console.log(`Salvando mensagens: ${messages.length} mensagens, tamanho total: ${totalContentSize} caracteres`);
 
       if (!urlId && firstArtifact?.id) {
-        try {
-          const newUrlId = await getUrlId(db, firstArtifact.id);
-          navigateChat(newUrlId);
-          setUrlId(newUrlId);
-        } catch (error) {
-          console.error('Erro ao gerar urlId:', error);
-          logStore.logError('Erro ao gerar urlId', error);
-        }
+        const urlId = await getUrlId(db, firstArtifact.id);
+
+        navigateChat(urlId);
+        setUrlId(urlId);
       }
 
       if (!description.get() && firstArtifact?.title) {
@@ -144,39 +100,16 @@ export function useChatHistory() {
       }
 
       if (initialMessages.length === 0 && !chatId.get()) {
-        try {
-          const nextId = await getNextId(db);
-          chatId.set(nextId);
+        const nextId = await getNextId(db);
 
-          if (!urlId) {
-            navigateChat(nextId);
-          }
-        } catch (error) {
-          console.error('Erro ao gerar id:', error);
-          logStore.logError('Erro ao gerar id', error);
+        chatId.set(nextId);
+
+        if (!urlId) {
+          navigateChat(nextId);
         }
       }
 
-      try {
-        const currentChatId = chatId.get() as string;
-        const currentMetadata = chatMetadata.get();
-        
-        await setMessages(
-          db, 
-          currentChatId, 
-          messages, 
-          urlId, 
-          description.get(), 
-          undefined, // timestamp
-          currentMetadata
-        );
-        
-        console.log(`Mensagens salvas com sucesso para chat ${currentChatId}`);
-      } catch (error) {
-        console.error('Erro ao salvar mensagens:', error);
-        logStore.logError('Erro ao salvar mensagens', error);
-        toast.error('Falha ao salvar o histórico de chat');
-      }
+      await setMessages(db, chatId.get() as string, messages, urlId, description.get());
     },
     duplicateCurrentChat: async (listItemId: string) => {
       if (!db || (!mixedId && !listItemId)) {
@@ -245,6 +178,3 @@ function navigateChat(nextId: string) {
 
   window.history.replaceState({}, '', url);
 }
-
-
-

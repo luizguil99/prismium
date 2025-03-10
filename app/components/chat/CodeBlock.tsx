@@ -7,6 +7,9 @@ import styles from './CodeBlock.module.scss';
 
 const logger = createScopedLogger('CodeBlock');
 
+// Lista de linguagens especiais que não devem ser exibidas como cards vazios
+const SPECIAL_LANGUAGES = ['prompt', 'promptfiles', 'tools'];
+
 interface CodeBlockProps {
   className?: string;
   code: string;
@@ -19,6 +22,15 @@ export const CodeBlock = memo(
   ({ className, code, language = 'plaintext', theme = 'dark-plus', disableCopy = false }: CodeBlockProps) => {
     const [html, setHTML] = useState<string | undefined>(undefined);
     const [copied, setCopied] = useState(false);
+
+    // Verifica se o card deve ser renderizado
+    const shouldRender = () => {
+      // Não renderiza se for uma linguagem especial
+      if (SPECIAL_LANGUAGES.includes(language as string)) {
+        return false;
+      }
+      return true;
+    };
 
     const copyToClipboard = () => {
       if (copied) {
@@ -47,6 +59,11 @@ export const CodeBlock = memo(
 
       processCode();
     }, [code]);
+
+    // Não renderiza nada se não deve ser renderizado
+    if (!shouldRender()) {
+      return null;
+    }
 
     return (
       <div className={classNames('relative group text-left rounded-lg overflow-hidden border border-bolt-elements-borderColor', className)}>
@@ -86,7 +103,12 @@ export const CodeBlock = memo(
             )}
           </div>
         </div>
-        <div className="p-4 overflow-x-auto">
+        <div className="p-4 overflow-x-auto relative">
+          {language !== 'plaintext' && (
+            <div className="absolute top-2 right-2 bg-bolt-elements-bg-depth-2 px-2 py-1 rounded text-xs text-bolt-elements-textSecondary z-10">
+              {language}
+            </div>
+          )}
           <div dangerouslySetInnerHTML={{ __html: html ?? '' }}></div>
         </div>
       </div>
