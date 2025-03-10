@@ -62,11 +62,15 @@ export async function setMessages(
       throw new Error('Invalid timestamp');
     }
     
+    // Verifica se o id é um UUID válido
+    const uuidId = isValidUuid(id) ? id : await getNextId(_db);
+    const effectiveUrlId = isValidUuid(id) ? urlId : id;
+    
     const payload = {
-      id,
+      id: uuidId,
       user_id: user.id,
       messages,
-      urlId,
+      urlId: effectiveUrlId,
       description,
       timestamp: timestamp ?? new Date().toISOString(),
     };
@@ -81,7 +85,18 @@ export async function setMessages(
 
 export async function getMessages(_db: any, id: string): Promise<ChatHistoryItem> {
   try {
-    return await getMessagesById(_db, id) || await getMessagesByUrlId(_db, id);
+    // Primeiro tenta buscar pelo urlId (que pode ser qualquer string)
+    try {
+      return await getMessagesByUrlId(_db, id);
+    } catch (error) {
+      // Se não encontrar pelo urlId, tenta pelo id (se for um UUID válido)
+      if (isValidUuid(id)) {
+        return await getMessagesById(_db, id);
+      }
+      
+      // Se não for UUID, propaga o erro original
+      throw error;
+    }
   } catch (error) {
     logger.error('Erro ao buscar mensagens:', error);
     throw error;
@@ -110,6 +125,11 @@ export async function getMessagesById(_db: any, id: string): Promise<ChatHistory
   const supabase = getOrCreateClient();
   
   try {
+    // Verifica se o ID parece ser um UUID válido
+    if (!isValidUuid(id)) {
+      throw new Error(`invalid input syntax for type uuid: "${id}"`);
+    }
+    
     const { data, error } = await supabase
       .from('chats')
       .select('*')
@@ -128,12 +148,23 @@ export async function deleteById(_db: any, id: string): Promise<void> {
   const supabase = getOrCreateClient();
   
   try {
-    const { error } = await supabase
-      .from('chats')
-      .delete()
-      .eq('id', id);
-      
-    if (error) throw error;
+    // Se for um UUID válido, deleta pelo ID
+    if (isValidUuid(id)) {
+      const { error } = await supabase
+        .from('chats')
+        .delete()
+        .eq('id', id);
+        
+      if (error) throw error;
+    } else {
+      // Se não for UUID, tenta deletar pelo urlId
+      const { error } = await supabase
+        .from('chats')
+        .delete()
+        .eq('urlId', id);
+        
+      if (error) throw error;
+    }
   } catch (error) {
     logger.error('Erro ao excluir chat:', error);
     throw error;
@@ -141,10 +172,67 @@ export async function deleteById(_db: any, id: string): Promise<void> {
 }
 
 export async function getNextId(_db: any): Promise<string> {
+  // Sempre usar crypto.randomUUID para garantir compatibilidade com o Supabase
   if (crypto && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   } else {
-    return 'id-' + new Date().getTime() + '-' + Math.floor(Math.random() * 10000);
+    // Fallback para navegadores que não suportam crypto.randomUUID
+    // Gera um UUID v4 manualmente
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0, 
+          v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
+}
+
+/**
+ * Verifica se uma string é um UUID válido
+ */
+export function isValidUuid(id: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+}
+
+/**
+ * Função para migrar chats com IDs antigos (não-UUID) para o novo formato
+ * Se o ID original não for UUID, cria um novo com UUID e preserva o ID original como urlId
+ */
+export async function migrateChat(_db: any, id: string): Promise<string> {
+  try {
+    // Verifica se o ID é UUID
+    if (isValidUuid(id)) {
+      return id; // Se já for UUID, não precisa migrar
+    }
+    
+    // Tenta obter o chat pelo ID como urlId
+    const chat = await getMessagesByUrlId(_db, id);
+    
+    if (!chat) {
+      throw new Error(`Chat com ID ${id} não encontrado`);
+    }
+    
+    // Gera um novo UUID para o chat
+    const newId = await getNextId(_db);
+    
+    // Usa o ID antigo como urlId
+    const { error } = await getOrCreateClient()
+      .from('chats')
+      .insert({
+        id: newId,
+        urlId: id,
+        messages: chat.messages,
+        description: chat.description,
+        timestamp: chat.timestamp,
+        user_id: (await getOrCreateClient().auth.getUser()).data.user?.id
+      });
+      
+    if (error) throw error;
+    
+    logger.info(`Chat migrado com sucesso: ID antigo '${id}' → UUID '${newId}'`);
+    return newId;
+  } catch (error) {
+    logger.error(`Erro ao migrar chat ${id}:`, error);
+    throw error;
   }
 }
 
@@ -230,6 +318,7 @@ export async function forkChat(_db: any, chatId: string, messageId: string): Pro
 
 export async function duplicateChat(_db: any, id: string): Promise<string> {
   try {
+    // Busca o chat (getMessages já tenta pelos dois campos)
     const chat = await getMessages(_db, id);
 
     if (!chat) {
@@ -262,7 +351,12 @@ export async function createChatFromMessages(
     }
     
     const newId = await getNextId(_db);
-    const newUrlId = await getUrlId(_db, newId);
+    let newUrlId = await getUrlId(_db, description.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 30));
+    
+    if (!newUrlId) {
+      // Fallback para um ID amigável baseado na data
+      newUrlId = `chat-${new Date().toISOString().slice(0, 10)}`;
+    }
     
     const { data, error } = await supabase
       .from('chats')
