@@ -5,6 +5,11 @@ import { getOrCreateClient } from '~/components/supabase/client';
 
 const logger = createScopedLogger('ChatHistory');
 
+// Cache system for chat list
+let chatsCache: ChatHistoryItem[] | null = null;
+let chatsCacheTimestamp: number = 0;
+const CHATS_CACHE_TTL = 600000; // 10 minutes cache TTL (Time To Live)
+
 // Update accumulation system
 // For each chat, we keep only the latest pending save operation
 const pendingSaves = new Map<string, {
@@ -54,6 +59,13 @@ async function getAuthenticatedUser() {
   }
   
   return user;
+}
+
+// Clears the chats cache when needed
+export function invalidateChatsCache(): void {
+  logger.info('🔄 Invalidating chats cache');
+  chatsCache = null;
+  chatsCacheTimestamp = 0;
 }
 
 // Fetches a chat by ID or urlId
@@ -149,6 +161,14 @@ export async function openDatabase(): Promise<any> {
 
 export async function getAll(_db: any): Promise<ChatHistoryItem[]> {
   logger.info('📋 Fetching all chats');
+  
+  // Check if cache is valid
+  const now = Date.now();
+  if (chatsCache && now - chatsCacheTimestamp < CHATS_CACHE_TTL) {
+    logger.info(`✅ Returning ${chatsCache.length} chats from cache (age: ${Math.round((now - chatsCacheTimestamp) / 1000)}s)`);
+    return chatsCache;
+  }
+  
   try {
     const startTime = performance.now();
     const user = await getAuthenticatedUser();
@@ -167,7 +187,12 @@ export async function getAll(_db: any): Promise<ChatHistoryItem[]> {
     
     const duration = Math.round(performance.now() - startTime);
     logger.info(`✅ Chats retrieved (${data?.length || 0} items, ${duration}ms)`);
-    return (data || []) as unknown as ChatHistoryItem[];
+    
+    // Update cache
+    chatsCache = (data || []) as unknown as ChatHistoryItem[];
+    chatsCacheTimestamp = now;
+    
+    return chatsCache;
   } catch (error) {
     logger.error('❌ Error fetching all chats:', error);
     throw error;
@@ -231,6 +256,8 @@ export async function setMessages(
         .then(() => {
           // Technical log without success message for UI
           pendingOp.resolveSave();
+          // Invalidate cache after saving messages
+          invalidateChatsCache();
         })
         .catch((error) => {
           logger.error(`❌ Error saving messages for chat ${id}:`, error);
@@ -289,6 +316,8 @@ export async function setMessages(
       .then(() => {
         // Technical log without success message for UI
         currentOp.resolveSave();
+        // Invalidate cache after saving messages
+        invalidateChatsCache();
       })
       .catch((error) => {
         logger.error(`❌ Error saving messages for chat ${id}:`, error);
@@ -450,6 +479,9 @@ export async function deleteById(_db: any, id: string): Promise<void> {
     
     const duration = Math.round(performance.now() - startTime);
     logger.info(`✅ Chat ${id} successfully deleted (${duration}ms)`);
+    
+    // Invalidate cache after deleting a chat
+    invalidateChatsCache();
   } catch (error) {
     logger.error(`❌ Error deleting chat ${id}:`, error);
     throw error;
@@ -631,6 +663,10 @@ export async function createChatFromMessages(
     if (!chat) throw new Error('Failed to create chat');
     
     logger.info(`✅ Chat created successfully: ${newUrlId}`);
+    
+    // Invalidate cache after creating a new chat
+    invalidateChatsCache();
+    
     return newUrlId;
   } catch (error) {
     logger.error('❌ Error creating chat from messages:', error);
@@ -654,6 +690,9 @@ export async function updateChatDescription(_db: any, id: string, description: s
     
     if (error) throw error;
     logger.info(`✅ Description updated successfully`);
+    
+    // Invalidate cache after updating chat description
+    invalidateChatsCache();
   } catch (error) {
     logger.error(`❌ Error updating chat description ${id}:`, error);
     throw error;

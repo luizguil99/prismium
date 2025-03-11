@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
-import type { Session, User } from '@supabase/auth-helpers-remix';
+import type { Session, User } from '@supabase/supabase-js';
 import { getOrCreateClient } from './client';
+import { invalidateChatsCache } from '~/lib/persistence/db';
 
 interface AuthContextType {
   session: Session | null;
@@ -11,6 +12,8 @@ interface AuthContextType {
   signOut: () => Promise<{ error: any }>;
   resetPassword: (email: string) => Promise<{ data: any; error: any }>;
 }
+
+const AUTH_DEBUG = false; // Desativa a maioria dos logs, mantém apenas erros
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -23,6 +26,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Memoize supabase client
   const supabase = useMemo(() => getOrCreateClient(), []);
 
+  // Log condicional
+  const conditionalLog = (message: string) => {
+    if (AUTH_DEBUG) {
+      console.log(message);
+    }
+  };
+
   // Authentication methods
   const signIn = useCallback(async (email: string, password: string) => {
     console.log('🔐 AuthContext: Iniciando login...');
@@ -34,6 +44,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       if (error) throw error;
       console.log('✨ AuthContext: Login bem sucedido:', data);
+      
+      // Invalidar cache para garantir dados atualizados após login
+      invalidateChatsCache();
+      
       return { data, error: null };
     } catch (error: any) {
       console.error('💥 AuthContext: Erro no login:', error);
@@ -76,6 +90,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Garantir que o estado local seja limpo imediatamente
         setSession(null);
         setUser(null);
+        // Invalidar cache
+        invalidateChatsCache();
       }
       return { error };
     } catch (error: any) {
@@ -100,14 +116,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [supabase]);
 
+  // Configuração inicial da autenticação
   useEffect(() => {
     if (isInitialized) return;
-
-    console.log('🔄 AuthContext: Inicializando estado de autenticação...');
+    
+    conditionalLog('🔄 AuthContext: Inicializando estado de autenticação...');
     
     // Função para atualizar o estado da autenticação
     const updateAuthState = (session: Session | null) => {
-      console.log('🔄 AuthContext: Atualizando estado com sessão:', session ? 'presente' : 'ausente');
+      conditionalLog(`🔄 AuthContext: Atualizando estado com sessão: ${session ? 'presente' : 'ausente'}`);
       
       if (!session?.user?.id) {
         setSession(null);
@@ -116,39 +133,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Só atualiza se realmente houver mudança
-      setSession((prev) => {
+      setSession((prev: Session | null) => {
         if (prev?.user?.id === session.user.id) return prev;
         return session;
       });
       
-      setUser((prev) => {
+      setUser((prev: User | null) => {
         if (prev?.id === session.user.id) return prev;
         return session.user;
       });
     };
 
-    // Verificar sessão inicial
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('📡 AuthContext: Sessão inicial obtida:', session ? 'presente' : 'ausente');
-      updateAuthState(session);
+    // Verificar sessão atual - usando o método getSession do Supabase
+    // que já utiliza cookies/localStorage nativamente
+    supabase.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
+      conditionalLog(`📡 AuthContext: Sessão atual obtida: ${session ? 'presente' : 'ausente'}`);
+      
+      if (session) {
+        updateAuthState(session);
+      }
+      
       setIsInitialized(true);
-      setLoading(false); // Marca como carregado após inicialização
+      setLoading(false);
     });
 
-    // Inscrever para mudanças de autenticação
+    // Inscrever para mudanças de autenticação - executado apenas uma vez
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        console.log('🔔 AuthContext: Mudança no estado de autenticação detectada');
-        updateAuthState(session);
+      (_event: string, newSession: Session | null) => {
+        // Somente loga alterações reais de estado
+        if ((newSession && !session) || (!newSession && session) || 
+            (newSession?.user?.id !== session?.user?.id)) {
+          conditionalLog('🔔 AuthContext: Mudança no estado de autenticação detectada');
+          updateAuthState(newSession);
+        }
       }
     );
 
     // Cleanup
     return () => {
-      console.log('🧹 AuthContext: Limpando inscrição de eventos de autenticação');
+      conditionalLog('🧹 AuthContext: Limpando inscrição de eventos de autenticação');
       subscription.unsubscribe();
     };
-  }, [supabase, isInitialized]);
+  }, [supabase, isInitialized, session]);
 
   // Memoize context value
   const value = useMemo(
