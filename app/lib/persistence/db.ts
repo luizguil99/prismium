@@ -5,17 +5,25 @@ import { getOrCreateClient } from '~/components/supabase/client';
 
 const logger = createScopedLogger('ChatHistory');
 
-// Controle de throttling para salvar mensagens
-let lastSaveOperation: {
-  chatId: string;
-  timestamp: number;
-  inProgress: boolean;
+// Sistema de acumulação de atualizações
+// Para cada chat, mantemos apenas a última operação de salvamento pendente
+const pendingSaves = new Map<string, {
+  messages: Message[];
+  urlId?: string;
+  description?: string;
+  timestamp?: string;
+  metadata?: IChatMetadata;
   timer: any;
-  contentSize?: number;
-} | null = null;
+  savePromise: Promise<void>;
+  resolveSave: () => void;
+  rejectSave: (error: Error) => void;
+}>();
 
-// Intervalo de throttling para evitar múltiplas requisições (ms)
-const THROTTLE_INTERVAL = 3000;
+// Intervalo de acumulação (ms)
+const ACCUMULATION_INTERVAL = 2000; // 2 segundos (mais responsivo)
+
+// Contagem de operações REST
+let restRequestCount = 0;
 
 export interface IChatMetadata {
   // Interface para metadados adicionais do chat
@@ -92,6 +100,16 @@ function setupRealtimeSubscription(chatId: string): void {
   try {
     const supabase = getOrCreateClient();
     
+    // Verificar se já existe uma subscription
+    const existingChannels = supabase.getChannels();
+    const alreadySubscribed = existingChannels.some((channel: any) => 
+      channel.topic && channel.topic.includes(`chats:id=eq.${chatId}`)
+    );
+    
+    if (alreadySubscribed) {
+      return;
+    }
+    
     logger.info(`🔄 Configurando Realtime para chat ${chatId}`);
     
     // Inscrever para receber atualizações do chat
@@ -119,7 +137,9 @@ export async function openDatabase(): Promise<any> {
   logger.info('🔌 Iniciando conexão com Supabase');
   try {
     const client = getOrCreateClient();
+
     logger.info('✅ Conexão com Supabase estabelecida');
+    logger.info('ℹ️ Throttling de 15 segundos configurado para reduzir requisições ao Supabase');
     return client;
   } catch (error) {
     logger.error('❌ Falha ao conectar com Supabase:', error);
@@ -134,7 +154,8 @@ export async function getAll(_db: any): Promise<ChatHistoryItem[]> {
     const user = await getAuthenticatedUser();
     const supabase = getOrCreateClient();
     
-    logger.info(`🔴 ISSO É UMA OPERAÇÃO REST NO SUPABASE (listando todos os chats) 🔴`);
+    restRequestCount++;
+    logger.info(`🔴 ISSO É UMA OPERAÇÃO REST NO SUPABASE (listando todos os chats) #${restRequestCount}`);
     
     const { data, error } = await supabase
       .from('chats')
@@ -173,39 +194,110 @@ export async function setMessages(
     return size + (typeof msg.content === 'string' ? msg.content.length : 0);
   }, 0);
 
-  // Log do tamanho para entender o volume de dados
+  // Log para depuração
   if (totalSize > 1000) {
     logger.info(`📊 Tamanho total das mensagens: ${totalSize} caracteres`);
   }
 
-  // Se houver uma operação de salvamento em andamento para este chat, cancelar o timer
-  if (lastSaveOperation && lastSaveOperation.chatId === id && lastSaveOperation.timer) {
-    clearTimeout(lastSaveOperation.timer);
-    lastSaveOperation.timer = null;
-  }
+  // Se não temos uma operação pendente para este chat, criar uma nova
+  if (!pendingSaves.has(id)) {
+    // Criar uma nova promessa que será resolvida quando o salvamento for concluído
+    let resolveSave: () => void;
+    let rejectSave: (error: Error) => void;
+    
+    const savePromise = new Promise<void>((resolve, reject) => {
+      resolveSave = resolve;
+      rejectSave = reject;
+    });
 
-  // Se a última operação foi muito recente e para o mesmo chat, aplicar throttling
-  if (lastSaveOperation && 
-      lastSaveOperation.chatId === id && 
-      Date.now() - lastSaveOperation.timestamp < THROTTLE_INTERVAL && 
-      !lastSaveOperation.inProgress) {
-    
-    logger.info(`⏱️ Aplicando throttling para chat ${id} (aguardando ${THROTTLE_INTERVAL}ms)`);
-    
-    // Configurar um timer para salvar mais tarde
-    lastSaveOperation.timer = setTimeout(() => {
-      // Executar o salvamento depois do delay
-      _saveMessagesToSupabase(id, messages, urlId, description, timestamp, metadata, totalSize)
-        .catch(error => {
-          logger.error(`❌ Erro ao salvar mensagens após throttling:`, error);
+    // Configurar o timer para salvar após o intervalo de acumulação
+    const timer = setTimeout(() => {
+      // Obter a operação pendente mais recente
+      const pendingOp = pendingSaves.get(id);
+      if (!pendingOp) return;
+      
+      // Remover a operação pendente do mapa
+      pendingSaves.delete(id);
+      
+      // Executar o salvamento
+      _saveMessagesToSupabase(
+        id, 
+        pendingOp.messages, 
+        pendingOp.urlId, 
+        pendingOp.description, 
+        pendingOp.timestamp, 
+        pendingOp.metadata
+      )
+        .then(() => {
+          // Log técnico sem mensagem de sucesso para UI
+          pendingOp.resolveSave();
+        })
+        .catch((error) => {
+          logger.error(`❌ Erro ao salvar mensagens para chat ${id}:`, error);
+          pendingOp.rejectSave(error);
         });
-    }, THROTTLE_INTERVAL);
-    
-    return;
+    }, ACCUMULATION_INTERVAL);
+
+    // Armazenar a operação pendente
+    pendingSaves.set(id, {
+      messages,
+      urlId,
+      description,
+      timestamp,
+      metadata,
+      timer,
+      savePromise,
+      resolveSave: resolveSave!,
+      rejectSave: rejectSave!
+    });
+
+    // Remover mensagem de agendamento
+    return savePromise;
   }
 
-  // Se a mensagem tem mais de 5000 caracteres ou é um salvamento normal, salvar imediatamente
-  return _saveMessagesToSupabase(id, messages, urlId, description, timestamp, metadata, totalSize);
+  // Se já temos uma operação pendente para este chat, atualizá-la
+  const pendingOp = pendingSaves.get(id)!;
+  
+  // Limpar o timer anterior
+  clearTimeout(pendingOp.timer);
+  
+  // Manter a promessa existente, mas atualizar os dados
+  pendingOp.messages = messages;
+  pendingOp.urlId = urlId;
+  pendingOp.description = description;
+  pendingOp.timestamp = timestamp;
+  pendingOp.metadata = metadata;
+  
+  // Configurar um novo timer
+  pendingOp.timer = setTimeout(() => {
+    // Obter a operação pendente mais recente
+    const currentOp = pendingSaves.get(id);
+    if (!currentOp) return;
+    
+    // Remover a operação pendente do mapa
+    pendingSaves.delete(id);
+    
+    // Executar o salvamento
+    _saveMessagesToSupabase(
+      id, 
+      currentOp.messages, 
+      currentOp.urlId, 
+      currentOp.description, 
+      currentOp.timestamp, 
+      currentOp.metadata
+    )
+      .then(() => {
+        // Log técnico sem mensagem de sucesso para UI
+        currentOp.resolveSave();
+      })
+      .catch((error) => {
+        logger.error(`❌ Erro ao salvar mensagens para chat ${id}:`, error);
+        currentOp.rejectSave(error);
+      });
+  }, ACCUMULATION_INTERVAL);
+  
+  // Remover mensagem de atualização de operação pendente
+  return pendingOp.savePromise;
 }
 
 // Função interna para salvar mensagens no Supabase
@@ -215,19 +307,10 @@ async function _saveMessagesToSupabase(
   urlId?: string,
   description?: string,
   timestamp?: string,
-  metadata?: IChatMetadata,
-  contentSize?: number
+  metadata?: IChatMetadata
 ): Promise<void> {
   try {
-    // Marcar operação em andamento para este chat
-    lastSaveOperation = {
-      chatId: id,
-      timestamp: Date.now(),
-      inProgress: true,
-      timer: null
-    };
-    
-    logger.info(`💾 Salvando mensagens para chat ${id}`);
+    // Remover logger de salvamento aqui para evitar mensagens redundantes
     const startTime = performance.now();
     
     const user = await getAuthenticatedUser();
@@ -237,7 +320,8 @@ async function _saveMessagesToSupabase(
       throw new Error('Timestamp inválido');
     }
 
-    logger.info(`🔴 ISSO É UMA OPERAÇÃO REST NO SUPABASE (salvando mensagens) 🔴`);
+    restRequestCount++;
+    logger.info(`🔴 ISSO É UMA OPERAÇÃO REST NO SUPABASE #${restRequestCount}`);
     
     // Verificação e sanitização das mensagens para evitar problemas de truncamento
     const sanitizedMessages = messages.map(msg => {
@@ -254,6 +338,15 @@ async function _saveMessagesToSupabase(
       
       return sanitizedMsg;
     });
+
+    // Log detalhado do conteúdo que está sendo salvo na coluna messages
+    console.log('📦 CONTEÚDO SALVO NA COLUNA MESSAGES DO SUPABASE:', JSON.stringify({
+      total_messages: sanitizedMessages.length,
+      message_ids: sanitizedMessages.map(m => m.id),
+      message_roles: sanitizedMessages.map(m => m.role),
+      message_sizes: sanitizedMessages.map(m => typeof m.content === 'string' ? m.content.length : 0),
+      full_content: sanitizedMessages
+    }, null, 2));
 
     const payload = {
       id,
@@ -280,15 +373,11 @@ async function _saveMessagesToSupabase(
     setupRealtimeSubscription(id);
     
     const duration = Math.round(performance.now() - startTime);
-    logger.info(`✅ Mensagens salvas para chat ${id} (${duration}ms)`);
+    // Remover indicação de sucesso da mensagem de log
+    logger.info(`Operação completada para chat ${id} (${duration}ms)`);
   } catch (error) {
     logger.error('❌ Erro ao salvar mensagens:', error);
     throw error;
-  } finally {
-    // Atualizar estado após a operação
-    if (lastSaveOperation && lastSaveOperation.chatId === id) {
-      lastSaveOperation.inProgress = false;
-    }
   }
 }
 
@@ -296,7 +385,9 @@ export async function getMessages(_db: any, id: string): Promise<ChatHistoryItem
   logger.info(`🔍 Buscando mensagens para id: ${id}`);
   try {
     const supabase = getOrCreateClient();
-    logger.info(`🔴 ISSO É UMA OPERAÇÃO REST NO SUPABASE (buscando mensagens) 🔴`);
+    
+    restRequestCount++;
+    logger.info(`🔴 ISSO É UMA OPERAÇÃO REST NO SUPABASE (buscando mensagens) #${restRequestCount}`);
     
     let query;
     let idType = '';
@@ -346,11 +437,13 @@ export async function deleteById(_db: any, id: string): Promise<void> {
     if (!chat) throw new Error(`Chat não encontrado: ${id}`);
     
     // Cancelar qualquer operação pendente para este chat
-    if (lastSaveOperation && lastSaveOperation.chatId === chat.id && lastSaveOperation.timer) {
-      clearTimeout(lastSaveOperation.timer);
+    if (pendingSaves.has(id)) {
+      const pendingOp = pendingSaves.get(id)!;
+      clearTimeout(pendingOp.timer);
     }
     
-    logger.info(`🔴 ISSO É UMA OPERAÇÃO REST NO SUPABASE (deletando chat) 🔴`);
+    restRequestCount++;
+    logger.info(`🔴 ISSO É UMA OPERAÇÃO REST NO SUPABASE (deletando chat) #${restRequestCount}`);
     
     const { error } = await supabase.from('chats').delete().eq('id', chat.id);
     if (error) throw error;
