@@ -37,6 +37,10 @@ export const chatId = atom<string | undefined>(undefined);
 export const description = atom<string | undefined>(undefined);
 export const chatMetadata = atom<IChatMetadata | undefined>(undefined);
 
+// Mecanismo de debounce para storeMessageHistory
+let storeMessageHistoryTimer: ReturnType<typeof setTimeout> | null = null;
+const DEBOUNCE_INTERVAL = 1000; // 1 segundo
+
 export function useChatHistory() {
   const navigate = useNavigate();
   const { id: mixedId } = useLoaderData<{ id?: string }>();
@@ -120,63 +124,84 @@ export function useChatHistory() {
         return;
       }
 
-      const { firstArtifact } = workbenchStore;
-      
-      // Log para debug do tamanho das mensagens
-      const totalContentSize = messages.reduce((sum, msg) => {
-        return sum + (typeof msg.content === 'string' ? msg.content.length : 0);
-      }, 0);
-      console.log(`Salvando mensagens: ${messages.length} mensagens, tamanho total: ${totalContentSize} caracteres`);
-
-      if (!urlId && firstArtifact?.id) {
-        try {
-          const newUrlId = await getUrlId(db, firstArtifact.id);
-          navigateChat(newUrlId);
-          setUrlId(newUrlId);
-        } catch (error) {
-          console.error('Erro ao gerar urlId:', error);
-          logStore.logError('Erro ao gerar urlId', error);
+      // Implementação de debounce para evitar múltiplas chamadas em sequência
+      return new Promise<void>((resolve) => {
+        // Limpar timer anterior se existir
+        if (storeMessageHistoryTimer) {
+          clearTimeout(storeMessageHistoryTimer);
         }
-      }
 
-      if (!description.get() && firstArtifact?.title) {
-        description.set(firstArtifact?.title);
-      }
+        // Criar novo timer para debounce
+        storeMessageHistoryTimer = setTimeout(async () => {
+          const { firstArtifact } = workbenchStore;
+          
+          // Log para debug do tamanho das mensagens
+          const totalContentSize = messages.reduce((sum, msg) => {
+            return sum + (typeof msg.content === 'string' ? msg.content.length : 0);
+          }, 0);
+          console.log(`Salvando mensagens: ${messages.length} mensagens, tamanho total: ${totalContentSize} caracteres`);
 
-      if (initialMessages.length === 0 && !chatId.get()) {
-        try {
-          const nextId = await getNextId(db);
-          chatId.set(nextId);
-
-          if (!urlId) {
-            navigateChat(nextId);
+          if (!urlId && firstArtifact?.id) {
+            try {
+              const newUrlId = await getUrlId(db, firstArtifact.id);
+              navigateChat(newUrlId);
+              setUrlId(newUrlId);
+            } catch (error) {
+              console.error('Erro ao gerar urlId:', error);
+              logStore.logError('Erro ao gerar urlId', error);
+            }
           }
-        } catch (error) {
-          console.error('Erro ao gerar id:', error);
-          logStore.logError('Erro ao gerar id', error);
-        }
-      }
 
-      try {
-        const currentChatId = chatId.get() as string;
-        const currentMetadata = chatMetadata.get();
-        
-        await setMessages(
-          db, 
-          currentChatId, 
-          messages, 
-          urlId, 
-          description.get(), 
-          undefined, // timestamp
-          currentMetadata
-        );
-        
-        console.log(`Mensagens salvas com sucesso para chat ${currentChatId}`);
-      } catch (error) {
-        console.error('Erro ao salvar mensagens:', error);
-        logStore.logError('Erro ao salvar mensagens', error);
-        toast.error('Falha ao salvar o histórico de chat');
-      }
+          if (!description.get() && firstArtifact?.title) {
+            description.set(firstArtifact?.title);
+          }
+
+          if (initialMessages.length === 0 && !chatId.get()) {
+            try {
+              const nextId = await getNextId(db);
+              chatId.set(nextId);
+
+              if (!urlId) {
+                navigateChat(nextId);
+              }
+            } catch (error) {
+              console.error('Erro ao gerar id:', error);
+              logStore.logError('Erro ao gerar id', error);
+            }
+          }
+
+          try {
+            const currentChatId = chatId.get() as string;
+            
+            // Verificar se o ID do chat é válido antes de salvar
+            if (!currentChatId) {
+              console.warn('Tentativa de salvar mensagens sem ID de chat válido');
+              resolve();
+              return;
+            }
+            
+            const currentMetadata = chatMetadata.get();
+            
+            await setMessages(
+              db, 
+              currentChatId, 
+              messages, 
+              urlId, 
+              description.get(), 
+              undefined, // timestamp
+              currentMetadata
+            );
+            
+            console.log(`Mensagens salvas com sucesso para chat ${currentChatId}`);
+            resolve();
+          } catch (error) {
+            console.error('Erro ao salvar mensagens:', error);
+            logStore.logError('Erro ao salvar mensagens', error);
+            toast.error('Falha ao salvar o histórico de chat');
+            resolve();
+          }
+        }, DEBOUNCE_INTERVAL);
+      });
     },
     duplicateCurrentChat: async (listItemId: string) => {
       if (!db || (!mixedId && !listItemId)) {
@@ -245,6 +270,3 @@ function navigateChat(nextId: string) {
 
   window.history.replaceState({}, '', url);
 }
-
-
-
