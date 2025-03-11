@@ -33,7 +33,7 @@ interface ChatListCache {
 }
 
 let chatsListCache: ChatListCache | null = null;
-const CACHE_TTL = 30000; // 30 seconds cache lifetime
+const CACHE_TTL = 300000; // 5 minutes cache lifetime
 
 export interface IChatMetadata {
   // Interface for additional chat metadata
