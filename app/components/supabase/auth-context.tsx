@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { getOrCreateClient } from './client';
-import { invalidateChatsCache } from '~/lib/persistence/db';
+
 
 interface AuthContextType {
   session: Session | null;
@@ -45,8 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) throw error;
       console.log('✨ AuthContext: Login successful:', data);
       
-      // Invalidate cache to ensure updated data after login
-      invalidateChatsCache();
+      
       
       return { data, error: null };
     } catch (error: any) {
@@ -90,8 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Ensure local state is cleared immediately
         setSession(null);
         setUser(null);
-        // Invalidate cache
-        invalidateChatsCache();
+        
       }
       return { error };
     } catch (error: any) {

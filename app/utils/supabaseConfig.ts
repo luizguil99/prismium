@@ -7,7 +7,7 @@ const logger = createScopedLogger('SupabaseConfig');
  * Verifica e otimiza a configuração do Supabase para armazenamento de mensagens grandes
  */
 export async function validateSupabaseConfig() {
-  logger.info('🔍 Verificando configuração do Supabase para mensagens grandes...');
+  logger.info('🔍 Verifying Supabase configuration for large messages...');
   
   try {
     const supabase = getOrCreateClient();
@@ -48,7 +48,7 @@ export async function validateSupabaseConfig() {
     }
     
     if (truncatedCount > 0) {
-      logger.warn(`⚠️ Encontrados ${truncatedCount} chats com possível truncamento de mensagens`);
+      logger.warn(`⚠️ Found ${truncatedCount} chats with possible message truncation`);
       logger.info(`📊 Chats suspeitos: ${suspiciousChats.join(', ')}`);
     } else {
       logger.info('✅ Nenhum problema de truncamento detectado');
