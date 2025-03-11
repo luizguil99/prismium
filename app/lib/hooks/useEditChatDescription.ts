@@ -9,6 +9,29 @@ import {
   getMessages,
 } from '~/lib/persistence';
 
+// Sistema global para prevenir toasts duplicados
+const recentToasts = new Map<string, number>();
+const TOAST_DEBOUNCE = 1000; // ms
+
+// Função para mostrar toast com debounce
+function showToast(type: 'success' | 'error', message: string, key: string): void {
+  const now = Date.now();
+  const lastToast = recentToasts.get(key) || 0;
+  
+  if (now - lastToast < TOAST_DEBOUNCE) {
+    console.log(`Toast ignorado (debounce): ${message}`);
+    return;
+  }
+  
+  recentToasts.set(key, now);
+  
+  if (type === 'success') {
+    toast.success(message);
+  } else {
+    toast.error(message);
+  }
+}
+
 interface EditChatDescriptionOptions {
   initialDescription?: string;
   customChatId?: string;
@@ -97,17 +120,17 @@ export function useEditChatDescription({
     const characterValid = /^[a-zA-Z0-9\s\-_.,!?()[\]{}'"]+$/.test(trimmedDesc);
 
     if (!lengthValid) {
-      toast.error('Description must be between 1 and 100 characters.');
+      showToast('error', 'Description must be between 1 and 100 characters.', 'desc-length-error');
       return false;
     }
 
     if (!characterValid) {
-      toast.error('Description can only contain letters, numbers, spaces, and basic punctuation.');
+      showToast('error', 'Description can only contain letters, numbers, spaces, and basic punctuation.', 'desc-chars-error');
       return false;
     }
 
     return true;
-  }, []);
+  }, [initialDescription, toggleEditMode]);
 
   const handleSubmit = useCallback(
     async (event: React.FormEvent) => {
@@ -119,12 +142,12 @@ export function useEditChatDescription({
 
       try {
         if (!db) {
-          toast.error('Chat persistence is not available');
+          showToast('error', 'Chat persistence is not available', 'persistence-error');
           return;
         }
 
         if (!chatId) {
-          toast.error('Chat Id is not available');
+          showToast('error', 'Chat Id is not available', 'chat-id-error');
           return;
         }
 
@@ -134,9 +157,9 @@ export function useEditChatDescription({
           descriptionStore.set(currentDescription);
         }
 
-        toast.success('Chat description updated successfully');
+        showToast('success', 'Chat description updated successfully', `desc-update-${chatId}`);
       } catch (error) {
-        toast.error('Failed to update chat description: ' + (error as Error).message);
+        showToast('error', 'Failed to update chat description: ' + (error as Error).message, `desc-error-${chatId}`);
       }
 
       toggleEditMode();
