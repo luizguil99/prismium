@@ -5,8 +5,8 @@ import { getOrCreateClient } from '~/components/supabase/client';
 
 const logger = createScopedLogger('ChatHistory');
 
-// Sistema de acumulação de atualizações
-// Para cada chat, mantemos apenas a última operação de salvamento pendente
+// Update accumulation system
+// For each chat, we keep only the latest pending save operation
 const pendingSaves = new Map<string, {
   messages: Message[];
   urlId?: string;
@@ -19,44 +19,44 @@ const pendingSaves = new Map<string, {
   rejectSave: (error: Error) => void;
 }>();
 
-// Intervalo de acumulação (ms)
-const ACCUMULATION_INTERVAL = 2000; // 2 segundos (mais responsivo)
+// Accumulation interval (ms)
+const ACCUMULATION_INTERVAL = 2000; // 2 seconds (more responsive)
 
-// Contagem de operações REST
+// REST operations counter
 let restRequestCount = 0;
 
 export interface IChatMetadata {
-  // Interface para metadados adicionais do chat
+  // Interface for additional chat metadata
   [key: string]: any;
 }
 
-// ===== FUNÇÕES UTILITÁRIAS =====
+// ===== UTILITY FUNCTIONS =====
 
-// Verifica se uma string é um UUID válido
+// Checks if a string is a valid UUID
 function isValidUUID(id: string): boolean {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   return uuidRegex.test(id);
 }
 
-// Obtém o usuário autenticado ou lança erro
+// Gets the authenticated user or throws an error
 async function getAuthenticatedUser() {
   const supabase = getOrCreateClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   
   if (authError) {
-    logger.error('❌ Erro ao verificar autenticação:', authError);
+    logger.error('❌ Error verifying authentication:', authError);
     throw authError;
   }
   
   if (!user) {
-    logger.error('❌ Usuário não autenticado');
-    throw new Error('Usuário não autenticado');
+    logger.error('❌ User not authenticated');
+    throw new Error('User not authenticated');
   }
   
   return user;
 }
 
-// Busca um chat pelo ID ou urlId
+// Fetches a chat by ID or urlId
 async function findChat(id: string, select = '*'): Promise<any> {
   const supabase = getOrCreateClient();
   let query;
@@ -70,37 +70,37 @@ async function findChat(id: string, select = '*'): Promise<any> {
   const { data, error } = await query;
   
   if (error) {
-    logger.error(`❌ Erro ao buscar chat ${id}:`, error);
+    logger.error(`❌ Error fetching chat ${id}:`, error);
     throw error;
   }
   
   return data;
 }
 
-// Função para verificar se as mensagens foram carregadas corretamente e fazer log
+// Function to verify if messages were loaded correctly and log
 function validateMessagesAndLog(data: any, idType: string, id: string): void {
   if (data.messages && Array.isArray(data.messages)) {
-    logger.info(`✅ Chat recuperado pelo ${idType}: ${id} com ${data.messages.length} mensagens`);
+    logger.info(`✅ Chat retrieved by ${idType}: ${id} with ${data.messages.length} messages`);
     
-    // Log para depuração de mensagens potencialmente truncadas
+    // Log for debugging potentially truncated messages
     data.messages.forEach((msg: any, index: number) => {
       if (typeof msg.content === 'string' && msg.content.length > 1000) {
-        logger.info(`Mensagem ${index} tem ${msg.content.length} caracteres`);
+        logger.info(`Message ${index} has ${msg.content.length} characters`);
       }
     });
   } else {
-    logger.warn(`⚠️ Chat recuperado pelo ${idType} ${id} sem mensagens válidas`);
+    logger.warn(`⚠️ Chat retrieved by ${idType} ${id} without valid messages`);
   }
 }
 
-// Configura Realtime subscription para um chat
+// Sets up Realtime subscription for a chat
 function setupRealtimeSubscription(chatId: string): void {
   if (typeof window === 'undefined') return;
   
   try {
     const supabase = getOrCreateClient();
     
-    // Verificar se já existe uma subscription
+    // Check if a subscription already exists
     const existingChannels = supabase.getChannels();
     const alreadySubscribed = existingChannels.some((channel: any) => 
       channel.topic && channel.topic.includes(`chats:id=eq.${chatId}`)
@@ -110,52 +110,52 @@ function setupRealtimeSubscription(chatId: string): void {
       return;
     }
     
-    logger.info(`🔄 Configurando Realtime para chat ${chatId}`);
+    logger.info(`🔄 Setting up Realtime for chat ${chatId}`);
     
-    // Inscrever para receber atualizações do chat
+    // Subscribe to receive chat updates
     supabase
       .channel(`chat:${chatId}`)
       .on('postgres_changes', {
-        event: '*', // Todos os eventos (insert, update, delete)
+        event: '*', // All events (insert, update, delete)
         schema: 'public',
         table: 'chats',
         filter: `id=eq.${chatId}`,
       }, (payload: any) => {
-        logger.info(`📡 Recebida atualização Realtime para chat ${chatId}`);
+        logger.info(`📡 Received Realtime update for chat ${chatId}`);
       })
       .subscribe((status: string) => {
         logger.info(`Realtime status: ${status}`);
       });
   } catch (error) {
-    logger.error(`❌ Erro ao configurar Realtime para chat ${chatId}:`, error);
+    logger.error(`❌ Error setting up Realtime for chat ${chatId}:`, error);
   }
 }
 
-// ===== PRINCIPAIS FUNÇÕES DA API =====
+// ===== MAIN API FUNCTIONS =====
 
 export async function openDatabase(): Promise<any> {
-  logger.info('🔌 Iniciando conexão com Supabase');
+  logger.info('🔌 Initiating Supabase connection');
   try {
     const client = getOrCreateClient();
 
-    logger.info('✅ Conexão com Supabase estabelecida');
-    logger.info('ℹ️ Throttling de 15 segundos configurado para reduzir requisições ao Supabase');
+    logger.info('✅ Supabase connection established');
+    logger.info('ℹ️ 15-second throttling configured to reduce Supabase requests');
     return client;
   } catch (error) {
-    logger.error('❌ Falha ao conectar com Supabase:', error);
+    logger.error('❌ Failed to connect to Supabase:', error);
     return undefined;
   }
 }
 
 export async function getAll(_db: any): Promise<ChatHistoryItem[]> {
-  logger.info('📋 Buscando todos os chats');
+  logger.info('📋 Fetching all chats');
   try {
     const startTime = performance.now();
     const user = await getAuthenticatedUser();
     const supabase = getOrCreateClient();
     
     restRequestCount++;
-    logger.info(`🔴 ISSO É UMA OPERAÇÃO REST NO SUPABASE (listando todos os chats) #${restRequestCount}`);
+    logger.info(`🔴 THIS IS A REST OPERATION ON SUPABASE (listing all chats) #${restRequestCount}`);
     
     const { data, error } = await supabase
       .from('chats')
@@ -166,10 +166,10 @@ export async function getAll(_db: any): Promise<ChatHistoryItem[]> {
     if (error) throw error;
     
     const duration = Math.round(performance.now() - startTime);
-    logger.info(`✅ Chats recuperados (${data?.length || 0} itens, ${duration}ms)`);
+    logger.info(`✅ Chats retrieved (${data?.length || 0} items, ${duration}ms)`);
     return (data || []) as unknown as ChatHistoryItem[];
   } catch (error) {
-    logger.error('❌ Erro ao buscar todos os chats:', error);
+    logger.error('❌ Error fetching all chats:', error);
     throw error;
   }
 }
@@ -183,25 +183,25 @@ export async function setMessages(
   timestamp?: string,
   metadata?: IChatMetadata
 ): Promise<void> {
-  // Se não há mensagens, não há nada para salvar
+  // If there are no messages, there's nothing to save
   if (!messages || messages.length === 0) {
-    logger.warn(`⚠️ Tentativa de salvar chat ${id} sem mensagens`);
+    logger.warn(`⚠️ Attempt to save chat ${id} without messages`);
     return;
   }
 
-  // Calcular o tamanho total das mensagens
+  // Calculate total message size
   const totalSize = messages.reduce((size, msg) => {
     return size + (typeof msg.content === 'string' ? msg.content.length : 0);
   }, 0);
 
-  // Log para depuração
+  // Debug log
   if (totalSize > 1000) {
-    logger.info(`📊 Tamanho total das mensagens: ${totalSize} caracteres`);
+    logger.info(`📊 Total message size: ${totalSize} characters`);
   }
 
-  // Se não temos uma operação pendente para este chat, criar uma nova
+  // If we don't have a pending operation for this chat, create a new one
   if (!pendingSaves.has(id)) {
-    // Criar uma nova promessa que será resolvida quando o salvamento for concluído
+    // Create a new promise that will be resolved when saving is complete
     let resolveSave: () => void;
     let rejectSave: (error: Error) => void;
     
@@ -210,16 +210,16 @@ export async function setMessages(
       rejectSave = reject;
     });
 
-    // Configurar o timer para salvar após o intervalo de acumulação
+    // Set up timer to save after accumulation interval
     const timer = setTimeout(() => {
-      // Obter a operação pendente mais recente
+      // Get the most recent pending operation
       const pendingOp = pendingSaves.get(id);
       if (!pendingOp) return;
       
-      // Remover a operação pendente do mapa
+      // Remove pending operation from map
       pendingSaves.delete(id);
       
-      // Executar o salvamento
+      // Execute the save
       _saveMessagesToSupabase(
         id, 
         pendingOp.messages, 
@@ -229,16 +229,16 @@ export async function setMessages(
         pendingOp.metadata
       )
         .then(() => {
-          // Log técnico sem mensagem de sucesso para UI
+          // Technical log without success message for UI
           pendingOp.resolveSave();
         })
         .catch((error) => {
-          logger.error(`❌ Erro ao salvar mensagens para chat ${id}:`, error);
+          logger.error(`❌ Error saving messages for chat ${id}:`, error);
           pendingOp.rejectSave(error);
         });
     }, ACCUMULATION_INTERVAL);
 
-    // Armazenar a operação pendente
+    // Store the pending operation
     pendingSaves.set(id, {
       messages,
       urlId,
@@ -251,33 +251,33 @@ export async function setMessages(
       rejectSave: rejectSave!
     });
 
-    // Remover mensagem de agendamento
+    // Remove scheduling message
     return savePromise;
   }
 
-  // Se já temos uma operação pendente para este chat, atualizá-la
+  // If we already have a pending operation for this chat, update it
   const pendingOp = pendingSaves.get(id)!;
   
-  // Limpar o timer anterior
+  // Clear previous timer
   clearTimeout(pendingOp.timer);
   
-  // Manter a promessa existente, mas atualizar os dados
+  // Keep existing promise, but update the data
   pendingOp.messages = messages;
   pendingOp.urlId = urlId;
   pendingOp.description = description;
   pendingOp.timestamp = timestamp;
   pendingOp.metadata = metadata;
   
-  // Configurar um novo timer
+  // Set up a new timer
   pendingOp.timer = setTimeout(() => {
-    // Obter a operação pendente mais recente
+    // Get the most recent pending operation
     const currentOp = pendingSaves.get(id);
     if (!currentOp) return;
     
-    // Remover a operação pendente do mapa
+    // Remove pending operation from map
     pendingSaves.delete(id);
     
-    // Executar o salvamento
+    // Execute the save
     _saveMessagesToSupabase(
       id, 
       currentOp.messages, 
@@ -287,20 +287,20 @@ export async function setMessages(
       currentOp.metadata
     )
       .then(() => {
-        // Log técnico sem mensagem de sucesso para UI
+        // Technical log without success message for UI
         currentOp.resolveSave();
       })
       .catch((error) => {
-        logger.error(`❌ Erro ao salvar mensagens para chat ${id}:`, error);
+        logger.error(`❌ Error saving messages for chat ${id}:`, error);
         currentOp.rejectSave(error);
       });
   }, ACCUMULATION_INTERVAL);
   
-  // Remover mensagem de atualização de operação pendente
+  // Remove pending operation update message
   return pendingOp.savePromise;
 }
 
-// Função interna para salvar mensagens no Supabase
+// Internal function to save messages to Supabase
 async function _saveMessagesToSupabase(
   id: string,
   messages: Message[],
@@ -310,37 +310,37 @@ async function _saveMessagesToSupabase(
   metadata?: IChatMetadata
 ): Promise<void> {
   try {
-    // Remover logger de salvamento aqui para evitar mensagens redundantes
+    // Remove save logging here to avoid redundant messages
     const startTime = performance.now();
     
     const user = await getAuthenticatedUser();
     const supabase = getOrCreateClient();
     
     if (timestamp && isNaN(Date.parse(timestamp))) {
-      throw new Error('Timestamp inválido');
+      throw new Error('Invalid timestamp');
     }
 
     restRequestCount++;
-    logger.info(`🔴 ISSO É UMA OPERAÇÃO REST NO SUPABASE #${restRequestCount}`);
+    logger.info(`🔴 THIS IS A REST OPERATION ON SUPABASE #${restRequestCount}`);
     
-    // Verificação e sanitização das mensagens para evitar problemas de truncamento
+    // Verification and sanitization of messages to avoid truncation issues
     const sanitizedMessages = messages.map(msg => {
-      // Clone a mensagem para não modificar o objeto original
+      // Clone the message to avoid modifying the original object
       const sanitizedMsg = { ...msg };
       
-      // Garantir que o conteúdo seja uma string válida
+      // Ensure content is a valid string
       if (typeof sanitizedMsg.content === 'string') {
-        // Verificar o tamanho para debug
+        // Check size for debug
         if (sanitizedMsg.content.length > 1000) {
-          logger.info(`Mensagem grande detectada (${sanitizedMsg.content.length} caracteres)`);
+          logger.info(`Large message detected (${sanitizedMsg.content.length} characters)`);
         }
       }
       
       return sanitizedMsg;
     });
 
-    // Log detalhado do conteúdo que está sendo salvo na coluna messages
-    console.log('📦 CONTEÚDO SALVO NA COLUNA MESSAGES DO SUPABASE:', JSON.stringify({
+    // Detailed log of content being saved to the messages column
+    console.log('📦 CONTENT SAVED TO SUPABASE MESSAGES COLUMN:', JSON.stringify({
       total_messages: sanitizedMessages.length,
       message_ids: sanitizedMessages.map(m => m.id),
       message_roles: sanitizedMessages.map(m => m.role),
@@ -358,36 +358,36 @@ async function _saveMessagesToSupabase(
       metadata
     };
 
-    // Usar a opção type_json para garantir armazenamento adequado do array de mensagens
+    // Use type_json option to ensure proper storage of message array
     const { error } = await supabase.from('chats').upsert(payload, {
       onConflict: 'id',
       ignoreDuplicates: false
     });
     
     if (error) {
-      logger.error(`❌ Erro ao salvar mensagens: ${error.message}`, error);
+      logger.error(`❌ Error saving messages: ${error.message}`, error);
       throw error;
     }
     
-    // Configurar realtime para este chat se ainda não estiver configurado
+    // Set up realtime for this chat if not already configured
     setupRealtimeSubscription(id);
     
     const duration = Math.round(performance.now() - startTime);
-    // Remover indicação de sucesso da mensagem de log
-    logger.info(`Operação completada para chat ${id} (${duration}ms)`);
+    // Remove success indication from log message
+    logger.info(`Operation completed for chat ${id} (${duration}ms)`);
   } catch (error) {
-    logger.error('❌ Erro ao salvar mensagens:', error);
+    logger.error('❌ Error saving messages:', error);
     throw error;
   }
 }
 
 export async function getMessages(_db: any, id: string): Promise<ChatHistoryItem> {
-  logger.info(`🔍 Buscando mensagens para id: ${id}`);
+  logger.info(`🔍 Fetching messages for id: ${id}`);
   try {
     const supabase = getOrCreateClient();
     
     restRequestCount++;
-    logger.info(`🔴 ISSO É UMA OPERAÇÃO REST NO SUPABASE (buscando mensagens) #${restRequestCount}`);
+    logger.info(`🔴 THIS IS A REST OPERATION ON SUPABASE (fetching messages) #${restRequestCount}`);
     
     let query;
     let idType = '';
@@ -403,68 +403,68 @@ export async function getMessages(_db: any, id: string): Promise<ChatHistoryItem
     const { data, error } = await query;
     
     if (error) {
-      logger.error(`❌ Erro ao buscar mensagens pelo ${idType} ${id}:`, error);
+      logger.error(`❌ Error fetching messages by ${idType} ${id}:`, error);
       throw error;
     }
     
     if (!data) {
-      logger.warn(`⚠️ Nenhum chat encontrado com ${idType}: ${id}`);
-      throw new Error(`Chat não encontrado com ${idType}: ${id}`);
+      logger.warn(`⚠️ No chat found with ${idType}: ${id}`);
+      throw new Error(`Chat not found with ${idType}: ${id}`);
     }
     
     validateMessagesAndLog(data, idType, id);
     
-    // Configurar Realtime para este chat
+    // Set up Realtime for this chat
     if (data.id) {
       setupRealtimeSubscription(data.id);
     }
     
     return data as ChatHistoryItem;
   } catch (error) {
-    logger.error(`❌ Erro ao buscar mensagens para id ${id}:`, error);
+    logger.error(`❌ Error fetching messages for id ${id}:`, error);
     throw error;
   }
 }
 
 export async function deleteById(_db: any, id: string): Promise<void> {
-  logger.info(`🗑️ Deletando chat por ID: ${id}`);
+  logger.info(`🗑️ Deleting chat by ID: ${id}`);
   try {
     const startTime = performance.now();
     const supabase = getOrCreateClient();
     
-    // Buscar o chat primeiro para garantir que existe e obter o ID real se for urlId
+    // First fetch the chat to ensure it exists and get the real ID if it's a urlId
     const chat = await findChat(id, 'id');
-    if (!chat) throw new Error(`Chat não encontrado: ${id}`);
+    if (!chat) throw new Error(`Chat not found: ${id}`);
     
-    // Cancelar qualquer operação pendente para este chat
+    // Cancel any pending operation for this chat
     if (pendingSaves.has(id)) {
       const pendingOp = pendingSaves.get(id)!;
       clearTimeout(pendingOp.timer);
     }
     
     restRequestCount++;
-    logger.info(`🔴 ISSO É UMA OPERAÇÃO REST NO SUPABASE (deletando chat) #${restRequestCount}`);
+    logger.info(`🔴 THIS IS A REST OPERATION ON SUPABASE (deleting chat) #${restRequestCount}`);
     
     const { error } = await supabase.from('chats').delete().eq('id', chat.id);
     if (error) throw error;
     
     const duration = Math.round(performance.now() - startTime);
-    logger.info(`✅ Chat ${id} deletado com sucesso (${duration}ms)`);
+    logger.info(`✅ Chat ${id} successfully deleted (${duration}ms)`);
   } catch (error) {
-    logger.error(`❌ Erro ao deletar chat ${id}:`, error);
+    logger.error(`❌ Error deleting chat ${id}:`, error);
     throw error;
   }
 }
 
 export async function getNextId(_db: any): Promise<string> {
-  logger.info('🆔 Gerando novo ID');
+  logger.info('🆔 Generating new ID');
   if (crypto && typeof crypto.randomUUID === 'function') {
     const id = crypto.randomUUID();
-    logger.info(`✅ Novo ID gerado: ${id}`);
+    logger.info(`✅ New ID generated: ${id}`);
     return id;
   } else {
     const id = 'id-' + new Date().getTime() + '-' + Math.floor(Math.random() * 10000);
-    logger.info(`✅ Novo ID gerado (fallback): ${id}`);
+    logger.info(`✅ New ID generated (fallback): ${id}`);
     return id;
   }
 }
@@ -495,13 +495,13 @@ async function getNextImportedFilesSuffix(supabase: any, userId: string, baseId:
 }
 
 export async function getUrlId(_db: any, id: string): Promise<string> {
-  logger.info(`🔗 Verificando disponibilidade de urlId: ${id}`);
+  logger.info(`🔗 Checking availability of urlId: ${id}`);
   try {
     const startTime = performance.now();
     const idList = await getUrlIds(_db);
     
     if (!idList.includes(id)) {
-      logger.info(`✅ urlId ${id} está disponível`);
+      logger.info(`✅ urlId ${id} is available`);
       return id;
     } else {
       let i = 2;
@@ -509,23 +509,23 @@ export async function getUrlId(_db: any, id: string): Promise<string> {
       while (idList.includes(`${id}-${i}`)) {
         i++;
         if (i > 100) {
-          logger.error(`❌ Não foi possível gerar um urlId único após 100 tentativas`);
-          throw new Error('Não foi possível gerar um urlId único');
+          logger.error(`❌ Could not generate a unique urlId after 100 attempts`);
+          throw new Error('Could not generate a unique urlId');
         }
       }
       
       const newUrlId = `${id}-${i}`;
-      logger.info(`✅ Gerado novo urlId: ${newUrlId}`);
+      logger.info(`✅ Generated new urlId: ${newUrlId}`);
       return newUrlId;
     }
   } catch (error) {
-    logger.error(`❌ Erro ao gerar urlId para ${id}:`, error);
+    logger.error(`❌ Error generating urlId for ${id}:`, error);
     throw error;
   }
 }
 
 async function getUrlIds(_db: any): Promise<string[]> {
-  logger.info('🔗 Buscando todos os urlIds');
+  logger.info('🔗 Fetching all urlIds');
   try {
     const supabase = getOrCreateClient();
     const { data, error } = await supabase
@@ -536,34 +536,34 @@ async function getUrlIds(_db: any): Promise<string[]> {
     if (error) throw error;
     
     const urlIds = data?.map((item: { urlId: string }) => item.urlId).filter(Boolean) || [];
-    logger.info(`✅ ${urlIds.length} urlIds recuperados`);
+    logger.info(`✅ ${urlIds.length} urlIds retrieved`);
     return urlIds;
   } catch (error) {
-    logger.error('❌ Erro ao buscar urlIds:', error);
+    logger.error('❌ Error fetching urlIds:', error);
     throw error;
   }
 }
 
 export async function forkChat(_db: any, chatId: string, messageId: string): Promise<string> {
-  logger.info(`🍴 Criando fork de chat ${chatId} a partir da mensagem ${messageId}`);
+  logger.info(`🍴 Creating fork of chat ${chatId} from message ${messageId}`);
   try {
     const startTime = performance.now();
     const chat = await getMessages(_db, chatId);
     
     if (!chat) {
-      throw new Error('Chat não encontrado');
+      throw new Error('Chat not found');
     }
     
-    // Encontra o índice da mensagem para fazer o fork
+    // Find the index of the message to fork from
     const messageIndex = chat.messages.findIndex((msg) => msg.id === messageId);
     if (messageIndex === -1) {
-      throw new Error('Mensagem não encontrada');
+      throw new Error('Message not found');
     }
 
-    // Obtém mensagens até a mensagem selecionada (inclusive)
+    // Get messages up to the selected message (inclusive)
     const messages = chat.messages.slice(0, messageIndex + 1);
     
-    // Criar novo chat com as mensagens até o ponto de fork
+    // Create new chat with messages up to the fork point
     return createChatFromMessages(
       _db, 
       chat.description ? `${chat.description} (fork)` : 'Forked chat', 
@@ -571,18 +571,18 @@ export async function forkChat(_db: any, chatId: string, messageId: string): Pro
       chat.metadata
     );
   } catch (error) {
-    logger.error(`❌ Erro ao fazer fork do chat ${chatId}:`, error);
+    logger.error(`❌ Error forking chat ${chatId}:`, error);
     throw error;
   }
 }
 
 export async function duplicateChat(_db: any, id: string): Promise<string> {
-  logger.info(`🔄 Duplicando chat ${id}`);
+  logger.info(`🔄 Duplicating chat ${id}`);
   try {
     const chat = await getMessages(_db, id);
     
     if (!chat) {
-      throw new Error('Chat não encontrado');
+      throw new Error('Chat not found');
     }
     
     return createChatFromMessages(
@@ -592,7 +592,7 @@ export async function duplicateChat(_db: any, id: string): Promise<string> {
       chat.metadata
     );
   } catch (error) {
-    logger.error(`❌ Erro ao duplicar chat ${id}:`, error);
+    logger.error(`❌ Error duplicating chat ${id}:`, error);
     throw error;
   }
 }
@@ -603,13 +603,13 @@ export async function createChatFromMessages(
   messages: Message[],
   metadata?: IChatMetadata
 ): Promise<string> {
-  logger.info(`📝 Criando novo chat com ${messages.length} mensagens`);
+  logger.info(`📝 Creating new chat with ${messages.length} messages`);
   try {
     const user = await getAuthenticatedUser();
     const supabase = getOrCreateClient();
     const id = await getNextId(_db);
     
-    // Gerar um urlId único baseado no id
+    // Generate a unique urlId based on the id
     const newUrlId = await getUrlId(_db, id);
     
     const { data, error } = await supabase
@@ -628,23 +628,23 @@ export async function createChatFromMessages(
     if (error) throw error;
     
     const chat = (data && data[0]) as any;
-    if (!chat) throw new Error('Falha ao criar chat');
+    if (!chat) throw new Error('Failed to create chat');
     
-    logger.info(`✅ Chat criado com sucesso: ${newUrlId}`);
+    logger.info(`✅ Chat created successfully: ${newUrlId}`);
     return newUrlId;
   } catch (error) {
-    logger.error('❌ Erro ao criar chat a partir de mensagens:', error);
+    logger.error('❌ Error creating chat from messages:', error);
     throw error;
   }
 }
 
 export async function updateChatDescription(_db: any, id: string, description: string): Promise<void> {
-  logger.info(`📝 Atualizando descrição do chat ${id}`);
+  logger.info(`📝 Updating chat description ${id}`);
   try {
-    if (!description.trim()) throw new Error('A descrição não pode estar vazia');
+    if (!description.trim()) throw new Error('Description cannot be empty');
     
     const chat = await findChat(id, 'id');
-    if (!chat) throw new Error('Chat não encontrado');
+    if (!chat) throw new Error('Chat not found');
     
     const supabase = getOrCreateClient();
     const { error } = await supabase
@@ -653,35 +653,35 @@ export async function updateChatDescription(_db: any, id: string, description: s
       .eq('id', chat.id);
     
     if (error) throw error;
-    logger.info(`✅ Descrição atualizada com sucesso`);
+    logger.info(`✅ Description updated successfully`);
   } catch (error) {
-    logger.error(`❌ Erro ao atualizar descrição do chat ${id}:`, error);
+    logger.error(`❌ Error updating chat description ${id}:`, error);
     throw error;
   }
 }
 
 export async function detectAndRepairMessages(_db: any, id: string): Promise<boolean> {
-  logger.info(`🔧 Verificando e reparando mensagens para o chat ${id}`);
+  logger.info(`🔧 Checking and repairing messages for chat ${id}`);
   try {
     const chat = await getMessages(_db, id);
     if (!chat || !Array.isArray(chat.messages)) {
-      logger.warn(`⚠️ Chat ${id} não encontrado ou não tem formato válido`);
+      logger.warn(`⚠️ Chat ${id} not found or does not have a valid format`);
       return false;
     }
     
-    // Verificar se há mensagens suspeitas de truncamento
+    // Check for messages suspected of truncation
     let needsRepair = false;
     let repairedMessages = chat.messages.map(msg => {
       if (typeof msg.content === 'string') {
-        // Verificar sinais comuns de truncamento
+        // Check common signs of truncation
         if (msg.content.endsWith('...') || 
             (msg.content.includes('```') && !msg.content.match(/```[\s\S]*?```/g))) {
           needsRepair = true;
           
-          // Tentar remover caracteres de truncamento
+          // Try to remove truncation characters
           const repaired = msg.content.replace(/\.\.\.+$/, '');
           
-          logger.info(`🔄 Mensagem ${msg.id} possivelmente truncada, tentando reparar`);
+          logger.info(`🔄 Message ${msg.id} possibly truncated, attempting repair`);
           return { ...msg, content: repaired };
         }
       }
@@ -689,7 +689,7 @@ export async function detectAndRepairMessages(_db: any, id: string): Promise<boo
     });
     
     if (needsRepair) {
-      // Salvar mensagens reparadas
+      // Save repaired messages
       await setMessages(
         _db,
         chat.id,
@@ -700,14 +700,14 @@ export async function detectAndRepairMessages(_db: any, id: string): Promise<boo
         chat.metadata
       );
       
-      logger.info(`✅ Mensagens reparadas para o chat ${id}`);
+      logger.info(`✅ Messages repaired for chat ${id}`);
       return true;
     }
     
-    logger.info(`✅ Nenhum problema detectado nas mensagens do chat ${id}`);
+    logger.info(`✅ No issues detected in messages for chat ${id}`);
     return false;
   } catch (error) {
-    logger.error(`❌ Erro ao verificar/reparar mensagens:`, error);
+    logger.error(`❌ Error checking/repairing messages:`, error);
     throw error;
   }
 }
