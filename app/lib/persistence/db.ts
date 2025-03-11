@@ -5,6 +5,18 @@ import { getOrCreateClient } from '~/components/supabase/client';
 
 const logger = createScopedLogger('ChatHistory');
 
+// Controle de throttling para salvar mensagens
+let lastSaveOperation: {
+  chatId: string;
+  timestamp: number;
+  inProgress: boolean;
+  timer: any;
+  contentSize?: number;
+} | null = null;
+
+// Intervalo de throttling para evitar múltiplas requisições (ms)
+const THROTTLE_INTERVAL = 3000;
+
 export interface IChatMetadata {
   // Interface para metadados adicionais do chat
   [key: string]: any;
@@ -57,6 +69,50 @@ async function findChat(id: string, select = '*'): Promise<any> {
   return data;
 }
 
+// Função para verificar se as mensagens foram carregadas corretamente e fazer log
+function validateMessagesAndLog(data: any, idType: string, id: string): void {
+  if (data.messages && Array.isArray(data.messages)) {
+    logger.info(`✅ Chat recuperado pelo ${idType}: ${id} com ${data.messages.length} mensagens`);
+    
+    // Log para depuração de mensagens potencialmente truncadas
+    data.messages.forEach((msg: any, index: number) => {
+      if (typeof msg.content === 'string' && msg.content.length > 1000) {
+        logger.info(`Mensagem ${index} tem ${msg.content.length} caracteres`);
+      }
+    });
+  } else {
+    logger.warn(`⚠️ Chat recuperado pelo ${idType} ${id} sem mensagens válidas`);
+  }
+}
+
+// Configura Realtime subscription para um chat
+function setupRealtimeSubscription(chatId: string): void {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    const supabase = getOrCreateClient();
+    
+    logger.info(`🔄 Configurando Realtime para chat ${chatId}`);
+    
+    // Inscrever para receber atualizações do chat
+    supabase
+      .channel(`chat:${chatId}`)
+      .on('postgres_changes', {
+        event: '*', // Todos os eventos (insert, update, delete)
+        schema: 'public',
+        table: 'chats',
+        filter: `id=eq.${chatId}`,
+      }, (payload: any) => {
+        logger.info(`📡 Recebida atualização Realtime para chat ${chatId}`);
+      })
+      .subscribe((status: string) => {
+        logger.info(`Realtime status: ${status}`);
+      });
+  } catch (error) {
+    logger.error(`❌ Erro ao configurar Realtime para chat ${chatId}:`, error);
+  }
+}
+
 // ===== PRINCIPAIS FUNÇÕES DA API =====
 
 export async function openDatabase(): Promise<any> {
@@ -77,6 +133,8 @@ export async function getAll(_db: any): Promise<ChatHistoryItem[]> {
     const startTime = performance.now();
     const user = await getAuthenticatedUser();
     const supabase = getOrCreateClient();
+    
+    logger.info(`🔴 ISSO É UMA OPERAÇÃO REST NO SUPABASE (listando todos os chats) 🔴`);
     
     const { data, error } = await supabase
       .from('chats')
@@ -104,9 +162,74 @@ export async function setMessages(
   timestamp?: string,
   metadata?: IChatMetadata
 ): Promise<void> {
-  logger.info(`💾 Salvando mensagens para chat ${id}`);
+  // Se não há mensagens, não há nada para salvar
+  if (!messages || messages.length === 0) {
+    logger.warn(`⚠️ Tentativa de salvar chat ${id} sem mensagens`);
+    return;
+  }
+
+  // Calcular o tamanho total das mensagens
+  const totalSize = messages.reduce((size, msg) => {
+    return size + (typeof msg.content === 'string' ? msg.content.length : 0);
+  }, 0);
+
+  // Log do tamanho para entender o volume de dados
+  if (totalSize > 1000) {
+    logger.info(`📊 Tamanho total das mensagens: ${totalSize} caracteres`);
+  }
+
+  // Se houver uma operação de salvamento em andamento para este chat, cancelar o timer
+  if (lastSaveOperation && lastSaveOperation.chatId === id && lastSaveOperation.timer) {
+    clearTimeout(lastSaveOperation.timer);
+    lastSaveOperation.timer = null;
+  }
+
+  // Se a última operação foi muito recente e para o mesmo chat, aplicar throttling
+  if (lastSaveOperation && 
+      lastSaveOperation.chatId === id && 
+      Date.now() - lastSaveOperation.timestamp < THROTTLE_INTERVAL && 
+      !lastSaveOperation.inProgress) {
+    
+    logger.info(`⏱️ Aplicando throttling para chat ${id} (aguardando ${THROTTLE_INTERVAL}ms)`);
+    
+    // Configurar um timer para salvar mais tarde
+    lastSaveOperation.timer = setTimeout(() => {
+      // Executar o salvamento depois do delay
+      _saveMessagesToSupabase(id, messages, urlId, description, timestamp, metadata, totalSize)
+        .catch(error => {
+          logger.error(`❌ Erro ao salvar mensagens após throttling:`, error);
+        });
+    }, THROTTLE_INTERVAL);
+    
+    return;
+  }
+
+  // Se a mensagem tem mais de 5000 caracteres ou é um salvamento normal, salvar imediatamente
+  return _saveMessagesToSupabase(id, messages, urlId, description, timestamp, metadata, totalSize);
+}
+
+// Função interna para salvar mensagens no Supabase
+async function _saveMessagesToSupabase(
+  id: string,
+  messages: Message[],
+  urlId?: string,
+  description?: string,
+  timestamp?: string,
+  metadata?: IChatMetadata,
+  contentSize?: number
+): Promise<void> {
   try {
+    // Marcar operação em andamento para este chat
+    lastSaveOperation = {
+      chatId: id,
+      timestamp: Date.now(),
+      inProgress: true,
+      timer: null
+    };
+    
+    logger.info(`💾 Salvando mensagens para chat ${id}`);
     const startTime = performance.now();
+    
     const user = await getAuthenticatedUser();
     const supabase = getOrCreateClient();
     
@@ -114,6 +237,8 @@ export async function setMessages(
       throw new Error('Timestamp inválido');
     }
 
+    logger.info(`🔴 ISSO É UMA OPERAÇÃO REST NO SUPABASE (salvando mensagens) 🔴`);
+    
     // Verificação e sanitização das mensagens para evitar problemas de truncamento
     const sanitizedMessages = messages.map(msg => {
       // Clone a mensagem para não modificar o objeto original
@@ -151,110 +276,61 @@ export async function setMessages(
       throw error;
     }
     
+    // Configurar realtime para este chat se ainda não estiver configurado
+    setupRealtimeSubscription(id);
+    
     const duration = Math.round(performance.now() - startTime);
     logger.info(`✅ Mensagens salvas para chat ${id} (${duration}ms)`);
   } catch (error) {
     logger.error('❌ Erro ao salvar mensagens:', error);
     throw error;
+  } finally {
+    // Atualizar estado após a operação
+    if (lastSaveOperation && lastSaveOperation.chatId === id) {
+      lastSaveOperation.inProgress = false;
+    }
   }
 }
 
 export async function getMessages(_db: any, id: string): Promise<ChatHistoryItem> {
   logger.info(`🔍 Buscando mensagens para id: ${id}`);
   try {
-    try {
-      return await getMessagesById(_db, id);
-    } catch (e) {
-      return await getMessagesByUrlId(_db, id);
+    const supabase = getOrCreateClient();
+    logger.info(`🔴 ISSO É UMA OPERAÇÃO REST NO SUPABASE (buscando mensagens) 🔴`);
+    
+    let query;
+    let idType = '';
+    
+    if (isValidUUID(id)) {
+      query = supabase.from('chats').select('*').eq('id', id).maybeSingle();
+      idType = 'id';
+    } else {
+      query = supabase.from('chats').select('*').eq('urlId', id).maybeSingle();
+      idType = 'urlId';
     }
+    
+    const { data, error } = await query;
+    
+    if (error) {
+      logger.error(`❌ Erro ao buscar mensagens pelo ${idType} ${id}:`, error);
+      throw error;
+    }
+    
+    if (!data) {
+      logger.warn(`⚠️ Nenhum chat encontrado com ${idType}: ${id}`);
+      throw new Error(`Chat não encontrado com ${idType}: ${id}`);
+    }
+    
+    validateMessagesAndLog(data, idType, id);
+    
+    // Configurar Realtime para este chat
+    if (data.id) {
+      setupRealtimeSubscription(data.id);
+    }
+    
+    return data as ChatHistoryItem;
   } catch (error) {
     logger.error(`❌ Erro ao buscar mensagens para id ${id}:`, error);
-    throw error;
-  }
-}
-
-export async function getMessagesByUrlId(_db: any, id: string): Promise<ChatHistoryItem> {
-  logger.info(`🔍 Buscando mensagens pelo urlId: ${id}`);
-  try {
-    const supabase = getOrCreateClient();
-    
-    // Usar a configuração explícita para JSON para evitar truncamento
-    const { data, error } = await supabase
-      .from('chats')
-      .select('*')
-      .eq('urlId', id)
-      .maybeSingle();
-    
-    if (error) {
-      logger.error(`❌ Erro ao buscar mensagens pelo urlId ${id}:`, error);
-      throw error;
-    }
-    
-    if (!data) {
-      logger.warn(`⚠️ Nenhum chat encontrado com urlId: ${id}`);
-      throw new Error(`Chat não encontrado com urlId: ${id}`);
-    }
-    
-    // Verificar se as mensagens foram carregadas corretamente
-    if (data.messages && Array.isArray(data.messages)) {
-      logger.info(`✅ Chat recuperado pelo urlId: ${id} com ${data.messages.length} mensagens`);
-      
-      // Log para depuração de mensagens potencialmente truncadas
-      data.messages.forEach((msg: any, index: number) => {
-        if (typeof msg.content === 'string' && msg.content.length > 1000) {
-          logger.info(`Mensagem ${index} tem ${msg.content.length} caracteres`);
-        }
-      });
-    } else {
-      logger.warn(`⚠️ Chat recuperado pelo urlId ${id} sem mensagens válidas`);
-    }
-    
-    return data as ChatHistoryItem;
-  } catch (error) {
-    logger.error(`❌ Erro ao buscar mensagens pelo urlId ${id}:`, error);
-    throw error;
-  }
-}
-
-export async function getMessagesById(_db: any, id: string): Promise<ChatHistoryItem> {
-  logger.info(`🔍 Buscando mensagens pelo id: ${id}`);
-  try {
-    const supabase = getOrCreateClient();
-    
-    // Usar a configuração explícita para JSON para evitar truncamento
-    const { data, error } = await supabase
-      .from('chats')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle();
-    
-    if (error) {
-      logger.error(`❌ Erro ao buscar mensagens pelo id ${id}:`, error);
-      throw error;
-    }
-    
-    if (!data) {
-      logger.warn(`⚠️ Nenhum chat encontrado com id: ${id}`);
-      throw new Error(`Chat não encontrado com id: ${id}`);
-    }
-    
-    // Verificar se as mensagens foram carregadas corretamente
-    if (data.messages && Array.isArray(data.messages)) {
-      logger.info(`✅ Chat recuperado pelo id: ${id} com ${data.messages.length} mensagens`);
-      
-      // Log para depuração de mensagens potencialmente truncadas
-      data.messages.forEach((msg: any, index: number) => {
-        if (typeof msg.content === 'string' && msg.content.length > 1000) {
-          logger.info(`Mensagem ${index} tem ${msg.content.length} caracteres`);
-        }
-      });
-    } else {
-      logger.warn(`⚠️ Chat recuperado pelo id ${id} sem mensagens válidas`);
-    }
-    
-    return data as ChatHistoryItem;
-  } catch (error) {
-    logger.error(`❌ Erro ao buscar mensagens pelo id ${id}:`, error);
     throw error;
   }
 }
@@ -268,6 +344,13 @@ export async function deleteById(_db: any, id: string): Promise<void> {
     // Buscar o chat primeiro para garantir que existe e obter o ID real se for urlId
     const chat = await findChat(id, 'id');
     if (!chat) throw new Error(`Chat não encontrado: ${id}`);
+    
+    // Cancelar qualquer operação pendente para este chat
+    if (lastSaveOperation && lastSaveOperation.chatId === chat.id && lastSaveOperation.timer) {
+      clearTimeout(lastSaveOperation.timer);
+    }
+    
+    logger.info(`🔴 ISSO É UMA OPERAÇÃO REST NO SUPABASE (deletando chat) 🔴`);
     
     const { error } = await supabase.from('chats').delete().eq('id', chat.id);
     if (error) throw error;
