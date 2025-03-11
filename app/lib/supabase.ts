@@ -6,9 +6,9 @@ const supabaseAnonKey = import.meta.env.SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.warn(
-    'Configuração do Supabase não encontrada. Verifique se as variáveis SUPABASE_URL e SUPABASE_ANON_KEY estão definidas no .env',
+    'Supabase configuration not found. Verify that SUPABASE_URL and SUPABASE_ANON_KEY variables are defined in .env',
   );
-  throw new Error('Configuração do Supabase não encontrada');
+  throw new Error('Supabase configuration not found');
 }
 
 export const createBrowserClient = () => {

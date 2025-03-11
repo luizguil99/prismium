@@ -9,7 +9,7 @@ import { type CookieOptions } from '@supabase/ssr';
  * Se o usuário não estiver autenticado, redireciona para a página de login.
  */
 export async function requireAuth(supabase: any) {
-  console.log('🔐 Verificando autenticação...');
+  console.log('🔐 Checking authentication...');
 
   const {
     data: { user },

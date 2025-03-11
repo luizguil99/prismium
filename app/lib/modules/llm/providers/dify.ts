@@ -46,7 +46,7 @@ export default class DifyProvider extends BaseProvider {
     });
 
     if (!apiKey) {
-      logger.error('API key não encontrada');
+      logger.error('API key not found');
       throw new Error('API key not found for Dify');
     }
 

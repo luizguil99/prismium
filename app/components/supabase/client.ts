@@ -3,21 +3,21 @@ import { createBrowserClient as createSupabaseBrowserClient } from '@supabase/ss
 const supabaseUrl = import.meta.env.SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.SUPABASE_ANON_KEY;
 
-const DEBUG = false; // Controla logs de depuração
+const DEBUG = false; // Controls debug logging
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Configuração do Supabase não encontrada. Verifique se as variáveis SUPABASE_URL e SUPABASE_ANON_KEY estão definidas no .env');
-  throw new Error('Configuração do Supabase não encontrada');
+  console.warn('Supabase configuration not found. Make sure SUPABASE_URL and SUPABASE_ANON_KEY variables are defined in .env');
+  throw new Error('Supabase configuration not found');
 }
 
-// Cliente Supabase singleton
+// Supabase client singleton
 let supabaseClient: ReturnType<typeof createSupabaseBrowserClient> | null = null;
 
-// Função para obter ou criar o cliente Supabase
+// Function to get or create the Supabase client
 export const getOrCreateClient = () => {
   if (!supabaseClient) {
-    // Log condicional apenas em modo debug
-    if (DEBUG) console.log('🔧 Criando novo cliente Supabase...');
+    // Conditional log only in debug mode
+    if (DEBUG) console.log('🔧 Creating new Supabase client...');
     
     try {
       supabaseClient = createSupabaseBrowserClient(
@@ -25,39 +25,39 @@ export const getOrCreateClient = () => {
         supabaseAnonKey,
         {
           auth: {
-            persistSession: true, // Manter sessão entre carregamentos
-            autoRefreshToken: true, // Atualizar token automaticamente
-            detectSessionInUrl: false, // Não detectar sessão na URL
-            flowType: 'pkce', // Usar PKCE para melhor segurança
-            debug: DEBUG, // Log de depuração apenas se DEBUG estiver ativo
-            // Cookie ainda funciona automaticamente na opção padrão
+            persistSession: true, // Keep session between page loads
+            autoRefreshToken: true, // Automatically refresh authentication token
+            detectSessionInUrl: false, // Don't detect session in URL
+            flowType: 'pkce', // Use PKCE for better security
+            debug: DEBUG, // Debug logging only if DEBUG is active
+            // Cookie works automatically with default option
           },
-          // Configurações para diminuir requisições de rede
+          // Settings to reduce network requests
           global: {
             headers: {
-              // Cabeçalhos de cache apropriados para reduzir chamadas duplicadas
+              // Appropriate cache headers to reduce duplicate calls
               'Cache-Control': 'no-cache'
             }
           },
-          // Configurações para diminuir eventos realtime
+          // Settings to reduce realtime events
           realtime: {
             params: {
-              eventsPerSecond: 1 // Limitar eventos de tempo real
+              eventsPerSecond: 1 // Limit realtime events
             }
           }
         }
       );
     } catch (error) {
-      console.error('Erro ao criar cliente Supabase:', error);
+      console.error('Error creating Supabase client:', error);
       throw error;
     }
   }
   return supabaseClient;
 };
 
-// Função específica para o cliente (browser)
+// Function specific for browser client
 export const createBrowserClient = () => {
-  if (DEBUG) console.log('🌐 Criando cliente Supabase para o browser...');
+  if (DEBUG) console.log('🌐 Creating Supabase client for browser...');
   return createSupabaseBrowserClient(
     supabaseUrl,
     supabaseAnonKey,

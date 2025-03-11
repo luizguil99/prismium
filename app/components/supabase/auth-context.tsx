@@ -13,20 +13,20 @@ interface AuthContextType {
   resetPassword: (email: string) => Promise<{ data: any; error: any }>;
 }
 
-const AUTH_DEBUG = false; // Desativa a maioria dos logs, mantém apenas erros
+const AUTH_DEBUG = false; // Disables most logs, keeps only errors
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true); // Começa como true para evitar flash de conteúdo
+  const [loading, setLoading] = useState(true); // Starts as true to avoid content flash
   const [isInitialized, setIsInitialized] = useState(false);
 
   // Memoize supabase client
   const supabase = useMemo(() => getOrCreateClient(), []);
 
-  // Log condicional
+  // Conditional logging
   const conditionalLog = (message: string) => {
     if (AUTH_DEBUG) {
       console.log(message);
@@ -35,7 +35,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Authentication methods
   const signIn = useCallback(async (email: string, password: string) => {
-    console.log('🔐 AuthContext: Iniciando login...');
+    console.log('🔐 AuthContext: Starting login...');
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -43,14 +43,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password,
       });
       if (error) throw error;
-      console.log('✨ AuthContext: Login bem sucedido:', data);
+      console.log('✨ AuthContext: Login successful:', data);
       
-      // Invalidar cache para garantir dados atualizados após login
+      // Invalidate cache to ensure updated data after login
       invalidateChatsCache();
       
       return { data, error: null };
     } catch (error: any) {
-      console.error('💥 AuthContext: Erro no login:', error);
+      console.error('💥 AuthContext: Login error:', error);
       return { data: null, error };
     } finally {
       setLoading(false);
@@ -58,7 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [supabase]);
 
   const signUp = useCallback(async (email: string, password: string, userData?: any) => {
-    console.log('📝 AuthContext: Iniciando cadastro...');
+    console.log('📝 AuthContext: Starting registration...');
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -69,10 +69,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
       });
       if (error) throw error;
-      console.log('🎉 AuthContext: Cadastro bem sucedido:', data);
+      console.log('🎉 AuthContext: Registration successful:', data);
       return { data, error: null };
     } catch (error: any) {
-      console.error('💥 AuthContext: Erro no cadastro:', error);
+      console.error('💥 AuthContext: Registration error:', error);
       return { data: null, error };
     } finally {
       setLoading(false);
@@ -80,51 +80,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [supabase]);
 
   const signOut = useCallback(async () => {
-    console.log('🚫 AuthContext: Iniciando logout...');
+    console.log('🚫 AuthContext: Starting logout...');
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
-        console.error('💥 AuthContext: Erro no logout:', error);
+        console.error('💥 AuthContext: Logout error:', error);
       } else {
-        console.log('👋 AuthContext: Logout bem sucedido');
-        // Garantir que o estado local seja limpo imediatamente
+        console.log('👋 AuthContext: Logout successful');
+        // Ensure local state is cleared immediately
         setSession(null);
         setUser(null);
-        // Invalidar cache
+        // Invalidate cache
         invalidateChatsCache();
       }
       return { error };
     } catch (error: any) {
-      console.error('💥 AuthContext: Erro no logout:', error);
+      console.error('💥 AuthContext: Logout error:', error);
       return { error };
     }
   }, [supabase]);
 
   const resetPassword = useCallback(async (email: string) => {
-    console.log('📨 AuthContext: Iniciando redefinição de senha...');
+    console.log('📨 AuthContext: Starting password reset...');
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.resetPasswordForEmail(email);
       if (error) throw error;
-      console.log('📨 AuthContext: Redefinição de senha bem sucedida:', data);
+      console.log('📨 AuthContext: Password reset successful:', data);
       return { data, error: null };
     } catch (error: any) {
-      console.error('💥 AuthContext: Erro na redefinição de senha:', error);
+      console.error('💥 AuthContext: Password reset error:', error);
       return { data: null, error };
     } finally {
       setLoading(false);
     }
   }, [supabase]);
 
-  // Configuração inicial da autenticação
+  // Initial authentication setup
   useEffect(() => {
     if (isInitialized) return;
     
-    conditionalLog('🔄 AuthContext: Inicializando estado de autenticação...');
+    conditionalLog('🔄 AuthContext: Initializing authentication state...');
     
-    // Função para atualizar o estado da autenticação
+    // Function to update authentication state
     const updateAuthState = (session: Session | null) => {
-      conditionalLog(`🔄 AuthContext: Atualizando estado com sessão: ${session ? 'presente' : 'ausente'}`);
+      conditionalLog(`🔄 AuthContext: Updating state with session: ${session ? 'present' : 'absent'}`);
       
       if (!session?.user?.id) {
         setSession(null);
@@ -132,7 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // Só atualiza se realmente houver mudança
+      // Only update if there's an actual change
       setSession((prev: Session | null) => {
         if (prev?.user?.id === session.user.id) return prev;
         return session;
@@ -144,10 +144,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
     };
 
-    // Verificar sessão atual - usando o método getSession do Supabase
-    // que já utiliza cookies/localStorage nativamente
+    // Check current session - using Supabase's getSession method
+    // which already uses cookies/localStorage natively
     supabase.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
-      conditionalLog(`📡 AuthContext: Sessão atual obtida: ${session ? 'presente' : 'ausente'}`);
+      conditionalLog(`📡 AuthContext: Current session obtained: ${session ? 'present' : 'absent'}`);
       
       if (session) {
         updateAuthState(session);
@@ -157,13 +157,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
-    // Inscrever para mudanças de autenticação - executado apenas uma vez
+    // Subscribe to authentication changes - executed only once
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event: string, newSession: Session | null) => {
-        // Somente loga alterações reais de estado
+        // Only log actual state changes
         if ((newSession && !session) || (!newSession && session) || 
             (newSession?.user?.id !== session?.user?.id)) {
-          conditionalLog('🔔 AuthContext: Mudança no estado de autenticação detectada');
+          conditionalLog('🔔 AuthContext: Authentication state change detected');
           updateAuthState(newSession);
         }
       }
@@ -171,7 +171,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Cleanup
     return () => {
-      conditionalLog('🧹 AuthContext: Limpando inscrição de eventos de autenticação');
+      conditionalLog('🧹 AuthContext: Cleaning up authentication event subscription');
       subscription.unsubscribe();
     };
   }, [supabase, isInitialized, session]);
@@ -200,7 +200,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth deve ser usado dentro de um AuthProvider');
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 }

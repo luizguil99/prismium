@@ -8,7 +8,7 @@ import { AdminSidebar } from "~/admin-components/AdminSidebar";
 import { useAuth } from "~/components/supabase/auth-context";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  console.log('🔐 Admin: Verificando permissões...');
+  console.log('🔐 Admin: Checking permissions...');
   
   const response = new Response();
   const supabase = createServerClient(request, response);
