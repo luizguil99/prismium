@@ -7,9 +7,14 @@ import { Markdown } from './Markdown';
 
 interface UserMessageProps {
   content: string | Array<{ type: string; text?: string; image?: string }>;
+  isHidden?: boolean;
 }
 
-export function UserMessage({ content }: UserMessageProps) {
+export function UserMessage({ content, isHidden }: UserMessageProps) {
+  if (isHidden) {
+    return null;
+  }
+
   if (Array.isArray(content)) {
     const textItem = content.find((item) => item.type === 'text');
     const textContent = stripMetadata(textItem?.text || '');

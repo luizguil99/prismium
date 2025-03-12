@@ -34,6 +34,11 @@ const toastAnimation = cssTransition({
 
 const logger = createScopedLogger('Chat');
 
+// Estendendo o tipo Message para incluir a propriedade isHidden
+interface CustomMessage extends Message {
+  isHidden?: boolean;
+}
+
 export function Chat() {
   renderLogger.trace('Chat');
 
@@ -364,7 +369,9 @@ export const ChatImpl = memo(
                       image: imageData,
                     })),
                   ] as any,
-                });
+                  isHidden: true, // Marca a mensagem como invisível na UI
+                  annotations: ['hidden'] // Usa annotations também para compatibilidade
+                } as CustomMessage);
               }, 1000); // Pequeno delay para garantir que o template foi processado
               
               return;
@@ -549,7 +556,10 @@ export const ChatImpl = memo(
         exportChat={exportChat}
         messages={messages.map((message, i) => {
           if (message.role === 'user') {
-            return message;
+            return {
+              ...message,
+              isHidden: (message as CustomMessage).isHidden,
+            };
           }
 
           return {

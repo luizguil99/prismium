@@ -12,6 +12,11 @@ import { CircleDashed } from 'lucide-react';
 import type { ProgressAnnotation } from '~/types/context';
 import ProgressCompilation from './ProgressCompilation';
 
+// Interface estendida para incluir a propriedade isHidden
+interface CustomMessage extends Message {
+  isHidden?: boolean;
+}
+
 interface MessagesProps {
   id?: string;
   className?: string;
@@ -73,7 +78,7 @@ export const Messages = React.forwardRef<HTMLDivElement, MessagesProps>((props: 
             const isUserMessage = role === 'user';
             const isFirst = index === 0;
             const isLast = index === messages.length - 1;
-            const isHidden = annotations?.includes('hidden');
+            const isHidden = annotations?.includes('hidden') || (message as CustomMessage).isHidden;
 
             if (isHidden) {
               return <Fragment key={index} />;
@@ -102,7 +107,7 @@ export const Messages = React.forwardRef<HTMLDivElement, MessagesProps>((props: 
 
                 <div className="grid grid-col-1 w-full">
                   {isUserMessage ? (
-                    <UserMessage content={content} />
+                    <UserMessage content={content} isHidden={(message as CustomMessage).isHidden} />
                   ) : (
                     <AssistantMessage content={content} annotations={message.annotations} />
                   )}
