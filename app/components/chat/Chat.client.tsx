@@ -147,6 +147,12 @@ export const ChatImpl = memo(
     const files = useStore(workbenchStore.files);
     const actionAlert = useStore(workbenchStore.alert);
     const { activeProviders, promptId, autoSelectTemplate, contextOptimizationEnabled } = useSettings();
+    // Ref para armazenar mensagens pendentes para serem enviadas após processamento do template
+    const pendingMessageRef = useRef<string | null>(null);
+    // Store de artefatos para monitorar o progresso do template
+    const artifacts = useStore(workbenchStore.artifacts);
+    // ID da última mensagem assistente que contém um artefato
+    const [lastArtifactMessageId, setLastArtifactMessageId] = useState<string | null>(null);
 
     const [model, setModel] = useState(() => {
       const savedModel = Cookies.get('selectedModel');
@@ -354,25 +360,8 @@ export const ChatImpl = memo(
               // Armazena a mensagem original para processamento posterior
               const originalMessage = messageContent;
               
-              // Agenda o envio automático da mensagem original após um pequeno delay
-              setTimeout(() => {
-                // Envio invisível da mensagem original após a importação do template
-                append({
-                  role: 'user',
-                  content: [
-                    {
-                      type: 'text',
-                      text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${originalMessage}`,
-                    },
-                    ...imageDataList.map((imageData) => ({
-                      type: 'image',
-                      image: imageData,
-                    })),
-                  ] as any,
-                  isHidden: true, // Marca a mensagem como invisível na UI
-                  annotations: ['hidden'] // Usa annotations também para compatibilidade
-                } as CustomMessage);
-              }, 1000); // Pequeno delay para garantir que o template foi processado
+              // Em vez de usar setTimeout, usamos um ref para controlar quando enviar a mensagem
+              pendingMessageRef.current = originalMessage;
               
               return;
             }
@@ -527,6 +516,69 @@ export const ChatImpl = memo(
         updateRevertDropdownMessages(messages);
       }
     }, [messages]);
+
+    // Efeito para verificar quando o artefato do template foi processado e então enviar a mensagem
+    useEffect(() => {
+      // Verifica se há uma mensagem pendente para enviar e se temos um ID de artefato
+      if (pendingMessageRef?.current && lastArtifactMessageId && artifacts[lastArtifactMessageId]) {
+        const artifact = artifacts[lastArtifactMessageId];
+        
+        // Obtém todas as ações do artefato
+        const actions = Object.values(artifact.runner.actions.get());
+        
+        // Verifica se todas as ações foram concluídas
+        const allActionsFinished = actions.length > 0 && !actions.find(action => {
+          // Ações do tipo 'start' estão completas se não estiverem falhadas ou em execução
+          if (action.type === 'start') {
+            return action.status === 'failed' || action.status === 'running';
+          }
+          // Outras ações estão completas apenas se o status for 'complete'
+          return action.status !== 'complete';
+        });
+        
+        // Se todas as ações estiverem concluídas, envie a mensagem
+        if (allActionsFinished && !isLoading) {
+          // Extrai a mensagem original e reseta o ref
+          const originalMessage = pendingMessageRef.current;
+          pendingMessageRef.current = null;
+          
+          // Envio invisível da mensagem original após a importação do template completar
+          append({
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${originalMessage}`,
+              },
+              ...imageDataList.map((imageData) => ({
+                type: 'image',
+                image: imageData,
+              })),
+            ] as any,
+            isHidden: true,
+            annotations: ['hidden']
+          } as CustomMessage);
+          
+          // Limpa o ID do artefato após enviar a mensagem
+          setLastArtifactMessageId(null);
+        }
+      }
+    }, [artifacts, lastArtifactMessageId, isLoading, pendingMessageRef, append, model, provider, imageDataList]);
+    
+    // Monitor para detectar mensagens de artefato e armazenar o ID
+    useEffect(() => {
+      if (messages.length > 0 && pendingMessageRef.current) {
+        // Procura por mensagens do assistente que contenham artefatos
+        for (let i = messages.length - 1; i >= 0; i--) {
+          const message = messages[i];
+          if (message.role === 'assistant' && typeof message.content === 'string' && 
+              message.content.includes('<boltArtifact id="imported-files"')) {
+            setLastArtifactMessageId(message.id);
+            break;
+          }
+        }
+      }
+    }, [messages, pendingMessageRef]);
 
     return (
       <BaseChat

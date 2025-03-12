@@ -158,4 +158,12 @@ export const STARTER_TEMPLATES: Template[] = [
     tags: ['spotify', 'typescript', 'frontend', 'clone'],
     icon: 'i-bolt:spotify',
   },
+  {
+    name: 'Shadcn-Javascript-react',
+    label: 'Shadcn Javascript React',
+    description: 'A modern Shadcn Javascript React with TypeScript support and best practices configuration',
+    githubRepo: 'luizguil99/Shadcn-js-template',
+    tags: ['shadcn', 'javascript', 'frontend', 'react'],
+    icon: 'i-bolt:react',
+  },
 ];
