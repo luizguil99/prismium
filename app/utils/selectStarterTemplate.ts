@@ -1,9 +1,32 @@
+/**
+ * Starter Template Selection Module
+ * 
+ * This module provides functionality to select and implement starter templates for projects.
+ * It handles:
+ * - Template selection based on user requirements using LLM
+ * - Parsing LLM output to identify the selected template
+ * - Fetching template content from GitHub repositories
+ * - Filtering files based on ignore patterns
+ * - Preparing template files for import into the project
+ * 
+ * The module exposes main functions:
+ * - selectStarterTemplate: Communicates with LLM to choose appropriate template
+ * - getTemplates: Fetches and prepares files from the selected template
+ */
+
 import ignore from 'ignore';
 import type { ProviderInfo } from '~/types/model';
 import type { Template } from '~/types/template';
 import { STARTER_TEMPLATES } from './constants';
 import Cookies from 'js-cookie';
 
+/**
+ * Creates a prompt for the LLM to select the appropriate starter template
+ * This function formats all available templates in XML structure for the AI to process
+ * 
+ * @param templates - Array of available template objects
+ * @returns Formatted prompt string for the LLM with instructions
+ */
 const starterTemplateSelectionPrompt = (templates: Template[]) => `
 You are an experienced developer who helps people choose the best starter template for their projects.
 
@@ -64,8 +87,15 @@ MOST IMPORTANT: YOU DONT HAVE TIME TO THINK JUST START RESPONDING BASED ON HUNCH
 Important: Provide only the selection tags in your response, no additional text.
 `;
 
-const templates: Template[] = STARTER_TEMPLATES.filter((t) => !t.name.includes('shadcn'));
+// Get templates from the constants file
+const templates: Template[] = STARTER_TEMPLATES;
 
+/**
+ * Parses the LLM output to extract the selected template name and title
+ * 
+ * @param llmOutput - The raw text response from the LLM
+ * @returns Object containing template name and title, or null if parsing fails
+ */
 const parseSelectedTemplate = (llmOutput: string): { template: string; title: string } | null => {
   try {
     // Extract content between <templateName> tags
@@ -83,8 +113,16 @@ const parseSelectedTemplate = (llmOutput: string): { template: string; title: st
   }
 };
 
+/**
+ * Main function to communicate with the LLM to select an appropriate starter template
+ * Makes an API call to the LLM with the user's message and processes the response
+ * 
+ * @param options - Object containing message, model, and provider info
+ * @returns Promise with the selected template and title, or default if parsing fails
+ */
 export const selectStarterTemplate = async (options: { message: string; model: string; provider: ProviderInfo }) => {
   const { message, model, provider } = options;
+  // Prepare request body for LLM API call
   const requestBody = {
     message,
     model,
@@ -113,6 +151,14 @@ export const selectStarterTemplate = async (options: { message: string; model: s
   }
 };
 
+/**
+ * Fetches content from a GitHub repository
+ * Recursively retrieves all files from a repo or specific path
+ * 
+ * @param repoName - The GitHub repository name (owner/repo)
+ * @param path - Optional path within the repository to fetch
+ * @returns Promise with array of file objects containing name, path, and content
+ */
 const getGitHubRepoContent = async (
   repoName: string,
   path: string = '',
@@ -120,13 +166,14 @@ const getGitHubRepoContent = async (
   const baseUrl = 'https://api.github.com';
 
   try {
+    // Get GitHub token from cookies or environment variables
     const token = Cookies.get('githubToken') || import.meta.env.VITE_GITHUB_ACCESS_TOKEN;
 
     const headers: HeadersInit = {
       Accept: 'application/vnd.github.v3+json',
     };
 
-    // Add your GitHub token if needed
+    // Add GitHub token to headers if available
     if (token) {
       headers.Authorization = 'token ' + token;
     }
@@ -142,7 +189,7 @@ const getGitHubRepoContent = async (
 
     const data: any = await response.json();
 
-    // If it's a single file, return its content
+    // Handle single file response
     if (!Array.isArray(data)) {
       if (data.type === 'file') {
         // If it's a file, get its content
@@ -192,32 +239,44 @@ const getGitHubRepoContent = async (
   }
 };
 
+/**
+ * Main function to retrieve and prepare template files
+ * Finds the template, fetches its files, applies filters and prepares them for import
+ * 
+ * @param templateName - Name of the selected template
+ * @param title - Optional title for the project
+ * @returns Promise with formatted assistant and user messages containing the template files
+ */
 export async function getTemplates(templateName: string, title?: string) {
+  // Find the template object by name
   const template = STARTER_TEMPLATES.find((t) => t.name == templateName);
 
   if (!template) {
     return null;
   }
 
+  // Get the GitHub repo associated with the template
   const githubRepo = template.githubRepo;
+  // Fetch all files from the GitHub repo
   const files = await getGitHubRepoContent(githubRepo);
 
   let filteredFiles = files;
 
   /*
-   * ignoring common unwanted files
-   * exclude    .git
+   * Apply filters to exclude unwanted files
    */
+  
+  // Exclude .git files
   filteredFiles = filteredFiles.filter((x) => x.path.startsWith('.git') == false);
 
-  // exclude    lock files
+  // Exclude common lock files
   const comminLockFiles = ['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml'];
   filteredFiles = filteredFiles.filter((x) => comminLockFiles.includes(x.name) == false);
 
-  // exclude    .bolt
+  // Exclude .bolt directory files
   filteredFiles = filteredFiles.filter((x) => x.path.startsWith('.bolt') == false);
 
-  // check for ignore file in .bolt folder
+  // Check for ignore file in .bolt folder
   const templateIgnoreFile = files.find((x) => x.path.startsWith('.bolt') && x.name == 'ignore');
 
   const filesToImport = {
@@ -225,12 +284,13 @@ export async function getTemplates(templateName: string, title?: string) {
     ignoreFile: [] as typeof filteredFiles,
   };
 
+  // Apply custom ignore patterns if available
   if (templateIgnoreFile) {
-    // redacting files specified in ignore file
+    // Get ignore patterns from the ignore file
     const ignorepatterns = templateIgnoreFile.content.split('\n').map((x) => x.trim());
     const ig = ignore().add(ignorepatterns);
 
-    // filteredFiles = filteredFiles.filter(x => !ig.ignores(x.path))
+    // Find files that match ignore patterns
     const ignoredFiles = filteredFiles.filter((x) => ig.ignores(x.path));
 
     filesToImport.files = filteredFiles;
