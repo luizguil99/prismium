@@ -330,7 +330,7 @@ export const ChatImpl = memo(
             });
 
             if (temResp) {
-              const { assistantMessage, userMessage } = temResp;
+              const { assistantMessage } = temResp;
               setMessages([
                 {
                   id: `1-${new Date().getTime()}`,
@@ -341,17 +341,32 @@ export const ChatImpl = memo(
                   id: `2-${new Date().getTime()}`,
                   role: 'assistant',
                   content: assistantMessage,
-                },
-                {
-                  id: `3-${new Date().getTime()}`,
-                  role: 'user',
-                  content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${userMessage}`,
-                  annotations: ['hidden'],
-                },
+                }
               ]);
-              reload();
               setFakeLoading(false);
-
+              setChatStarted(true);
+              
+              // Armazena a mensagem original para processamento posterior
+              const originalMessage = messageContent;
+              
+              // Agenda o envio automático da mensagem original após um pequeno delay
+              setTimeout(() => {
+                // Envio invisível da mensagem original após a importação do template
+                append({
+                  role: 'user',
+                  content: [
+                    {
+                      type: 'text',
+                      text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${originalMessage}`,
+                    },
+                    ...imageDataList.map((imageData) => ({
+                      type: 'image',
+                      image: imageData,
+                    })),
+                  ] as any,
+                });
+              }, 1000); // Pequeno delay para garantir que o template foi processado
+              
               return;
             }
           }
