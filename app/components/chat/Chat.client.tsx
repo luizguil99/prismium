@@ -341,7 +341,11 @@ export const ChatImpl = memo(
 
       // Capturar imagens em variáveis temporárias antes de limpar
       const tempImageDataList = [...imageDataList];
+      const tempUploadedFiles = [...uploadedFiles];
+      
       // Limpar os estados imediatamente para feedback visual 
+      console.log('[Chat] Limpando imagens imediatamente após clicar para enviar');
+      setUploadedFiles([]);
       setImageDataList([]);
       
       // Limpar o input e cookies
