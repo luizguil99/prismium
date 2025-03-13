@@ -38,6 +38,29 @@ const logger = createScopedLogger('Chat');
 interface CustomMessage extends Message {
   isHidden?: boolean;
 }
+// Prompt personalizado que será adicionado à mensagem invisível após a importação do template
+// Permite personalização via variável de ambiente ou usa o valor padrão
+const TEMPLATE_POST_IMPORT_PROMPT = import.meta.env.VITE_TEMPLATE_CUSTOM_PROMPT || `template import is done, and you can now use the imported files,
+edit only the files that need to be changed, and you can create new files as needed.
+NO NOT EDIT/WRITE ANY FILES THAT ALREADY EXIST IN THE PROJECT AND DOES NOT NEED TO BE MODIFIED
+
+SUPER IMPORTANT INSTRUCTIONS:
+1. Now that the Template is imported, you MUST run the appropriate commands:
+   - For Node.js projects: run 'npm install' and then 'npm run dev'
+   - For static projects: run 'npx --yes serve'
+
+5. DO NOT SKIP installation or start commands under any circumstances!
+
+---
+Now that the Template is imported please continue with my original request and the user request
+Your output token limit is 8000 tokens, so don't forget to use it wisely
+Example:
+User: "Create a todo list app with local storage"
+Assistant: "Sure. I'll start by:
+1. npm install
+2. Do what the user says
+3. npm run dev
+`;
 
 export function Chat() {
   renderLogger.trace('Chat');
@@ -548,7 +571,7 @@ export const ChatImpl = memo(
             content: [
               {
                 type: 'text',
-                text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${originalMessage}`,
+                text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${TEMPLATE_POST_IMPORT_PROMPT}\n\n${originalMessage}`,
               },
               ...imageDataList.map((imageData) => ({
                 type: 'image',

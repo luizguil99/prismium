@@ -166,4 +166,12 @@ export const STARTER_TEMPLATES: Template[] = [
     tags: ['shadcn', 'javascript', 'frontend', 'react'],
     icon: 'i-bolt:react',
   },
+  {
+    name: 'Landing-Page-Shadcn-typescript-react',
+    label: 'Landing Page Shadcn Typescript React',
+    description: 'A modern Landing Page withShadcn Typescript React with TypeScript support and best practices configuration',
+    githubRepo: 'luizguil99/burst-landing-designs',
+    tags: ['shadcn', 'typescript', 'frontend', 'react'],
+    icon: 'i-bolt:react',
+  },
 ];
