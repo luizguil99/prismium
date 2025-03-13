@@ -258,6 +258,7 @@ export const ChatImpl = memo(
               type: 'text',
               text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${prompt}`,
             },
+            
           ] as any,
         });
       }
@@ -341,9 +342,18 @@ export const ChatImpl = memo(
 
         setMessages([
           {
-            id: `${new Date().getTime()}`,
+            id: `${new Date().getTime()}`,  
             role: 'user',
-            content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${messageContent}`,
+            content: [
+              {
+                type: 'text',
+                text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${messageContent}`,
+              },
+              ...imageDataList.map((imageData) => ({
+                type: 'image',
+                image: imageData,
+              })),
+            ] as any,
           },
         ]);
 
@@ -373,7 +383,16 @@ export const ChatImpl = memo(
                 {
                   id: `1-${new Date().getTime()}`,
                   role: 'user',
-                  content: messageContent,
+                  content: [
+                    {
+                      type: 'text',
+                      text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${messageContent}`,
+                    },
+                    ...imageDataList.map((imageData) => ({
+                      type: 'image',
+                      image: imageData,
+                    })),
+                  ] as any,
                 },
                 {
                   id: `2-${new Date().getTime()}`,
