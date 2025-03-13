@@ -176,6 +176,8 @@ export const ChatImpl = memo(
     const { activeProviders, promptId, autoSelectTemplate, contextOptimizationEnabled } = useSettings();
     // Ref para armazenar mensagens pendentes para serem enviadas após processamento do template
     const pendingMessageRef = useRef<string | null>(null);
+    // Ref para armazenar imagens pendentes para uso após processamento do template
+    const pendingImagesRef = useRef<string[]>([]);
     // Store de artefatos para monitorar o progresso do template
     const artifacts = useStore(workbenchStore.artifacts);
     // ID da última mensagem assistente que contém um artefato
@@ -337,6 +339,16 @@ export const ChatImpl = memo(
         return;
       }
 
+      // Capturar imagens em variáveis temporárias antes de limpar
+      const tempImageDataList = [...imageDataList];
+      // Limpar os estados imediatamente para feedback visual 
+      setImageDataList([]);
+      
+      // Limpar o input e cookies
+      setInput('');
+      Cookies.remove(PROMPT_COOKIE_KEY);
+      resetEnhancer();
+
       if (!chatStarted) {
         setFakeLoading(true);
 
@@ -349,7 +361,7 @@ export const ChatImpl = memo(
                 type: 'text',
                 text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${messageContent}`,
               },
-              ...imageDataList.map((imageData) => ({
+              ...tempImageDataList.map((imageData) => ({
                 type: 'image',
                 image: imageData,
               })),
@@ -388,7 +400,7 @@ export const ChatImpl = memo(
                       type: 'text',
                       text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${messageContent}`,
                     },
-                    ...imageDataList.map((imageData) => ({
+                    ...tempImageDataList.map((imageData) => ({
                       type: 'image',
                       image: imageData,
                     })),
@@ -409,6 +421,9 @@ export const ChatImpl = memo(
               // Em vez de usar setTimeout, usamos um ref para controlar quando enviar a mensagem
               pendingMessageRef.current = originalMessage;
               
+              // Armazena as imagens para uso posterior
+              pendingImagesRef.current = tempImageDataList;
+              
               return;
             }
           }
@@ -424,7 +439,7 @@ export const ChatImpl = memo(
                 type: 'text',
                 text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${messageContent}`,
               },
-              ...imageDataList.map((imageData) => ({
+              ...tempImageDataList.map((imageData) => ({
                 type: 'image',
                 image: imageData,
               })),
@@ -454,7 +469,7 @@ export const ChatImpl = memo(
               type: 'text',
               text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${userUpdateArtifact}${messageContent}`,
             },
-            ...imageDataList.map((imageData) => ({
+            ...tempImageDataList.map((imageData) => ({
               type: 'image',
               image: imageData,
             })),
@@ -470,21 +485,13 @@ export const ChatImpl = memo(
               type: 'text',
               text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${messageContent}`,
             },
-            ...imageDataList.map((imageData) => ({
+            ...tempImageDataList.map((imageData) => ({
               type: 'image',
               image: imageData,
             })),
           ] as any,
         });
       }
-
-      setInput('');
-      Cookies.remove(PROMPT_COOKIE_KEY);
-
-      setUploadedFiles([]);
-      setImageDataList([]);
-
-      resetEnhancer();
 
       textareaRef.current?.blur();
     };
@@ -588,6 +595,10 @@ export const ChatImpl = memo(
           const originalMessage = pendingMessageRef.current;
           pendingMessageRef.current = null;
           
+          // Obter imagens armazenadas do ref
+          const savedImageList = pendingImagesRef.current;
+          pendingImagesRef.current = [];
+          
           // Envio invisível da mensagem original após a importação do template completar
           append({
             role: 'user',
@@ -596,7 +607,7 @@ export const ChatImpl = memo(
                 type: 'text',
                 text: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${TEMPLATE_POST_IMPORT_PROMPT}\n\n${originalMessage}`,
               },
-              ...imageDataList.map((imageData) => ({
+              ...savedImageList.map((imageData) => ({
                 type: 'image',
                 image: imageData,
               })),
@@ -609,7 +620,7 @@ export const ChatImpl = memo(
           setLastArtifactMessageId(null);
         }
       }
-    }, [artifacts, lastArtifactMessageId, isLoading, pendingMessageRef, append, model, provider, imageDataList]);
+    }, [artifacts, lastArtifactMessageId, isLoading, pendingMessageRef, append, model, provider]);
     
     // Monitor para detectar mensagens de artefato e armazenar o ID
     useEffect(() => {
