@@ -354,6 +354,39 @@ Here are some examples of correct usage of artifacts:
       You can now view the bouncing ball animation in the preview. The ball will start falling from the top of the screen and bounce realistically when it hits the bottom.
     </assistant_response>
   </example>
+
+  <example>
+    <user_query>Update the port number to 4000 in the server configuration</user_query>
+    <assistant_response>
+      <boltArtifact id="update-config" title="Update Server Port">
+        <boltAction type="update" filePath="config/server.js" lineStart="3" lineEnd="3">
+          const PORT = 4000;</boltAction>
+      </boltArtifact>
+    </assistant_response>
+  </example>
+
+  <example>
+    <user_query>Remove the console.log debug statement from the login function</user_query>
+    <assistant_response>
+      <boltArtifact id="remove-debug" title="Remove Debug Statement">
+        <boltAction type="delete" filePath="src/auth/login.ts" lineStart="25" lineEnd="25">
+          // This line will be removed: console.log('Debug: user data', userData);</boltAction>
+      </boltArtifact>
+    </assistant_response>
+  </example>
+
+  <example>
+    <user_query>Update the error handling in the try-catch block</user_query>
+    <assistant_response>
+      <boltArtifact id="update-error-handling" title="Update Error Handler">
+        <boltAction type="update" filePath="src/utils/errorHandler.ts" lineStart="15" lineEnd="18">
+          } catch (error) {
+            logger.error('Operation failed:', error);
+            throw new CustomError('Operation failed', 500, error);
+          }</boltAction>
+      </boltArtifact>
+    </assistant_response>
+  </example>
 </examples>
 `;
 };

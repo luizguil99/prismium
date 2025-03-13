@@ -8,7 +8,7 @@ import { workbenchStore } from '~/lib/stores/workbench';
 import { classNames } from '~/utils/classNames';
 import { cubicEasingFn } from '~/utils/easings';
 import { WORK_DIR } from '~/utils/constants';
-import { Package, Loader, CheckCircle2, XCircle, Folder, Code, Terminal, ArrowRight, ExternalLink, Zap, Layers, FileCode2 } from 'lucide-react';
+import { Package, Loader, CheckCircle2, XCircle, Folder, Code, Terminal, ArrowRight, ExternalLink, Zap, Layers, FileCode2, FileEdit, Trash2 } from 'lucide-react';
 
 const highlighterOptions = {
   langs: ['shell'],
@@ -529,6 +529,8 @@ const ActionList = memo(({ actions }: ActionListProps) => {
             let ActionIcon = Package;
             if (type === 'file') ActionIcon = Code;
             if (type === 'shell') ActionIcon = Terminal;
+            if (type === 'update') ActionIcon = FileEdit;
+            if (type === 'delete') ActionIcon = Trash2;
             
             return (
               <motion.li
@@ -636,6 +638,106 @@ const ActionList = memo(({ actions }: ActionListProps) => {
                       </div>
                       <span className="text-white">Start Application</span>
                     </div>
+                  ) : type === 'update' ? (
+                    <div className="flex items-center gap-2">
+                      <div className="relative">
+                        <FileEdit className="w-4 h-4 text-amber-500" />
+                        {isRunning && (
+                          <motion.div
+                            className="absolute inset-0 rounded-full border border-amber-500"
+                            animate={{ scale: [1, 1.5, 1], opacity: [1, 0, 1] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                          />
+                        )}
+                      </div>
+                      <code
+                        onClick={() => openArtifactInWorkbench(action.filePath)}
+                        className="text-sm cursor-pointer hover:underline flex items-center gap-1 group"
+                      >
+                        {action.filePath.includes('/') ? (
+                          <>
+                            <span className="text-gray-400">src/</span>
+                            <span>{action.filePath.split('/').pop()}</span>
+                            <span className="text-gray-400 text-xs">
+                              (linhas {action.lineStart}-{action.lineEnd})
+                            </span>
+                            <motion.span 
+                              className="text-bolt-elements-textSecondary opacity-0 group-hover:opacity-100"
+                              initial={{ x: -5 }}
+                              animate={{ x: 0 }}
+                              transition={{ duration: 0.2 }}
+                            >
+                              <ArrowRight className="w-3 h-3" />
+                            </motion.span>
+                          </>
+                        ) : (
+                          <span className="flex items-center gap-1">
+                            {action.filePath}
+                            <span className="text-gray-400 text-xs">
+                              (linhas {action.lineStart}-{action.lineEnd})
+                            </span>
+                            <motion.span 
+                              className="text-bolt-elements-textSecondary opacity-0 group-hover:opacity-100"
+                              initial={{ x: -5 }}
+                              animate={{ x: 0 }}
+                              transition={{ duration: 0.2 }}
+                            >
+                              <ArrowRight className="w-3 h-3" />
+                            </motion.span>
+                          </span>
+                        )}
+                      </code>
+                    </div>
+                  ) : type === 'delete' ? (
+                    <div className="flex items-center gap-2">
+                      <div className="relative">
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                        {isRunning && (
+                          <motion.div
+                            className="absolute inset-0 rounded-full border border-red-500"
+                            animate={{ scale: [1, 1.5, 1], opacity: [1, 0, 1] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                          />
+                        )}
+                      </div>
+                      <code
+                        onClick={() => openArtifactInWorkbench(action.filePath)}
+                        className="text-sm cursor-pointer hover:underline flex items-center gap-1 group"
+                      >
+                        {action.filePath.includes('/') ? (
+                          <>
+                            <span className="text-gray-400">src/</span>
+                            <span>{action.filePath.split('/').pop()}</span>
+                            <span className="text-gray-400 text-xs">
+                              (linhas {action.lineStart}-{action.lineEnd})
+                            </span>
+                            <motion.span 
+                              className="text-bolt-elements-textSecondary opacity-0 group-hover:opacity-100"
+                              initial={{ x: -5 }}
+                              animate={{ x: 0 }}
+                              transition={{ duration: 0.2 }}
+                            >
+                              <ArrowRight className="w-3 h-3" />
+                            </motion.span>
+                          </>
+                        ) : (
+                          <span className="flex items-center gap-1">
+                            {action.filePath}
+                            <span className="text-gray-400 text-xs">
+                              (linhas {action.lineStart}-{action.lineEnd})
+                            </span>
+                            <motion.span 
+                              className="text-bolt-elements-textSecondary opacity-0 group-hover:opacity-100"
+                              initial={{ x: -5 }}
+                              animate={{ x: 0 }}
+                              transition={{ duration: 0.2 }}
+                            >
+                              <ArrowRight className="w-3 h-3" />
+                            </motion.span>
+                          </span>
+                        )}
+                      </code>
+                    </div>
                   ) : null}
                   <div className={classNames('text-lg', getIconColor(action.status))}>
                     {status === 'running' ? (
@@ -689,6 +791,33 @@ const ActionList = memo(({ actions }: ActionListProps) => {
                     transition={{ delay: 0.2 }}
                   >
                     <ShellCodeBlock code={content} />
+                  </motion.div>
+                )}
+                {type === 'update' && (
+                  <motion.div 
+                    className="mt-4 pl-6 border-l border-bolt-elements-borderColor border-opacity-20"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    <div className="bg-gray-800 rounded p-2 text-xs text-white">
+                      <div className="text-amber-400 font-mono mb-1">// Atualizando linhas {action.lineStart} a {action.lineEnd}</div>
+                      <div className="font-mono whitespace-pre-wrap overflow-auto max-h-48 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent">
+                        {content}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+                {type === 'delete' && (
+                  <motion.div 
+                    className="mt-4 pl-6 border-l border-bolt-elements-borderColor border-opacity-20"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    <div className="bg-gray-800 rounded p-2 text-xs text-white">
+                      <div className="text-red-400 font-mono">// Removendo linhas {action.lineStart} a {action.lineEnd}</div>
+                    </div>
                   </motion.div>
                 )}
               </motion.li>

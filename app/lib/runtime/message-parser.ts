@@ -285,27 +285,45 @@ export class StreamingMessageParser {
 
   #parseActionTag(input: string, actionOpenIndex: number, actionEndIndex: number) {
     const actionTag = input.slice(actionOpenIndex, actionEndIndex + 1);
-
     const actionType = this.#extractAttribute(actionTag, 'type') as ActionType;
 
-    const actionAttributes = {
+    const actionAttributes: BoltActionData = {
       type: actionType,
       content: '',
     };
 
-    if (actionType === 'file') {
-      const filePath = this.#extractAttribute(actionTag, 'filePath') as string;
-
-      if (!filePath) {
-        logger.debug('File path not specified');
+    // Parse line numbers for update and delete actions
+    if (actionType === 'update' || actionType === 'delete') {
+      const lineStart = parseInt(this.#extractAttribute(actionTag, 'lineStart') || '0', 10);
+      const lineEnd = parseInt(this.#extractAttribute(actionTag, 'lineEnd') || '0', 10);
+      
+      if (isNaN(lineStart) || isNaN(lineEnd) || lineStart < 1 || lineEnd < lineStart) {
+        logger.warn(`Invalid line numbers: start=${lineStart}, end=${lineEnd}`);
+        return null;
       }
 
+      actionAttributes.lineStart = lineStart;
+      actionAttributes.lineEnd = lineEnd;
+      
+      const filePath = this.#extractAttribute(actionTag, 'filePath');
+      if (!filePath) {
+        logger.warn('File path not specified for update/delete action');
+        return null;
+      }
+      (actionAttributes as FileAction).filePath = filePath;
+    } else if (actionType === 'file') {
+      const filePath = this.#extractAttribute(actionTag, 'filePath');
+      if (!filePath) {
+        logger.warn('File path not specified');
+        return null;
+      }
       (actionAttributes as FileAction).filePath = filePath;
     } else if (!['shell', 'start'].includes(actionType)) {
       logger.warn(`Unknown action type '${actionType}'`);
+      return null;
     }
 
-    return actionAttributes as FileAction | ShellAction;
+    return actionAttributes as BoltAction;
   }
 
   #extractAttribute(tag: string, attributeName: string): string | undefined {

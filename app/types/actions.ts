@@ -1,6 +1,6 @@
 import type { Change } from 'diff';
 
-export type ActionType = 'file' | 'shell';
+export type ActionType = 'file' | 'shell' | 'start' | 'update' | 'delete';
 
 export interface BaseAction {
   content: string;
@@ -19,11 +19,24 @@ export interface StartAction extends BaseAction {
   type: 'start';
 }
 
-export interface BuildAction extends BaseAction {
-  type: 'build';
+export interface UpdateAction extends BaseAction {
+  type: 'update';
+  filePath: string;
+  lineStart: number;
+  lineEnd: number;
+  content: string;
+  changeSource?: string; // Adicionando para compatibilidade com outras ações
 }
 
-export type BoltAction = FileAction | ShellAction | StartAction | BuildAction;
+export interface DeleteAction extends BaseAction {
+  type: 'delete';
+  filePath: string;
+  lineStart: number;
+  lineEnd: number;
+  changeSource?: string; // Adicionando para compatibilidade com outras ações
+}
+
+export type BoltAction = FileAction | ShellAction | StartAction | UpdateAction | DeleteAction | BuildAction;
 
 export type BoltActionData = BoltAction | BaseAction;
 

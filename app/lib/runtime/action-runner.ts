@@ -157,10 +157,16 @@ export class ActionRunner {
           await this.#runFileAction(action);
           break;
         }
+        case 'update': {
+          await this.#runUpdateAction(action);
+          break;
+        }
+        case 'delete': {
+          await this.#runDeleteAction(action);
+          break;
+        }
         case 'build': {
           const buildOutput = await this.#runBuildAction(action);
-
-          // Store build output for deployment
           this.buildOutput = buildOutput;
           break;
         }
@@ -305,6 +311,67 @@ export class ActionRunner {
       logger.debug(`File written ${relativePath}`);
     } catch (error) {
       logger.error('Failed to write file\n\n', error);
+    }
+  }
+
+  async #validateFile(relativePath: string): Promise<string[]> {
+    const webcontainer = await this.#webcontainer;
+    try {
+      const fileContent = await webcontainer.fs.readFile(relativePath, 'utf-8');
+      return fileContent.split('\n');
+    } catch (error) {
+      throw new Error(`File not found or cannot be read: ${relativePath}`);
+    }
+  }
+
+  async #runUpdateAction(action: ActionState) {
+    if (action.type !== 'update') {
+      unreachable('Expected update action');
+    }
+
+    const webcontainer = await this.#webcontainer;
+    const relativePath = nodePath.relative(webcontainer.workdir, action.filePath);
+
+    try {
+      const lines = await this.#validateFile(relativePath);
+      
+      if (action.lineStart > lines.length || action.lineEnd > lines.length) {
+        throw new Error(`Invalid line numbers: file has ${lines.length} lines`);
+      }
+
+      const newContent = action.content.split('\n');
+      lines.splice(action.lineStart - 1, action.lineEnd - action.lineStart + 1, ...newContent);
+
+      await webcontainer.fs.writeFile(relativePath, lines.join('\n'));
+      logger.debug(`Updated lines ${action.lineStart}-${action.lineEnd} in ${relativePath}`);
+    } catch (error) {
+      logger.error('Failed to update file\n\n', error);
+      throw new ActionCommandError(`Failed to update file: ${relativePath}`, error.message);
+    }
+  }
+
+  async #runDeleteAction(action: ActionState) {
+    if (action.type !== 'delete') {
+      unreachable('Expected delete action');
+    }
+
+    const webcontainer = await this.#webcontainer;
+    const relativePath = nodePath.relative(webcontainer.workdir, action.filePath);
+
+    try {
+      const lines = await this.#validateFile(relativePath);
+      
+      if (action.lineStart > lines.length || action.lineEnd > lines.length) {
+        throw new Error(`Invalid line numbers: file has ${lines.length} lines`);
+      }
+
+      lines.splice(action.lineStart - 1, action.lineEnd - action.lineStart + 1);
+
+      await webcontainer.fs.writeFile(relativePath, lines.join('\n'));
+      logger.debug(`Deleted lines ${action.lineStart}-${action.lineEnd} from ${relativePath}`);
+    } catch (error) {
+      logger.error('Failed to delete lines from file\n\n', error);
+      throw new ActionCommandError(`Failed to delete lines from file: ${relativePath}`, error.message);
     }
   }
 
