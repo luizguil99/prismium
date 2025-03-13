@@ -60,6 +60,10 @@ Assistant: "Sure. I'll start by:
 1. npm install
 2. Do what the user says
 3. npm run dev
+Strictly forbidden actions:
+❌ Modify any content of the template files
+❌ Create new versions of these files
+-The template is READY, you just need to MAKE THE COMPONENTS, DON'T WORRY ABOUT TAILWIND CONFIG, VITE CONFIG, ETC.
 `;
 
 export function Chat() {
