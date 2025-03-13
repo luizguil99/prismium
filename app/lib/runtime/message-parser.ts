@@ -70,8 +70,27 @@ function cleanEscapedTags(content: string) {
 }
 export class StreamingMessageParser {
   #messages = new Map<string, MessageState>();
-
+  private diffRegex = /<diff\s+operation="(replace|insert|delete)"\s+path="([^"]+)"\s+start-line="(\d+)"(?:\s+end-line="(\d+)")?\s*>([\s\S]*?)<\/diff>/g;
+  
   constructor(private _options: StreamingMessageParserOptions = {}) {}
+
+  parseDiffs(content: string): DiffOperation[] {
+    const diffs: DiffOperation[] = [];
+    let match;
+
+    while ((match = this.diffRegex.exec(content)) !== null) {
+      const [_, type, path, startLine, endLine, content] = match;
+      diffs.push({
+        type: type as DiffOperation['type'],
+        path,
+        startLine: parseInt(startLine),
+        endLine: endLine ? parseInt(endLine) : undefined,
+        content: content.trim()
+      });
+    }
+
+    return diffs;
+  }
 
   parse(messageId: string, input: string) {
     let state = this.#messages.get(messageId);

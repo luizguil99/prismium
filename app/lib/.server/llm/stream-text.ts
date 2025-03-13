@@ -16,6 +16,14 @@ export type StreamingOptions = Omit<Parameters<typeof _streamText>[0], 'model'>;
 
 const logger = createScopedLogger('stream-text');
 
+export type DiffOperation = {
+  type: 'replace' | 'insert' | 'delete';
+  startLine: number;
+  endLine?: number;
+  content?: string;
+  path: string;
+};
+
 export async function streamText(props: {
   messages: Omit<Message, 'id'>[];
   env?: Env;
@@ -29,6 +37,7 @@ export async function streamText(props: {
   summary?: string;
   messageSliceId?: number;
   usePrompt?: boolean;
+  diffMode?: boolean;
 }) {
   const {
     messages,
@@ -41,7 +50,8 @@ export async function streamText(props: {
     contextOptimization,
     contextFiles,
     summary,
-    usePrompt = true
+    usePrompt = true,
+    diffMode = false
   } = props;
   let currentModel = DEFAULT_MODEL;
   let currentProvider = DEFAULT_PROVIDER.name;
@@ -138,6 +148,25 @@ ${props.summary}
         }
       }
     }
+  }
+
+  if (diffMode) {
+    systemPrompt = `${systemPrompt}
+IMPORTANT: Instead of generating the entire file content, please provide only the specific changes needed.
+Use the following format for each change:
+
+<diff operation="replace" path="file/path.ext" start-line="10" end-line="15">
+modified code here
+</diff>
+
+For insertions:
+<diff operation="insert" path="file/path.ext" start-line="20">
+new code here
+</diff>
+
+For deletions:
+<diff operation="delete" path="file/path.ext" start-line="25" end-line="30">
+</diff>`;
   }
 
   logger.info(`Sending llm call to ${provider.name} with model ${modelDetails.name}`);

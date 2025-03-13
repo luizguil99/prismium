@@ -737,3 +737,26 @@ const View = memo(({ children, ...props }: ViewProps) => {
     </motion.div>
   );
 });
+
+const WorkbenchEditor = () => {
+  const editorRef = useRef();
+
+  const handleSuggestedEdit = (suggestion: { from: number, to: number, text: string }) => {
+    editorRef.current.diffManager.addDiff(
+      suggestion.from,
+      suggestion.to,
+      suggestion.text
+    );
+  };
+
+  const handleAcceptDiff = (index: number) => {
+    editorRef.current.diffManager.acceptDiff(index);
+  };
+
+  return (
+    <CodeMirrorEditor
+      ref={editorRef}
+      // ... outras props ...
+    />
+  );
+};

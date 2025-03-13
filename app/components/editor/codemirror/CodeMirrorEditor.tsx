@@ -2,11 +2,22 @@ import { acceptCompletion, autocompletion, closeBrackets } from '@codemirror/aut
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { bracketMatching, foldGutter, indentOnInput, indentUnit } from '@codemirror/language';
 import { searchKeymap } from '@codemirror/search';
-import { Compartment, EditorSelection, EditorState, StateEffect, StateField, type Extension } from '@codemirror/state';
-import {
+import { 
+  Compartment, 
+  EditorSelection, 
+  EditorState, 
+  StateEffect, 
+  StateField, 
+  RangeSet,
+  type Extension 
+} from '@codemirror/state';
+import { 
+  Decoration, 
+  EditorView, 
+  gutter,
+  GutterMarker,
   drawSelection,
   dropCursor,
-  EditorView,
   highlightActiveLine,
   highlightActiveLineGutter,
   keymap,
@@ -16,10 +27,8 @@ import {
   tooltips,
   type Tooltip,
   ViewPlugin,
-  ViewUpdate,
-  Decoration,
+  ViewUpdate
 } from '@codemirror/view';
-import { RangeSet } from '@codemirror/state';
 import { memo, useEffect, useRef, useState, type MutableRefObject } from 'react';
 import type { Theme } from '~/types/theme';
 import { classNames } from '~/utils/classNames';
@@ -63,6 +72,13 @@ export type OnChangeCallback = (update: EditorUpdate) => void;
 export type OnScrollCallback = (position: ScrollPosition) => void;
 export type OnSaveCallback = () => void;
 
+export interface DiffOperation {
+  type: 'replace' | 'insert' | 'delete';
+  startLine: number;
+  endLine?: number;
+  content?: string;
+}
+
 interface Props {
   theme: Theme;
   id?: unknown;
@@ -74,6 +90,7 @@ interface Props {
   onChange?: OnChangeCallback;
   onScroll?: OnScrollCallback;
   onSave?: OnSaveCallback;
+  onDiffStream?: (diff: DiffOperation) => void;
   className?: string;
   settings?: EditorSettings;
 }
@@ -168,6 +185,64 @@ const trackLastModifiedLine = ViewPlugin.fromClass(class {
   })
 });
 
+// Efeito para adicionar/remover decorações de diff
+const addDiffEffect = StateEffect.define<{from: number, to: number}>();
+const removeDiffEffect = StateEffect.define<null>();
+
+// Campo de estado para gerenciar decorações de diff
+const diffDecorations = StateField.define({
+  create() {
+    return Decoration.none;
+  },
+  update(decorations, tr) {
+    decorations = decorations.map(tr.changes);
+    
+    for (let e of tr.effects) {
+      if (e.is(addDiffEffect)) {
+        decorations = decorations.update({
+          add: [
+            Decoration.mark({
+              class: "cm-diff-line",
+              attributes: { "data-diff": "true" }
+            }).range(e.value.from, e.value.to)
+          ]
+        });
+      } else if (e.is(removeDiffEffect)) {
+        decorations = Decoration.none;
+      }
+    }
+    
+    return decorations;
+  },
+  provide: f => EditorView.decorations.from(f)
+});
+
+// Classe para o marcador do gutter
+const diffMarker = new class extends GutterMarker {
+  toDOM() {
+    const marker = document.createElement("div");
+    marker.className = "cm-diff-marker";
+    return marker;
+  }
+}();
+
+// Gutter marker para indicar linhas modificadas
+const diffGutter = gutter({
+  class: "cm-diff-gutter",
+  markers: view => {
+    const decorations = view.state.field(diffDecorations, false);
+    if (!decorations) return RangeSet.empty;
+
+    let markers = [];
+    decorations.between(0, view.state.doc.length, (from, to) => {
+      const line = view.state.doc.lineAt(from);
+      markers.push(diffMarker.range(line.from));
+    });
+    
+    return RangeSet.of(markers);
+  }
+});
+
 export const CodeMirrorEditor = memo(
   ({
     id,
@@ -179,6 +254,7 @@ export const CodeMirrorEditor = memo(
     onScroll,
     onChange,
     onSave,
+    onDiffStream,
     theme,
     settings,
     className = '',
@@ -207,6 +283,61 @@ export const CodeMirrorEditor = memo(
       docRef.current = doc;
       themeRef.current = theme;
     });
+
+    useEffect(() => {
+      if (!viewRef.current || !onDiffStream) return;
+
+      const applyDiff = (diff: DiffOperation) => {
+        const view = viewRef.current!;
+        const doc = view.state.doc;
+        
+        try {
+          let from: number, to: number;
+          
+          switch (diff.type) {
+            case 'replace': {
+              from = doc.line(diff.startLine).from;
+              to = doc.line(diff.endLine || diff.startLine).to;
+              break;
+            }
+            case 'insert': {
+              from = doc.line(diff.startLine).from;
+              to = from;
+              break;
+            }
+            case 'delete': {
+              from = doc.line(diff.startLine).from;
+              to = doc.line(diff.endLine!).to;
+              break;
+            }
+            default:
+              return;
+          }
+
+          view.dispatch({
+            changes: {
+              from,
+              to,
+              insert: diff.content || ''
+            },
+            effects: [addDiffEffect.of({ from, to: from + (diff.content?.length || 0) })],
+            userEvent: 'streaming.diff'
+          });
+
+          // Remove a decoração após um tempo
+          setTimeout(() => {
+            view.dispatch({
+              effects: [removeDiffEffect.of(null)]
+            });
+          }, 3000);
+        } catch (error) {
+          logger.error('Failed to apply diff:', error);
+        }
+      };
+
+      // Registrar o callback
+      onDiffStream(applyDiff);
+    }, [onDiffStream]);
 
     useEffect(() => {
       const onUpdate = debounce((update: EditorUpdate) => {
@@ -312,8 +443,7 @@ export const CodeMirrorEditor = memo(
         <div className="h-full overflow-hidden" ref={containerRef} />
       </div>
     );
-  },
-);
+  });
 
 export default CodeMirrorEditor;
 
@@ -410,6 +540,21 @@ function newEditorState(
       }),
       trackLastModifiedLine,
       EditorView.lineWrapping,
+      diffDecorations,
+      diffGutter,
+      EditorView.theme({
+        ".cm-diff-line": {
+          backgroundColor: "rgba(0, 255, 0, 0.1)",
+        },
+        ".cm-diff-marker": {
+          color: "#22c55e",
+          fontWeight: "bold",
+          paddingLeft: "3px"
+        },
+        ".cm-diff-gutter": {
+          width: "1.6em",
+        }
+      }),
       ...extensions,
     ],
   });

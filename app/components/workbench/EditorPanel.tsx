@@ -9,6 +9,7 @@ import {
   type OnChangeCallback as OnEditorChange,
   type OnSaveCallback as OnEditorSave,
   type OnScrollCallback as OnEditorScroll,
+  type DiffOperation,
 } from '~/components/editor/codemirror/CodeMirrorEditor';
 import { PanelHeader } from '~/components/ui/PanelHeader';
 import { PanelHeaderButton } from '~/components/ui/PanelHeaderButton';
@@ -72,6 +73,17 @@ export const EditorPanel = memo(
     const activeFileUnsaved = useMemo(() => {
       return editorDocument !== undefined && unsavedFiles?.has(editorDocument.filePath);
     }, [editorDocument, unsavedFiles]);
+
+    const handleDiffStream = (diff: DiffOperation) => {
+      if (!editorDocument) return;
+      
+      // Apenas aplica o diff se for para o arquivo atual
+      if (editorDocument.filePath === selectedFile) {
+        // O diff será aplicado internamente pelo CodeMirrorEditor
+        return true;
+      }
+      return false;
+    };
 
     return (
       <PanelGroup direction="vertical">
@@ -144,6 +156,7 @@ export const EditorPanel = memo(
                   onScroll={onEditorScroll}
                   onChange={onEditorChange}
                   onSave={onFileSave}
+                  onDiffStream={handleDiffStream}
                 />
               </div>
             </Panel>
