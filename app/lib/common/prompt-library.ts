@@ -1,5 +1,6 @@
 import { getSystemPrompt } from './prompts/prompts';
 import optimized from './prompts/optimized';
+import diff from './prompts/diffprompt';
 
 export interface PromptOptions {
   cwd: string;
@@ -25,6 +26,11 @@ export class PromptLibrary {
       label: 'Optimized Prompt (experimental)',
       description: 'an Experimental version of the prompt for lower token usage',
       get: (options) => optimized(options),
+    },
+    diff: {
+      label: 'Diff Prompt',
+      description: 'This is the diff prompt',
+      get: (options) => diff(options),
     },
   };
   static getList() {
