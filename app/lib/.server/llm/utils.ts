@@ -3,6 +3,9 @@ import { DEFAULT_MODEL, DEFAULT_PROVIDER, MODEL_REGEX, PROVIDER_REGEX } from '~/
 import { IGNORE_PATTERNS, type FileMap } from './constants';
 import ignore from 'ignore';
 import type { ContextAnnotation } from '~/types/context';
+import { createScopedLogger } from '~/utils/logger';
+
+const logger = createScopedLogger('llm-context');
 
 export function extractPropertiesFromMessage(message: Omit<Message, 'id'>): {
   model: string;
@@ -54,38 +57,64 @@ export function simplifyBoltActions(input: string): string {
   });
 }
 
+interface LineContext {
+  lineNumber: number;
+  content: string;
+  type: 'unchanged';
+  correspondingLine: number;
+}
+
+function codeWithLineNumbers(content: string, filePath: string) {
+  const lines = content.split('\n');
+  // Adiciona as referências de linha diretamente no conteúdo
+  const numberedLines = lines.map((line, i) => `L${i + 1}- ${line}`);
+  
+  const lineReferences = lines.map((_, i) => `L${i + 1}-`).join(',');
+
+  // Log mais detalhado e formatado corretamente
+  logger.debug(`File ${filePath} line mapping:\n${numberedLines.join('\n')}`);
+
+  return {
+    // Retorna o conteúdo com as referências de linha
+    content: numberedLines.join('\n'),
+    lineRefs: lineReferences
+  };
+}
+
 export function createFilesContext(files: FileMap, useRelativePath?: boolean) {
   const ig = ignore().add(IGNORE_PATTERNS);
   let filePaths = Object.keys(files);
-  filePaths = filePaths.filter((x) => {
-    const relPath = x.replace('/home/project/', '');
-    return !ig.ignores(relPath);
-  });
-
+  
+  logger.info(`Creating context for ${filePaths.length} files`);
+  
   const fileContexts = filePaths
-    .filter((x) => files[x] && files[x].type == 'file')
+    .filter((x) => {
+      const relPath = x.replace('/home/project/', '');
+      return !ig.ignores(relPath) && files[x]?.type === 'file';
+    })
     .map((path) => {
       const dirent = files[path];
+      if (!dirent || dirent.type === 'folder') return '';
 
-      if (!dirent || dirent.type == 'folder') {
-        return '';
-      }
+      let filePath = useRelativePath ? path.replace('/home/project/', '') : path;
+      const { content, lineRefs } = codeWithLineNumbers(dirent.content, filePath);
+      
+      const boltAction = `<boltAction type="file" filePath="${filePath}" lineRefs="${lineRefs}">
+${content}
+</boltAction>`;
 
-      const codeWithLinesNumbers = dirent.content
-        .split('\n')
-        .map((line, index) => `[L${index + 1}] ${line}`)
-        .join('\n');
+      // Log formatado corretamente
+      logger.debug(`Exact context being sent to LLM for ${filePath}:\n${content}`);
 
-      let filePath = path;
-
-      if (useRelativePath) {
-        filePath = path.replace('/home/project/', '');
-      }
-
-      return `<boltAction type="file" filePath="${filePath}">${codeWithLinesNumbers}</boltAction>`;
+      return boltAction;
     });
 
-  return `<boltArtifact id="code-content" title="Code Content" >\n${fileContexts.join('\n')}\n</boltArtifact>`;
+  const result = `<boltArtifact id="code-content" title="Code Content">\n${fileContexts.filter(Boolean).join('\n\n')}\n</boltArtifact>`;
+  
+  // Log do contexto final completo
+  logger.debug('Final complete context being sent to LLM:\n', result);
+
+  return result;
 }
 
 export function extractCurrentContext(messages: Message[]) {

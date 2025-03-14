@@ -659,7 +659,7 @@ const ActionList = memo(({ actions }: ActionListProps) => {
                             <span className="text-gray-400">src/</span>
                             <span>{action.filePath.split('/').pop()}</span>
                             <span className="text-gray-400 text-xs">
-                              (linhas {action.lineStart}-{action.lineEnd})
+                              (lines {action.lineStart}-{action.lineEnd})
                             </span>
                             <motion.span 
                               className="text-bolt-elements-textSecondary opacity-0 group-hover:opacity-100"
@@ -672,9 +672,9 @@ const ActionList = memo(({ actions }: ActionListProps) => {
                           </>
                         ) : (
                           <span className="flex items-center gap-1">
-                            {action.filePath}
+                            {action.filePath} 
                             <span className="text-gray-400 text-xs">
-                              (linhas {action.lineStart}-{action.lineEnd})
+                              (lines {action.lineStart}-{action.lineEnd})
                             </span>
                             <motion.span 
                               className="text-bolt-elements-textSecondary opacity-0 group-hover:opacity-100"
@@ -709,7 +709,7 @@ const ActionList = memo(({ actions }: ActionListProps) => {
                             <span className="text-gray-400">src/</span>
                             <span>{action.filePath.split('/').pop()}</span>
                             <span className="text-gray-400 text-xs">
-                              (linhas {action.lineStart}-{action.lineEnd})
+                              (lines {action.lineStart}-{action.lineEnd})
                             </span>
                             <motion.span 
                               className="text-bolt-elements-textSecondary opacity-0 group-hover:opacity-100"
@@ -724,7 +724,7 @@ const ActionList = memo(({ actions }: ActionListProps) => {
                           <span className="flex items-center gap-1">
                             {action.filePath}
                             <span className="text-gray-400 text-xs">
-                              (linhas {action.lineStart}-{action.lineEnd})
+                              (lines {action.lineStart}-{action.lineEnd})
                             </span>
                             <motion.span 
                               className="text-bolt-elements-textSecondary opacity-0 group-hover:opacity-100"
@@ -801,7 +801,8 @@ const ActionList = memo(({ actions }: ActionListProps) => {
                     transition={{ delay: 0.2 }}
                   >
                     <div className="bg-gray-800 rounded p-2 text-xs text-white">
-                      <div className="text-amber-400 font-mono mb-1">// Atualizando linhas {action.lineStart} a {action.lineEnd}</div>
+                          
+                          <div className="text-amber-400 font-mono mb-1">// Updating lines {action.lineStart} to {action.lineEnd}</div>
                       <div className="font-mono whitespace-pre-wrap overflow-auto max-h-48 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent">
                         {content}
                       </div>
@@ -816,7 +817,7 @@ const ActionList = memo(({ actions }: ActionListProps) => {
                     transition={{ delay: 0.2 }}
                   >
                     <div className="bg-gray-800 rounded p-2 text-xs text-white">
-                      <div className="text-red-400 font-mono">// Removendo linhas {action.lineStart} a {action.lineEnd}</div>
+                      <div className="text-red-400 font-mono">// Removing Lines {action.lineStart} to {action.lineEnd}</div>
                     </div>
                   </motion.div>
                 )}

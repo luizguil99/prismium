@@ -32,7 +32,7 @@ const toastAnimation = cssTransition({
   exit: 'animated fadeOutRight',
 });
 
-const logger = createScopedLogger('Chat');
+const logger = createScopedLogger('chat-client');
 
 // Estendendo o tipo Message para incluir a propriedade isHidden
 interface CustomMessage extends Message {
@@ -67,8 +67,6 @@ Strictly forbidden actions:
 `;
 
 export function Chat() {
-  renderLogger.trace('Chat');
-
   const { ready, initialMessages, storeMessageHistory, importChat, exportChat } = useChatHistory();
   const title = useStore(description);
   const chatIdValue = useStore(chatId);
@@ -77,17 +75,35 @@ export function Chat() {
   useEffect(() => {
     workbenchStore.setReloadedMessages(initialMessages.map((m) => m.id));
     
-    // Inicializa o store global com as mensagens iniciais
+    // Log das mensagens iniciais
+    logger.debug('Initial messages loaded:', initialMessages);
+    
     if (initialMessages.length > 0) {
       updateRevertDropdownMessages(initialMessages);
+      
+      // Log do conteúdo das mensagens
+      initialMessages.forEach((msg, index) => {
+        logger.debug(`Message ${index + 1}:`, {
+          role: msg.role,
+          content: msg.content
+        });
+      });
     }
     
-    // Inicializa o store global com o chatId apenas se ele mudou
     if (chatIdValue && chatIdValue !== prevChatIdRef.current) {
       updateRevertDropdownChatId(chatIdValue);
       prevChatIdRef.current = chatIdValue;
+      logger.debug('Chat ID updated:', chatIdValue);
     }
   }, [initialMessages, chatIdValue]);
+
+  // Adicionar log para quando uma mensagem é enviada
+  const onMessageSent = useCallback((message: Message) => {
+    logger.debug('Message sent:', {
+      role: message.role,
+      content: message.content
+    });
+  }, []);
 
   return (
     <>
@@ -98,6 +114,7 @@ export function Chat() {
           exportChat={exportChat}
           storeMessageHistory={storeMessageHistory}
           importChat={importChat}
+          onMessageSent={onMessageSent}
         />
       )}
       <ToastContainer
