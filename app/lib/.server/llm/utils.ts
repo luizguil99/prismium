@@ -65,13 +65,11 @@ interface LineContext {
 }
 
 function codeWithLineNumbers(content: string, filePath: string) {
-  // Normaliza quebras de linha
   const normalizedContent = content.replace(/\r\n?/g, '\n');
-  
   const lines = normalizedContent.split('\n');
   const numberedLines = lines.map((line, i) => {
-    const lineNumber = `L${i + 1}-`;
-    // Mostra espaços e tabs de forma visível
+    const lineNumber = `L${String(i + 1).padStart(3, '0')}-`;
+    const indentLevel = line.search(/\S|$/);
     const visualLine = line
       .replace(/ /g, '·')
       .replace(/\t/g, '→');
