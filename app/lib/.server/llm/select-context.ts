@@ -243,21 +243,3 @@ export function getFilePaths(files: FileMap) {
 
   return filePaths;
 }
-
-export function extractCurrentContext(messages: Message[]) {
-  const lastAssistantMessage = messages.filter((x) => x.role == 'assistant').slice(-1)[0];
-
-  if (!lastAssistantMessage) {
-    logger.debug('No assistant message found in context');
-    return { summary: undefined, codeContext: undefined };
-  }
-
-  logger.debug('Processing last assistant message:', {
-    messageContent: lastAssistantMessage.content,
-    annotations: lastAssistantMessage.annotations
-  });
-
-  // ... resto do código ...
-
-  return { summary, codeContext };
-}

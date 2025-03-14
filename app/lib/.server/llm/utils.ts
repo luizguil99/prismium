@@ -65,19 +65,23 @@ interface LineContext {
 }
 
 function codeWithLineNumbers(content: string, filePath: string) {
-  const lines = content.split('\n');
-  // Adiciona as referências de linha diretamente no conteúdo
-  const numberedLines = lines.map((line, i) => `L${i + 1}- ${line}`);
+  // Normaliza quebras de linha
+  const normalizedContent = content.replace(/\r\n?/g, '\n');
   
-  const lineReferences = lines.map((_, i) => `L${i + 1}-`).join(',');
-
-  // Log mais detalhado e formatado corretamente
-  logger.debug(`File ${filePath} line mapping:\n${numberedLines.join('\n')}`);
-
+  const lines = normalizedContent.split('\n');
+  const numberedLines = lines.map((line, i) => {
+    const lineNumber = `L${i + 1}-`;
+    // Mostra espaços e tabs de forma visível
+    const visualLine = line
+      .replace(/ /g, '·')
+      .replace(/\t/g, '→');
+    
+    return `${lineNumber} ${visualLine}`;
+  });
+  
   return {
-    // Retorna o conteúdo com as referências de linha
     content: numberedLines.join('\n'),
-    lineRefs: lineReferences
+    lineRefs: `1-${lines.length}`
   };
 }
 
