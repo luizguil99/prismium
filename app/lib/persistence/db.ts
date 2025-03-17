@@ -139,18 +139,25 @@ export async function setMessages(
     throw new Error('User must be authenticated');
   }
 
+  // Extrair urlId da URL atual se não fornecido
+  if (!urlId) {
+    const pathSegments = window.location.pathname.split('/');
+    urlId = pathSegments[pathSegments.length - 1];
+    // Se o último segmento for 'chat', use o ID
+    if (urlId === 'chat') {
+      urlId = id;
+    }
+  }
+
   const data = {
+    id,
     user_id: user.id,
     messages,
     urlId,
-    description,
-    metadata,
+    description: description || 'New Chat',
+    metadata: metadata || {},
     timestamp: timestamp ?? new Date().toISOString(),
   };
-
-  if (id) {
-    data.id = id;
-  }
 
   const { error } = await supabase
     .from('chats')
@@ -164,8 +171,9 @@ export async function setMessages(
     throw error;
   }
 
-  // Update realtime store immediately
-  realtimeStore.set(id, { ...data, id });
+  // Atualizar realtime store
+  realtimeStore.set(id, data as ChatHistoryItem);
+  logger.info(`✅ Successfully saved chat ${id} with urlId ${urlId}`);
 }
 
 export async function getMessages(db: any, id: string): Promise<ChatHistoryItem> {

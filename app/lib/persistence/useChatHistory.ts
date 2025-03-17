@@ -260,13 +260,8 @@ export function useChatHistory() {
 }
 
 function navigateChat(nextId: string) {
-  /**
-   * FIXME: Using the intended navigate function causes a rerender for <Chat /> that breaks the app.
-   *
-   * `navigate(`/chat/${nextId}`, { replace: true });`
-   */
+  // Atualiza a URL sem causar rerender
   const url = new URL(window.location.href);
   url.pathname = `/chat/${nextId}`;
-
   window.history.replaceState({}, '', url);
 }
