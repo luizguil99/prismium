@@ -2,10 +2,9 @@ import React, { useState } from 'react';
 import { useNavigate } from '@remix-run/react';
 import Cookies from 'js-cookie';
 import { toast } from 'react-toastify';
-import { db, deleteById, deleteMultipleById, getAll } from '~/lib/persistence';
+import { db, deleteById, getAll } from '~/lib/persistence';
 import { logStore } from '~/lib/stores/logs';
 import { classNames } from '~/utils/classNames';
-import { saveApiKeysToCookies } from '~/components/chat/APIKeyManager';
 
 // List of supported providers that can have API keys
 const API_KEY_PROVIDERS = [
@@ -91,7 +90,7 @@ export default function DataTab() {
       setIsDeleting(true);
 
       const allChats = await getAll(db);
-      await deleteMultipleById(db!, allChats.map(chat => chat.id));
+      await Promise.all(allChats.map((chat) => deleteById(db!, chat.id)));
       logStore.logSystem('All chats deleted successfully', { count: allChats.length });
       toast.success('All chats deleted successfully');
       navigate('/', { replace: true });
@@ -198,11 +197,16 @@ export default function DataTab() {
         });
 
         if (importedCount > 0) {
-          // Salvar as chaves de API no localStorage criptografadas
-          saveApiKeysToCookies(consolidatedKeys);
-          
+          // Store all API keys in a single cookie as JSON
+          Cookies.set('apiKeys', JSON.stringify(consolidatedKeys));
+
+          // Also set individual cookies for backward compatibility
+          Object.entries(consolidatedKeys).forEach(([provider, key]) => {
+            Cookies.set(`${provider}_API_KEY`, key);
+          });
+
           toast.success(`Successfully imported ${importedCount} API keys/URLs. Refreshing page to apply changes...`);
-          
+
           // Reload the page after a short delay to allow the toast to be seen
           setTimeout(() => {
             window.location.reload();
