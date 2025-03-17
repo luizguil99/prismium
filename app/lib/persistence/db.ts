@@ -5,6 +5,15 @@ import { getOrCreateClient } from '~/components/supabase/client';
 
 const logger = createScopedLogger('ChatHistory');
 
+// Cache structure for getAll results
+interface CacheEntry {
+  data: ChatHistoryItem[];
+  timestamp: number;
+}
+
+const CACHE_DURATION = 30000; // 30 seconds cache
+let getAllCache: CacheEntry | null = null;
+
 export async function openDatabase(): Promise<any> {
   try {
     const supabase = getOrCreateClient();
@@ -23,6 +32,14 @@ export async function openDatabase(): Promise<any> {
 }
 
 export async function getAll(db: any): Promise<ChatHistoryItem[]> {
+  const now = Date.now();
+
+  // Return cached data if valid
+  if (getAllCache && (now - getAllCache.timestamp) < CACHE_DURATION) {
+    logger.info('✅ Using cached chat list');
+    return getAllCache.data;
+  }
+
   logger.info('🔄 REST: Fetching all chats');
   const supabase = db;
   const { data, error } = await supabase
@@ -34,6 +51,12 @@ export async function getAll(db: any): Promise<ChatHistoryItem[]> {
     logger.error('❌ REST: Failed to fetch chats:', error);
     throw error;
   }
+
+  // Update cache
+  getAllCache = {
+    data: data || [],
+    timestamp: now
+  };
 
   logger.info(`✅ REST: Successfully fetched ${data?.length || 0} chats`);
   return data || [];
@@ -83,6 +106,7 @@ export async function setMessages(
     throw error;
   }
 
+  invalidateGetAllCache(); // Invalidate cache after mutation
   logger.info('✅ REST: Successfully saved messages');
 }
 
@@ -169,6 +193,7 @@ export async function deleteById(db: any, id: string): Promise<void> {
     throw error;
   }
 
+  invalidateGetAllCache(); // Invalidate cache after deletion
   logger.info('✅ REST: Successfully deleted chat');
 }
 
@@ -259,6 +284,7 @@ export async function duplicateChat(db: any, id: string): Promise<string> {
     throw error;
   }
 
+  invalidateGetAllCache(); // Invalidate cache after duplication
   return newUrlId;
 }
 
@@ -293,4 +319,9 @@ export async function updateChatDescription(db: any, id: string, description: st
   }
 
   await setMessages(db, id, chat.messages, chat.urlId, description, chat.timestamp);
+}
+// Function to invalidate cache when needed (e.g., after mutations)
+export function invalidateGetAllCache(): void {
+  getAllCache = null;
+  logger.info('🔄 Chat list cache invalidated');
 }
