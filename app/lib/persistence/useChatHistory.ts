@@ -55,7 +55,9 @@ export function useChatHistory() {
     if (!db) {
       setReady(true);
 
-      if (persistenceEnabled) {
+      // Só mostra o toast se a persistência estiver habilitada (VITE_DISABLE_PERSISTENCE=false)
+      // e houver uma falha real na inicialização do banco
+      if (persistenceEnabled && mixedId) {
         const error = new Error('Chat persistence is unavailable');
         logStore.logError('Chat persistence initialization failed', error);
         toast.error('Chat persistence is unavailable');
@@ -78,7 +80,6 @@ export function useChatHistory() {
             description.set(storedMessages.description);
             chatId.set(storedMessages.id);
             
-            // Ensure we have a valid metadata object
             if (storedMessages.metadata) {
               console.log('Metadata loaded:', storedMessages.metadata);
               chatMetadata.set(storedMessages.metadata);
@@ -94,7 +95,6 @@ export function useChatHistory() {
         })
         .catch((error) => {
           console.error(error);
-
           logStore.logError('Failed to load chat messages', error);
           toast.error('Failed to load chat messages');
         });
