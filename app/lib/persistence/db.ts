@@ -8,20 +8,22 @@ const logger = createScopedLogger('ChatHistory');
 export async function openDatabase(): Promise<any> {
   try {
     const supabase = getOrCreateClient();
-    // Verify authentication immediately
+    logger.info('🔄 Initializing Supabase connection');
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error || !user) {
-      logger.error('User not authenticated:', error);
+      logger.error('❌ User not authenticated:', error);
       return undefined;
     }
+    logger.info('✅ Supabase connection established');
     return supabase;
   } catch (error) {
-    logger.error('Failed to initialize Supabase client:', error);
+    logger.error('❌ Failed to initialize Supabase client:', error);
     return undefined;
   }
 }
 
 export async function getAll(db: any): Promise<ChatHistoryItem[]> {
+  logger.info('🔄 REST: Fetching all chats');
   const supabase = db;
   const { data, error } = await supabase
     .from('chats')
@@ -29,10 +31,11 @@ export async function getAll(db: any): Promise<ChatHistoryItem[]> {
     .order('timestamp', { ascending: false });
 
   if (error) {
-    logger.error('Failed to fetch chats:', error);
+    logger.error('❌ REST: Failed to fetch chats:', error);
     throw error;
   }
 
+  logger.info(`✅ REST: Successfully fetched ${data?.length || 0} chats`);
   return data || [];
 }
 
@@ -45,14 +48,16 @@ export async function setMessages(
   timestamp?: string,
 ): Promise<void> {
   const supabase = db;
+  logger.info(`🔄 REST: Setting messages for chat ${id}`);
 
-  // Get current user
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
+    logger.error('❌ REST: User not authenticated');
     throw new Error('User must be authenticated');
   }
 
   if (timestamp && isNaN(Date.parse(timestamp))) {
+    logger.error('❌ REST: Invalid timestamp format');
     throw new Error('Invalid timestamp');
   }
 
@@ -64,7 +69,6 @@ export async function setMessages(
     timestamp: timestamp ?? new Date().toISOString(),
   };
 
-  // Only include ID if it's a valid UUID
   if (id && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
     data.id = id;
   }
@@ -75,21 +79,27 @@ export async function setMessages(
   });
 
   if (error) {
-    logger.error('Failed to save messages:', error);
+    logger.error('❌ REST: Failed to save messages:', error);
     throw error;
   }
+
+  logger.info('✅ REST: Successfully saved messages');
 }
 
 export async function getMessages(db: any, id: string): Promise<ChatHistoryItem> {
+  logger.info(`🔄 REST: Fetching messages for ${id}`);
   try {
     const result = await getMessagesById(db, id);
-    if (result) return result;
+    if (result) {
+      logger.info('✅ REST: Successfully fetched messages by ID');
+      return result;
+    }
     
-    // If not found by ID, try by urlId
+    logger.info('🔄 REST: ID not found, trying urlId');
     return await getMessagesByUrlId(db, id);
   } catch (error) {
-    if (error.code === '22P02') { // Invalid UUID error
-      // Try fetching by urlId instead
+    if (error.code === '22P02') {
+      logger.info('🔄 REST: Invalid UUID, trying urlId');
       return await getMessagesByUrlId(db, id);
     }
     throw error;
@@ -97,6 +107,7 @@ export async function getMessages(db: any, id: string): Promise<ChatHistoryItem>
 }
 
 export async function getMessagesByUrlId(db: any, id: string): Promise<ChatHistoryItem> {
+  logger.info(`🔄 REST: Fetching messages by urlId: ${id}`);
   const supabase = db;
   const { data, error } = await supabase
     .from('chats')
@@ -104,28 +115,30 @@ export async function getMessagesByUrlId(db: any, id: string): Promise<ChatHisto
     .eq('urlId', id)
     .single();
 
-  if (error && error.code !== 'PGRST116') { // Ignore not found error
-    logger.error('Failed to fetch chat by urlId:', error);
+  if (error && error.code !== 'PGRST116') {
+    logger.error('❌ REST: Failed to fetch chat by urlId:', error);
     throw error;
   }
 
+  logger.info('✅ REST: Successfully fetched messages by urlId');
   return data;
 }
 
 export async function getMessagesById(db: any, id: string): Promise<ChatHistoryItem> {
+  logger.info(`🔄 REST: Fetching messages by ID: ${id}`);
   const supabase = db;
   
-  // Check if the ID is a UUID or a special identifier
   const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
   
   let query;
   if (isUUID) {
+    logger.info('🔄 REST: Using UUID query');
     query = supabase
       .from('chats')
       .select('*')
       .eq('id', id);
   } else {
-    // If not UUID, try to find by urlId
+    logger.info('🔄 REST: Using urlId query');
     query = supabase
       .from('chats')
       .select('*')
@@ -134,15 +147,17 @@ export async function getMessagesById(db: any, id: string): Promise<ChatHistoryI
 
   const { data, error } = await query.single();
 
-  if (error && error.code !== 'PGRST116') { // Ignore not found error
-    logger.error('Failed to fetch chat by id:', error);
+  if (error && error.code !== 'PGRST116') {
+    logger.error('❌ REST: Failed to fetch chat by id:', error);
     throw error;
   }
 
+  logger.info('✅ REST: Successfully fetched messages by ID');
   return data;
 }
 
 export async function deleteById(db: any, id: string): Promise<void> {
+  logger.info(`🔄 REST: Deleting chat with ID: ${id}`);
   const supabase = db;
   const { error } = await supabase
     .from('chats')
@@ -150,30 +165,37 @@ export async function deleteById(db: any, id: string): Promise<void> {
     .eq('id', id);
 
   if (error) {
-    logger.error('Failed to delete chat:', error);
+    logger.error('❌ REST: Failed to delete chat:', error);
     throw error;
   }
+
+  logger.info('✅ REST: Successfully deleted chat');
 }
 
 export async function getNextId(db: any): Promise<string> {
+  logger.info('🔄 REST: Generating next ID');
   return crypto.randomUUID();
 }
 
 export async function getUrlId(db: any, id: string): Promise<string> {
+  logger.info(`🔄 REST: Getting URL ID for: ${id}`);
   const idList = await getUrlIds(db);
 
   if (!idList.includes(id)) {
+    logger.info('✅ REST: URL ID available');
     return id;
   } else {
     let i = 2;
     while (idList.includes(`${id}-${i}`)) {
       i++;
     }
+    logger.info(`✅ REST: Generated unique URL ID: ${id}-${i}`);
     return `${id}-${i}`;
   }
 }
 
 async function getUrlIds(db: any): Promise<string[]> {
+  logger.info('🔄 REST: Fetching all URL IDs');
   const supabase = db;
   const { data: { user } } = await supabase.auth.getUser();
   
@@ -183,10 +205,11 @@ async function getUrlIds(db: any): Promise<string[]> {
     .eq('user_id', user?.id);
 
   if (error) {
-    logger.error('Failed to fetch urlIds:', error);
+    logger.error('❌ REST: Failed to fetch urlIds:', error);
     throw error;
   }
 
+  logger.info(`✅ REST: Successfully fetched ${data?.length || 0} URL IDs`);
   return (data || []).map(chat => chat.urlId).filter(Boolean);
 }
 
