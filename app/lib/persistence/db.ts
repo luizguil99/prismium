@@ -494,6 +494,44 @@ export async function deleteById(_db: any, id: string): Promise<void> {
   }
 }
 
+export async function deleteMultipleById(_db: any, ids: string[]): Promise<void> {
+  if (!ids || ids.length === 0) {
+    logger.info('No chats to delete');
+    return;
+  }
+  
+  logger.info(`🗑️ Deleting multiple chats: ${ids.length} chats`);
+  try {
+    const startTime = performance.now();
+    const supabase = getOrCreateClient();
+    
+    // Cancel any pending operations for these chats
+    for (const id of ids) {
+      if (pendingSaves.has(id)) {
+        const pendingOp = pendingSaves.get(id)!;
+        clearTimeout(pendingOp.timer);
+        pendingSaves.delete(id);
+      }
+    }
+    
+    restRequestCount++;
+    logger.info(`🔴 THIS IS A REST OPERATION ON SUPABASE (deleting ${ids.length} chats) #${restRequestCount}`);
+    
+    // Using .in() for batch deletion
+    const { error } = await supabase.from('chats').delete().in('id', ids);
+    if (error) throw error;
+    
+    // Invalidate cache after deletion
+    invalidateChatsCache();
+    
+    const duration = Math.round(performance.now() - startTime);
+    logger.info(`✅ ${ids.length} chats successfully deleted (${duration}ms)`);
+  } catch (error) {
+    logger.error(`❌ Error deleting multiple chats:`, error);
+    throw error;
+  }
+}
+
 export async function getNextId(_db: any): Promise<string> {
   logger.info('🆔 Generating new ID');
   if (crypto && typeof crypto.randomUUID === 'function') {
