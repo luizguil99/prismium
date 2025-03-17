@@ -40,7 +40,7 @@ export function ChatDescription() {
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
             maxLength={50}
-            style={{ width: `${Math.min(Math.max(currentDescription.length * 8, 120), 300)}px` }}
+            style={{ width: `${Math.min(Math.max(currentDescription.length * 8, 120), 250)}px` }}
           />
           <TooltipProvider>
             <WithTooltip tooltip="Save title">
@@ -59,15 +59,18 @@ export function ChatDescription() {
         </form>
       ) : (
         <div className="flex items-center gap-2">
-          <span
-            className={classNames(
-              'text-sm font-medium text-zinc-200',
-              'max-w-[180px] sm:max-w-[240px] md:max-w-[320px] truncate',
-            )}
-            title={currentDescription}
-          >
-            {currentDescription}
-          </span>
+          <TooltipProvider>
+            <WithTooltip tooltip={currentDescription}>
+              <span
+                className={classNames(
+                  'text-sm font-medium text-zinc-200',
+                  'max-w-[180px] sm:max-w-[220px] md:max-w-[250px] truncate',
+                )}
+              >
+                {currentDescription}
+              </span>
+            </WithTooltip>
+          </TooltipProvider>
           <TooltipProvider>
             <WithTooltip tooltip="Rename chat">
               <button
