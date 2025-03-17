@@ -13,6 +13,8 @@ interface CacheEntry {
 
 const CACHE_DURATION = 30000; // 30 seconds cache
 let getAllCache: CacheEntry | null = null;
+let realtimeSubscription: any = null;
+let realtimeStore = new Map<string, ChatHistoryItem>();
 
 export async function openDatabase(): Promise<any> {
   try {
@@ -23,6 +25,10 @@ export async function openDatabase(): Promise<any> {
       logger.error('❌ User not authenticated:', error);
       return undefined;
     }
+
+    // Setup enhanced realtime subscription
+    await setupEnhancedRealtimeSubscription(supabase, user.id);
+
     logger.info('✅ Supabase connection established');
     return supabase;
   } catch (error) {
@@ -31,18 +37,73 @@ export async function openDatabase(): Promise<any> {
   }
 }
 
-export async function getAll(db: any): Promise<ChatHistoryItem[]> {
-  const now = Date.now();
-
-  // Return cached data if valid
-  if (getAllCache && (now - getAllCache.timestamp) < CACHE_DURATION) {
-    logger.info('✅ Using cached chat list');
-    return getAllCache.data;
+async function setupEnhancedRealtimeSubscription(supabase: any, userId: string) {
+  if (realtimeSubscription) {
+    realtimeSubscription.unsubscribe();
   }
 
-  logger.info('🔄 REST: Fetching all chats');
-  const supabase = db;
-  const { data, error } = await supabase
+  // Initial data load
+  const { data: initialData } = await supabase
+    .from('chats')
+    .select('*')
+    .eq('user_id', userId);
+
+  // Populate realtime store
+  if (initialData) {
+    initialData.forEach((chat: ChatHistoryItem) => {
+      realtimeStore.set(chat.id, chat);
+    });
+  }
+
+  realtimeSubscription = supabase
+    .channel('chat-changes')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'chats',
+        filter: `user_id=eq.${userId}`
+      },
+      (payload: any) => {
+        logger.info(`🔄 Realtime event received: ${payload.eventType}`);
+        
+        switch (payload.eventType) {
+          case 'INSERT':
+          case 'UPDATE':
+            realtimeStore.set(payload.new.id, payload.new);
+            break;
+          case 'DELETE':
+            realtimeStore.delete(payload.old.id);
+            break;
+        }
+        
+        invalidateGetAllCache();
+      }
+    )
+    .subscribe((status: string) => {
+      logger.info(`✅ Realtime subscription status: ${status}`);
+    });
+}
+
+// Add cleanup function for realtime subscription
+export function cleanupRealtimeSubscription() {
+  if (realtimeSubscription) {
+    realtimeSubscription.unsubscribe();
+    realtimeSubscription = null;
+    logger.info('✅ Realtime subscription cleaned up');
+  }
+}
+
+export async function getAll(db: any): Promise<ChatHistoryItem[]> {
+  // Return from realtime store if available
+  if (realtimeStore.size > 0) {
+    return Array.from(realtimeStore.values())
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }
+
+  // Fallback to REST if realtime store is empty
+  const { data, error } = await db
     .from('chats')
     .select('*')
     .order('timestamp', { ascending: false });
@@ -52,13 +113,11 @@ export async function getAll(db: any): Promise<ChatHistoryItem[]> {
     throw error;
   }
 
-  // Update cache
-  getAllCache = {
-    data: data || [],
-    timestamp: now
-  };
+  // Update realtime store
+  data?.forEach((chat: ChatHistoryItem) => {
+    realtimeStore.set(chat.id, chat);
+  });
 
-  logger.info(`✅ REST: Successfully fetched ${data?.length || 0} chats`);
   return data || [];
 }
 
@@ -69,65 +128,61 @@ export async function setMessages(
   urlId?: string,
   description?: string,
   timestamp?: string,
+  metadata?: IChatMetadata
 ): Promise<void> {
   const supabase = db;
-  logger.info(`🔄 REST: Setting messages for chat ${id}`);
+  logger.info(`🔄 Setting messages for chat ${id}`);
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    logger.error('❌ REST: User not authenticated');
+    logger.error('❌ User not authenticated');
     throw new Error('User must be authenticated');
   }
 
-  if (timestamp && isNaN(Date.parse(timestamp))) {
-    logger.error('❌ REST: Invalid timestamp format');
-    throw new Error('Invalid timestamp');
-  }
-
-  const data: any = {
+  const data = {
     user_id: user.id,
     messages,
     urlId,
     description,
+    metadata,
     timestamp: timestamp ?? new Date().toISOString(),
   };
 
-  if (id && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+  if (id) {
     data.id = id;
   }
 
-  const { error } = await supabase.from('chats').upsert(data, {
-    onConflict: 'id',
-    returning: 'minimal'
-  });
+  const { error } = await supabase
+    .from('chats')
+    .upsert(data, {
+      onConflict: 'id',
+      returning: 'minimal'
+    });
 
   if (error) {
-    logger.error('❌ REST: Failed to save messages:', error);
+    logger.error('❌ Failed to save messages:', error);
     throw error;
   }
 
-  invalidateGetAllCache(); // Invalidate cache after mutation
-  logger.info('✅ REST: Successfully saved messages');
+  // Update realtime store immediately
+  realtimeStore.set(id, { ...data, id });
 }
 
 export async function getMessages(db: any, id: string): Promise<ChatHistoryItem> {
-  logger.info(`🔄 REST: Fetching messages for ${id}`);
-  try {
-    const result = await getMessagesById(db, id);
-    if (result) {
-      logger.info('✅ REST: Successfully fetched messages by ID');
-      return result;
-    }
-    
-    logger.info('🔄 REST: ID not found, trying urlId');
-    return await getMessagesByUrlId(db, id);
-  } catch (error) {
-    if (error.code === '22P02') {
-      logger.info('🔄 REST: Invalid UUID, trying urlId');
-      return await getMessagesByUrlId(db, id);
-    }
-    throw error;
+  // Try from realtime store first
+  const cachedChat = realtimeStore.get(id);
+  if (cachedChat) {
+    return cachedChat;
   }
+
+  // Fallback to REST
+  const chat = await getMessagesById(db, id) || await getMessagesByUrlId(db, id);
+  
+  if (chat) {
+    realtimeStore.set(chat.id, chat);
+  }
+  
+  return chat;
 }
 
 export async function getMessagesByUrlId(db: any, id: string): Promise<ChatHistoryItem> {
