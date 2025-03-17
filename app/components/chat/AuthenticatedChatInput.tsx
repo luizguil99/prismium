@@ -254,6 +254,14 @@ export const AuthenticatedChatInput = React.memo(({
     </Dialog>
   ), [showLoginModal]);
 
+  const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
+    const textarea = e.currentTarget;
+    const preview = textarea.previousSibling as HTMLDivElement;
+    if (preview) {
+      preview.scrollTop = textarea.scrollTop;
+    }
+  };
+
   return (
     <div
       className={classNames(
@@ -394,6 +402,7 @@ export const AuthenticatedChatInput = React.memo(({
           onChange={handleLocalInputChange}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
+          onScroll={handleScroll}
           placeholder="How can I help you today?"
           translate="no"
         />
