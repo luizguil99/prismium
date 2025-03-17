@@ -2,6 +2,8 @@ import React, { useCallback } from 'react';
 import { GitPullRequest, GitMerge, Menu } from 'lucide-react';
 import { classNames } from '~/utils/classNames';
 import { RevertDropdown } from './revertdropdown';
+import { ClientOnly } from 'remix-utils/client-only';
+import { ChatDescription } from '~/lib/persistence/ChatDescription.client';
 
 interface NewHeaderProps {
   className?: string;
@@ -23,7 +25,11 @@ export function NewHeader({ className }: NewHeaderProps) {
         <div className="flex items-center justify-center w-7 h-7 rounded-full bg-blue-500/10">
           <GitPullRequest size={14} className="text-blue-400" />
         </div>
-        <span className="text-sm font-medium text-zinc-300">PR (Diff with Main Branch)</span>
+        
+        <ClientOnly>
+          {() => <ChatDescription />}
+        </ClientOnly>
+        
         <span className="px-1.5 py-0.5 text-xs font-medium text-green-400 bg-green-500/10 rounded-full">Open</span>
       </div>
       <div className="flex items-center gap-3">
@@ -32,10 +38,7 @@ export function NewHeader({ className }: NewHeaderProps) {
           <span>CI Passing</span>
         </div>
         <RevertDropdown onRevert={handleRevert} />
-        <button className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 rounded-md transition-colors">
-          <GitMerge size={14} />
-          <span>Merge PR</span>
-        </button>
+       
       </div>
     </div>
   );

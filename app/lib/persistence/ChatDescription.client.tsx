@@ -3,15 +3,24 @@ import { TooltipProvider } from '@radix-ui/react-tooltip';
 import WithTooltip from '~/components/ui/Tooltip';
 import { useEditChatDescription } from '~/lib/hooks';
 import { description as descriptionStore } from '~/lib/persistence';
+import { Pencil } from 'lucide-react';
+import { classNames } from '~/utils/classNames';
 
 export function ChatDescription() {
   const initialDescription = useStore(descriptionStore)!;
 
-  const { editing, handleChange, handleBlur, handleSubmit, handleKeyDown, currentDescription, toggleEditMode } =
-    useEditChatDescription({
-      initialDescription,
-      syncWithGlobalStore: true,
-    });
+  const { 
+    editing, 
+    handleChange, 
+    handleBlur, 
+    handleSubmit, 
+    handleKeyDown, 
+    currentDescription, 
+    toggleEditMode 
+  } = useEditChatDescription({
+    initialDescription,
+    syncWithGlobalStore: true,
+  });
 
   if (!initialDescription) {
     // doing this to prevent showing edit button until chat description is set
@@ -24,40 +33,52 @@ export function ChatDescription() {
         <form onSubmit={handleSubmit} className="flex items-center">
           <input
             type="text"
-            className="bg-bolt-elements-background-depth-1 text-bolt-elements-textPrimary rounded px-2 mr-2 w-fit"
+            className="bg-zinc-800/50 text-zinc-200 rounded-md px-2.5 py-1 mr-2 text-sm font-medium border border-zinc-700/50 focus:border-blue-500/50 focus:outline-none focus:ring-1 focus:ring-blue-500/30"
             autoFocus
             value={currentDescription}
             onChange={handleChange}
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
-            style={{ width: `${Math.max(currentDescription.length * 8, 100)}px` }}
+            maxLength={50}
+            style={{ width: `${Math.min(Math.max(currentDescription.length * 8, 120), 300)}px` }}
           />
           <TooltipProvider>
             <WithTooltip tooltip="Save title">
-              <div className="flex justify-between items-center p-2 rounded-md hover:bg-zinc-800/50">
-                <button
-                  type="submit"
-                  className="i-ph:check-bold text-lg text-zinc-400 hover:text-purple-400 transition-colors"
-                  onMouseDown={handleSubmit}
-                />
-              </div>
+              <button
+                type="submit"
+                className="flex items-center justify-center w-6 h-6 rounded-md bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  handleSubmit(e);
+                }}
+              >
+                <div className="i-ph:check-bold text-sm" />
+              </button>
             </WithTooltip>
           </TooltipProvider>
         </form>
       ) : (
-        <div className="flex items-center gap-2 group">
-          <span className="text-base">{currentDescription}</span>
+        <div className="flex items-center gap-2">
+          <span
+            className={classNames(
+              'text-sm font-medium text-zinc-200',
+              'max-w-[180px] sm:max-w-[240px] md:max-w-[320px] truncate',
+            )}
+            title={currentDescription}
+          >
+            {currentDescription}
+          </span>
           <TooltipProvider>
             <WithTooltip tooltip="Rename chat">
               <button
                 type="button"
-                className="p-1.5 rounded-md bg-[#09090B] text-purple-400 transition-colors"
-                onClick={(event) => {
-                  event.preventDefault();
+                className="flex items-center justify-center w-6 h-6 rounded-md bg-zinc-800/50 text-zinc-400 hover:bg-zinc-800 hover:text-blue-400 transition-colors"
+                onClick={(e) => {
+                  e.preventDefault();
                   toggleEditMode();
                 }}
               >
-                <div className="i-ph:note-pencil text-sm" />
+                <Pencil size={12} />
               </button>
             </WithTooltip>
           </TooltipProvider>
