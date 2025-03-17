@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from '@remix-run/react';
 import Cookies from 'js-cookie';
 import { toast } from 'react-toastify';
-import { db, deleteById, getAll } from '~/lib/persistence';
+import { db, deleteById, deleteMultipleById, getAll } from '~/lib/persistence';
 import { logStore } from '~/lib/stores/logs';
 import { classNames } from '~/utils/classNames';
 
@@ -90,7 +90,9 @@ export default function DataTab() {
       setIsDeleting(true);
 
       const allChats = await getAll(db);
-      await Promise.all(allChats.map((chat) => deleteById(db!, chat.id)));
+      const chatIds = allChats.map(chat => chat.id);
+      await deleteMultipleById(db, chatIds);
+      
       logStore.logSystem('All chats deleted successfully', { count: allChats.length });
       toast.success('All chats deleted successfully');
       navigate('/', { replace: true });

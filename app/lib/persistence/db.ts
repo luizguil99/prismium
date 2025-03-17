@@ -16,6 +16,11 @@ let getAllCache: CacheEntry | null = null;
 let realtimeSubscription: any = null;
 let realtimeStore = new Map<string, ChatHistoryItem>();
 
+// Definir a interface de metadados do chat que estava faltando
+export interface IChatMetadata {
+  [key: string]: any;
+}
+
 export async function openDatabase(): Promise<any> {
   try {
     const supabase = getOrCreateClient();
@@ -260,6 +265,35 @@ export async function deleteById(db: any, id: string): Promise<void> {
   logger.info('✅ REST: Successfully deleted chat');
 }
 
+/**
+ * Delete multiple chats by their IDs in a single operation
+ * @param db Supabase client
+ * @param ids Array of chat IDs to delete
+ * @returns Promise<void>
+ */
+export async function deleteMultipleById(db: any, ids: string[]): Promise<void> {
+  if (!ids.length) {
+    logger.info('ℹ️ No chats to delete');
+    return;
+  }
+
+  logger.info(`🔄 REST: Batch deleting ${ids.length} chats`);
+  const supabase = db;
+  
+  const { error } = await supabase
+    .from('chats')
+    .delete()
+    .in('id', ids);
+
+  if (error) {
+    logger.error('❌ REST: Failed to batch delete chats:', error);
+    throw error;
+  }
+
+  invalidateGetAllCache(); // Invalidate cache after deletion
+  logger.info(`✅ REST: Successfully batch deleted ${ids.length} chats`);
+}
+
 export async function getNextId(db: any): Promise<string> {
   logger.info('🔄 REST: Generating next ID');
   return crypto.randomUUID();
@@ -298,7 +332,7 @@ async function getUrlIds(db: any): Promise<string[]> {
   }
 
   logger.info(`✅ REST: Successfully fetched ${data?.length || 0} URL IDs`);
-  return (data || []).map(chat => chat.urlId).filter(Boolean);
+  return (data || []).map((chat: any) => chat.urlId).filter(Boolean);
 }
 
 export async function forkChat(db: any, chatId: string, messageId: string): Promise<string> {
