@@ -206,131 +206,69 @@ export async function getAll(_db: any): Promise<ChatHistoryItem[]> {
 }
 
 export async function setMessages(
-  _db: any,
-  id: string,
-  messages: Message[],
-  urlId?: string,
+  _db: any, 
+  id: string, 
+  messages: Message[], 
+  urlId?: string, 
   description?: string,
-  timestamp?: string,
+  timestamp?: number,
   metadata?: IChatMetadata
 ): Promise<void> {
-  // If there are no messages, there's nothing to save
-  if (!messages || messages.length === 0) {
-    logger.warn(`⚠️ Attempt to save chat ${id} without messages`);
-    return;
-  }
+  const startTime = performance.now();
+  logger.info(`💾 Saving messages for chat ${id}`);
 
-  // Calculate total message size
-  const totalSize = messages.reduce((size, msg) => {
-    return size + (typeof msg.content === 'string' ? msg.content.length : 0);
-  }, 0);
+  try {
+    const supabase = getOrCreateClient();
+    const user = await getAuthenticatedUser();
 
-  // Debug log
-  if (totalSize > 1000) {
-    logger.info(`📊 Total message size: ${totalSize} characters`);
-  }
+    // Converter timestamp para formato ISO
+    const formattedTimestamp = timestamp 
+      ? new Date(timestamp).toISOString()
+      : new Date().toISOString();
 
-  // If we don't have a pending operation for this chat, create a new one
-  if (!pendingSaves.has(id)) {
-    // Create a new promise that will be resolved when saving is complete
-    let resolveSave: () => void;
-    let rejectSave: (error: Error) => void;
-    
-    const savePromise = new Promise<void>((resolve, reject) => {
-      resolveSave = resolve;
-      rejectSave = reject;
-    });
-
-    // Set up timer to save after accumulation interval
-    const timer = setTimeout(() => {
-      // Get the most recent pending operation
-      const pendingOp = pendingSaves.get(id);
-      if (!pendingOp) return;
-      
-      // Remove pending operation from map
-      pendingSaves.delete(id);
-      
-      // Execute the save
-      _saveMessagesToSupabase(
-        id, 
-        pendingOp.messages, 
-        pendingOp.urlId, 
-        pendingOp.description, 
-        pendingOp.timestamp, 
-        pendingOp.metadata
-      )
-        .then(() => {
-          // Technical log without success message for UI
-          pendingOp.resolveSave();
-          
-        })
-        .catch((error) => {
-          logger.error(`❌ Error saving messages for chat ${id}:`, error);
-          pendingOp.rejectSave(error);
-        });
-    }, ACCUMULATION_INTERVAL);
-
-    // Store the pending operation
-    pendingSaves.set(id, {
+    // Preparar dados para atualização
+    const updateData: any = {
       messages,
-      urlId,
-      description,
-      timestamp,
-      metadata,
-      timer,
-      savePromise,
-      resolveSave: resolveSave!,
-      rejectSave: rejectSave!
-    });
+      user_id: user.id,
+      timestamp: formattedTimestamp,
+    };
 
-    // Remove scheduling message
-    return savePromise;
-  }
+    // Adicionar campos opcionais se fornecidos
+    if (description !== undefined) {
+      updateData.description = description;
+    }
+    if (urlId !== undefined) {
+      updateData.urlId = urlId;
+    }
+    if (metadata !== undefined) {
+      updateData.metadata = metadata;
+    }
 
-  // If we already have a pending operation for this chat, update it
-  const pendingOp = pendingSaves.get(id)!;
-  
-  // Clear previous timer
-  clearTimeout(pendingOp.timer);
-  
-  // Keep existing promise, but update the data
-  pendingOp.messages = messages;
-  pendingOp.urlId = urlId;
-  pendingOp.description = description;
-  pendingOp.timestamp = timestamp;
-  pendingOp.metadata = metadata;
-  
-  // Set up a new timer
-  pendingOp.timer = setTimeout(() => {
-    // Get the most recent pending operation
-    const currentOp = pendingSaves.get(id);
-    if (!currentOp) return;
-    
-    // Remove pending operation from map
-    pendingSaves.delete(id);
-    
-    // Execute the save
-    _saveMessagesToSupabase(
-      id, 
-      currentOp.messages, 
-      currentOp.urlId, 
-      currentOp.description, 
-      currentOp.timestamp, 
-      currentOp.metadata
-    )
-      .then(() => {
-        // Technical log without success message for UI
-        currentOp.resolveSave();
-        
-      })
-      .catch((error) => {
-        logger.error(`❌ Error saving messages for chat ${id}:`, error);
-        currentOp.rejectSave(error);
+    // Realizar a atualização
+    const { error } = await supabase
+      .from('chats')
+      .upsert({
+        id,
+        ...updateData
+      }, {
+        onConflict: 'id'
       });
-  }, ACCUMULATION_INTERVAL);
-  
-  // Remove pending operation update message
-  return pendingOp.savePromise;
+
+    if (error) {
+      logger.error(`❌ Supabase error:`, error);
+      throw error;
+    }
+
+    // Invalidar cache após atualização bem-sucedida
+    invalidateChatsCache();
+
+    const duration = Math.round(performance.now() - startTime);
+    logger.info(`✅ Messages saved successfully for chat ${id} (${duration}ms)`);
+
+  } catch (error) {
+    logger.error('❌ Error saving messages:', error);
+    throw error;
+  }
 }
 
 // Internal function to save messages to Supabase
