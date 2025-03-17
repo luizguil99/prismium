@@ -42,6 +42,26 @@ export const RevertDropdown = React.memo(function RevertDropdownComponent({
   const fetchedRef = useRef(false);
   const previousChatIdRef = useRef<string | null>(null);
 
+  // Função de busca de mensagens definida fora do useEffect
+  const fetchMessages = useCallback(async () => {
+    if (!hasValidChatId || !effectiveChatId || loading) return;
+    
+    setLoading(true);
+    
+    try {
+      const db = await openDatabase();
+      const chat = await getMessages(db, effectiveChatId);
+      if (chat && chat.messages) {
+        setMessages(chat.messages);
+      }
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+    } finally {
+      setLoading(false);
+      fetchedRef.current = true;
+    }
+  }, [hasValidChatId, effectiveChatId, loading]);
+
   useEffect(() => {
     // Resetamos o estado de busca quando o chatId muda
     if (effectiveChatId !== previousChatIdRef.current) {
@@ -56,27 +76,7 @@ export const RevertDropdown = React.memo(function RevertDropdownComponent({
     } else if (!fetchedRef.current && hasValidChatId && !loading) {
       fetchMessages();
     }
-  }, [effectiveChatId, storeMessages]); // Adicionamos storeMessages para atualizar quando as mensagens mudarem
-
-  const fetchMessages = async () => {
-    if (!hasValidChatId || fetchedRef.current) return;
-    
-    setLoading(true);
-    fetchedRef.current = true;
-    
-    try {
-      const db = await openDatabase();
-      const chat = await getMessages(db, effectiveChatId as string);
-      if (chat && chat.messages) {
-        setMessages(chat.messages);
-      }
-    } catch (error) {
-      console.error('Error fetching messages:', error);
-      fetchedRef.current = false; // Permite tentar novamente em caso de erro
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [effectiveChatId, storeMessages, hasValidChatId, loading, fetchMessages]);
 
   // Efeito para fechar o dropdown quando clicar fora dele
   useEffect(() => {
@@ -96,8 +96,13 @@ export const RevertDropdown = React.memo(function RevertDropdownComponent({
   }, [isOpen]);
 
   // Efeito para notificar o componente pai quando o rewindTo muda
+  // Usamos uma variável ref para evitar notificações redundantes
+  const prevRewindIdRef = useRef<string | null>(null);
+  
   useEffect(() => {
-    if (onRevert) {
+    // Só notifica o pai se o rewindTo mudou desde a última vez
+    if (onRevert && prevRewindIdRef.current !== currentRewindId) {
+      prevRewindIdRef.current = currentRewindId;
       onRevert(currentRewindId);
     }
   }, [currentRewindId, onRevert]);
@@ -151,40 +156,40 @@ export const RevertDropdown = React.memo(function RevertDropdownComponent({
   }, []);
 
   // Filter user and assistant messages (exclude system messages)
-  const filteredMessages = messages.filter(
+  const filteredMessages = useMemo(() => messages.filter(
     msg => msg.role === 'user' || msg.role === 'assistant'
-  );
+  ), [messages]);
 
   // Get current message based on rewindTo parameter
-  const getCurrentMessageIndex = () => {
+  const getCurrentMessageIndex = useCallback(() => {
     if (!currentRewindId) return filteredMessages.length;
     
     const index = filteredMessages.findIndex(msg => msg.id === currentRewindId);
     return index !== -1 ? index + 1 : filteredMessages.length;
-  };
+  }, [currentRewindId, filteredMessages]);
 
-  const currentIndex = getCurrentMessageIndex();
+  const currentIndex = useMemo(() => getCurrentMessageIndex(), [getCurrentMessageIndex]);
   
   // Calculate version numbers (every user+assistant pair is a version)
-  const getVersionNumber = (index: number) => {
+  const getVersionNumber = useCallback((index: number) => {
     return Math.floor(index / 2) + 1;
-  };
+  }, []);
 
   // Group messages by version
-  const groupedMessages = filteredMessages.reduce((acc, message, index) => {
+  const groupedMessages = useMemo(() => filteredMessages.reduce((acc, message, index) => {
     const versionNum = getVersionNumber(index);
     if (!acc[versionNum]) {
       acc[versionNum] = [];
     }
     acc[versionNum].push({ message, index });
     return acc;
-  }, {} as Record<number, { message: Message, index: number }[]>);
+  }, {} as Record<number, { message: Message, index: number }[]>), [filteredMessages, getVersionNumber]);
 
-  const totalVersions = Object.keys(groupedMessages).length;
-  const currentVersion = getVersionNumber(currentIndex);
+  const totalVersions = useMemo(() => Object.keys(groupedMessages).length, [groupedMessages]);
+  const currentVersion = useMemo(() => getVersionNumber(currentIndex), [getVersionNumber, currentIndex]);
   
   // Check if we're at the latest version
-  const isLatestVersion = !currentRewindId;
+  const isLatestVersion = useMemo(() => !currentRewindId, [currentRewindId]);
 
   return (
     <div className="relative" ref={dropdownRef}>

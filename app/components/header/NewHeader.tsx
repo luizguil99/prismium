@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { GitPullRequest, GitMerge, Menu } from 'lucide-react';
 import { classNames } from '~/utils/classNames';
 import { RevertDropdown } from './revertdropdown';
@@ -8,6 +8,12 @@ interface NewHeaderProps {
 }
 
 export function NewHeader({ className }: NewHeaderProps) {
+  // Callback que só será recriado quando necessário
+  const handleRevert = useCallback((messageId: string | null) => {
+    // Implementação opcional de ações adicionais ao reverter
+    console.log("Version changed to:", messageId || "latest");
+  }, []);
+
   return (
     <div className={classNames("sticky top-0 z-10 flex items-center justify-between px-4 py-2.5 border-b border-bolt-elements-borderColor bg-[#09090B]/95 backdrop-blur-sm", className)}>
       <div className="flex items-center gap-2">
@@ -25,7 +31,7 @@ export function NewHeader({ className }: NewHeaderProps) {
           <div className="w-2 h-2 rounded-full bg-green-500"></div>
           <span>CI Passing</span>
         </div>
-        <RevertDropdown />
+        <RevertDropdown onRevert={handleRevert} />
         <button className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 rounded-md transition-colors">
           <GitMerge size={14} />
           <span>Merge PR</span>

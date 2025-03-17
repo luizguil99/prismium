@@ -257,7 +257,7 @@ export const AuthenticatedChatInput = React.memo(({
   return (
     <div
       className={classNames(
-        'relative shadow-lg border border-zinc-800/60 backdrop-blur-lg rounded-xl bg-[#111113]',
+        'relative shadow-lg border border-zinc-800/60 backdrop-blur-lg rounded-xl bg-[#111113] w-full',
         'transition-all duration-300 hover:border-blue-500/30 hover:shadow-blue-500/5',
         'text-sm'
       )}
@@ -327,15 +327,11 @@ export const AuthenticatedChatInput = React.memo(({
        
       </div>
       
-      <div className="relative">
+      <div className="relative w-full">
         <div
-          className={classNames(
-            'w-full pl-3.5 pt-2.5 pr-12 outline-none resize-none bg-transparent text-sm pointer-events-none absolute top-0 left-0',
-            'min-h-[55px]'
-          )}
+          className="absolute inset-0 pl-3.5 pt-2.5 pr-12 pointer-events-none break-words whitespace-pre-wrap overflow-hidden"
           style={{
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
+            minHeight: TEXTAREA_MIN_HEIGHT,
           }}
         >
           {styledInput}
@@ -343,11 +339,7 @@ export const AuthenticatedChatInput = React.memo(({
         
         <textarea
           ref={textareaRef}
-          className={classNames(
-            'w-full pl-3.5 pt-2.5 pr-12 outline-none resize-none text-transparent placeholder-gray-500 bg-transparent text-sm caret-gray-300',
-            'transition-all duration-200',
-            'focus:ring-1 focus:ring-blue-500/30 focus:border-blue-500/30'
-          )}
+          className="w-full pl-3.5 pt-2.5 pr-12 outline-none resize-none text-transparent caret-gray-300 bg-transparent break-words whitespace-pre-wrap"
           style={{
             minHeight: TEXTAREA_MIN_HEIGHT,
             maxHeight: TEXTAREA_MAX_HEIGHT,
