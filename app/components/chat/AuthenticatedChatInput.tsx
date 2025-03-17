@@ -200,23 +200,6 @@ export const AuthenticatedChatInput = React.memo(({
     }
   }, [user, uploadedFiles, imageDataList, setUploadedFiles, setImageDataList]);
 
-  const renderStyledInput = () => {
-    if (!input) return '';
-    
-    // Divide o texto em partes, mantendo os espaços e quebras de linha
-    const parts = input.split(/(\s+|@\S+)/g);
-    
-    return parts.map((part, index) => {
-      if (part.startsWith('@')) {
-        return <span key={index} className="text-blue-400">{part}</span>;
-      }
-      return <span key={index} className="text-gray-300">{part}</span>;
-    });
-  };
-
-  // Memoizando o output visual para não recalcular em re-renders
-  const styledInput = useMemo(() => renderStyledInput(), [input]);
-  
   // Memoizando o modal de login
   const LoginModal = useMemo(() => (
     <Dialog open={showLoginModal} onOpenChange={setShowLoginModal}>
@@ -336,67 +319,12 @@ export const AuthenticatedChatInput = React.memo(({
       </div>
       
       <div className="relative w-full">
-        <div
-          className="absolute inset-0 pl-3.5 pt-2.5 pr-12 pointer-events-none break-words whitespace-pre-wrap overflow-hidden"
-          style={{
-            minHeight: TEXTAREA_MIN_HEIGHT,
-          }}
-        >
-          {styledInput}
-        </div>
-        
         <textarea
           ref={textareaRef}
-          className="w-full pl-3.5 pt-2.5 pr-12 outline-none resize-none text-transparent caret-gray-300 bg-transparent break-words whitespace-pre-wrap"
+          className="w-full pl-3.5 pt-2.5 pr-12 outline-none resize-none bg-transparent text-gray-300 break-words whitespace-pre-wrap overflow-auto"
           style={{
             minHeight: TEXTAREA_MIN_HEIGHT,
             maxHeight: TEXTAREA_MAX_HEIGHT,
-          }}
-          onDragEnter={(e) => {
-            if (!user) {
-              setShowLoginModal(true);
-              return;
-            }
-            e.preventDefault();
-            e.currentTarget.style.border = '2px solid #1488fc';
-          }}
-          onDragOver={(e) => {
-            if (!user) {
-              setShowLoginModal(true);
-              return;
-            }
-            e.preventDefault();
-            e.currentTarget.style.border = '2px solid #1488fc';
-          }}
-          onDragLeave={(e) => {
-            if (!user) {
-              setShowLoginModal(true);
-              return;
-            }
-            e.preventDefault();
-            e.currentTarget.style.border = '1px solid var(--bolt-elements-borderColor)';
-          }}
-          onDrop={(e) => {
-            if (!user) {
-              setShowLoginModal(true);
-              return;
-            }
-            e.preventDefault();
-            e.currentTarget.style.border = '1px solid var(--bolt-elements-borderColor)';
-
-            const files = Array.from(e.dataTransfer.files);
-            files.forEach((file) => {
-              if (file.type.startsWith('image/')) {
-                const reader = new FileReader();
-
-                reader.onload = (e) => {
-                  const base64Image = e.target?.result as string;
-                  setUploadedFiles?.([...uploadedFiles, file]);
-                  setImageDataList?.([...imageDataList, base64Image]);
-                };
-                reader.readAsDataURL(file);
-              }
-            });
           }}
           value={input}
           onChange={handleLocalInputChange}
