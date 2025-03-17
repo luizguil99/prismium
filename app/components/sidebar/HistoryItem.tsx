@@ -70,7 +70,15 @@ export function HistoryItem({ item, onDelete, onDuplicate, exportChat }: History
                 <ChatActionButton
                   toolTipContent="Duplicate chat"
                   icon="i-ph:copy"
-                  onClick={() => onDuplicate?.(item.id)}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    try {
+                      onDuplicate(item.id);
+                    } catch (error) {
+                      console.error('Error duplicating chat:', error);
+                    }
+                  }}
                 />
               )}
               <ChatActionButton

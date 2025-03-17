@@ -235,7 +235,14 @@ export const Menu = () => {
                   item={item}
                   exportChat={exportChat}
                   onDelete={(event) => handleDeleteClick(event, item)}
-                  onDuplicate={() => handleDuplicate(item.id)}
+                  onDuplicate={async (id) => {
+                    try {
+                      await handleDuplicate(id);
+                    } catch (error) {
+                      console.error('Failed to duplicate:', error);
+                      toast.error('Failed to duplicate chat');
+                    }
+                  }}
                 />
               ))}
             </div>
