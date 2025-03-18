@@ -365,32 +365,29 @@ export function getVisualEditorScript() {
           
           const handleElementClick = (e) => {
             if (!isEditMode) return;
-            const target = e.target;
-            
-            // Ignora cliques em elementos do nosso próprio editor
-            if (target.closest('.prismium-quick-chat') || 
-                target.closest('.prismium-editor-overlay') || 
-                target.closest('.prismium-style-panel')) return;
-            
-            if (target === document.body) return;
             
             e.preventDefault();
             e.stopPropagation();
-
-            console.log('[Visual Editor] Elemento clicado:', target.tagName);
-            console.log('[Visual Editor] HTML Element:', {
-              html: target.outerHTML,
-              text: target.textContent,
-              classes: target.className,
-              id: target.id
-            });
             
-            // Remove chat anterior se existir
-            const existingChat = document.querySelector('.prismium-quick-chat');
-            if (existingChat) {
-              existingChat.remove();
-            }
-
+            const target = e.target;
+            if (target === document.body) return;
+            
+            // Remove qualquer chat existente antes de criar um novo
+            document.querySelectorAll('.prismium-quick-chat').forEach(el => el.remove());
+            
+            // Calcula a posição correta considerando o scroll
+            const rect = target.getBoundingClientRect();
+            const scrollY = window.scrollY || window.pageYOffset;
+            
+            const chat = document.createElement('div');
+            chat.className = 'prismium-quick-chat';
+            chat.style.cssText = \`
+              position: absolute;
+              top: \${rect.bottom + scrollY}px;
+              left: \${rect.left}px;
+              z-index: 10000;
+            \`;
+            
             // Função auxiliar para extrair apenas o texto visível
             const getVisibleText = (el) => {
               let text = '';
@@ -424,50 +421,25 @@ export function getVisualEditorScript() {
             console.log('[Visual Editor] Enviando mensagem inicial:', JSON.stringify(initialMessage, null, 2));
             window.parent.postMessage(initialMessage, '*');
 
-            const rect = target.getBoundingClientRect();
-
-            // Cria o chat
-            const chat = document.createElement('div');
-            chat.className = 'prismium-quick-chat';
-            chat.style.cssText = \`
-              position: fixed;
-              top: \${rect.bottom + window.scrollY + 10}px;
-              left: \${rect.left + window.scrollX}px;
-              background: #1e1e2e;
-              border: 1px solid #313244;
-              border-radius: 12px;
-              padding: 8px;
-              width: 320px;
-              z-index: 10000;
-              box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-              backdrop-filter: blur(8px);
-              transition: all 0.2s ease;
-              pointer-events: all;
-            \`;
-
-            // Previne que o clique no chat propague para o documento
-            chat.addEventListener('click', (e) => {
-              e.stopPropagation();
-            });
-
             // Conteúdo do chat simplificado
             const content = document.createElement('div');
             content.innerHTML = \`
               <div class="flex items-center gap-2" style="display: flex; align-items: center; gap: 8px;">
-                <div class="flex-1" style="flex: 1; position: relative;">
+                <div class="flex-1" style="flex: 1; position: relative; width: 320px;">
                   <input
                     type="text"
                     placeholder="Digite sua pergunta..."
                     style="
                       width: 100%;
-                      padding: 8px 36px 8px 12px;
+                      padding: 8px 68px 8px 12px;
                       background: #313244;
                       border: 1px solid #45475a;
                       border-radius: 8px;
                       color: #cdd6f4;
-                      font-size: 13px;
+                      font-size: 14px;
                       transition: all 0.2s ease;
                       outline: none;
+                      height: 40px;
                     "
                     onmouseover="this.style.borderColor='#6c7086'"
                     onmouseout="this.style.borderColor='#45475a'"
@@ -478,7 +450,7 @@ export function getVisualEditorScript() {
                     class="send-button"
                     style="
                       position: absolute;
-                      right: 8px;
+                      right: 36px;
                       top: 50%;
                       transform: translateY(-50%);
                       background: none;
@@ -500,28 +472,32 @@ export function getVisualEditorScript() {
                       <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                     </svg>
                   </button>
+                  <button 
+                    onclick="const chat = this.closest('.prismium-quick-chat'); if(chat) { chat.remove(); }"
+                    style="
+                      position: absolute;
+                      right: 8px;
+                      top: 50%;
+                      transform: translateY(-50%);
+                      background: none;
+                      border: none;
+                      color: #6c7086;
+                      cursor: pointer;
+                      padding: 4px;
+                      border-radius: 4px;
+                      font-size: 14px;
+                      transition: all 0.2s ease;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      width: 24px;
+                      height: 24px;
+                      flex-shrink: 0;
+                    "
+                    onmouseover="this.style.background='#313244'; this.style.color='#cdd6f4'"
+                    onmouseout="this.style.background='none'; this.style.color='#6c7086'"
+                  >✕</button>
                 </div>
-                <button 
-                  onclick="const chat = this.closest('.prismium-quick-chat'); if(chat) { chat.remove(); }"
-                  style="
-                    background: none;
-                    border: none;
-                    color: #6c7086;
-                    cursor: pointer;
-                    padding: 4px;
-                    border-radius: 4px;
-                    font-size: 14px;
-                    transition: all 0.2s ease;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    width: 24px;
-                    height: 24px;
-                    flex-shrink: 0;
-                  "
-                  onmouseover="this.style.background='#313244'; this.style.color='#cdd6f4'"
-                  onmouseout="this.style.background='none'; this.style.color='#6c7086'"
-                >✕</button>
               </div>
             \`;
 
