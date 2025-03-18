@@ -4,6 +4,7 @@ export function getVisualEditorScript() {
       console.log('[Visual Editor] Inicializando...');
       let isEditMode = false;
       let selectedElement = null;
+      let lockedElement = null;
       let currentTargetPath = '';
       let currentOverlay = null;
       let lastScrollPosition = window.scrollY;
@@ -11,7 +12,7 @@ export function getVisualEditorScript() {
       const editableElements = ['div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'button', 'a', 'img', 'i', 'svg'];
       
       const visualEditor = {
-        createOverlay(element) {
+        createOverlay(element, isLocked = false) {
           // Remove overlay anterior se existir
           if (currentOverlay) {
             currentOverlay.remove();
@@ -37,14 +38,20 @@ export function getVisualEditorScript() {
             backgroundColor = 'rgba(236, 72, 153, 0.1)';
           }
           
+          // Se estiver bloqueado, usar uma borda mais grossa e mais brilhante
+          const borderWidth = isLocked ? '3px' : '2px';
+          const boxShadow = isLocked 
+            ? \`0 0 0 2px \${borderColor}70, 0 0 10px 2px \${borderColor}40\` 
+            : \`0 0 0 1px \${borderColor}40\`;
+          
           overlay.style.cssText = \`
             position: fixed;
-            border: 2px solid \${borderColor};
+            border: \${borderWidth} solid \${borderColor};
             background: \${backgroundColor};
             pointer-events: none;
             z-index: 9999;
             transition: all 0.2s ease;
-            box-shadow: 0 0 0 1px \${borderColor}40;
+            box-shadow: \${boxShadow};
           \`;
           
           // Adiciona label com o tipo do elemento
@@ -61,7 +68,14 @@ export function getVisualEditorScript() {
             font-family: monospace;
             pointer-events: none;
           \`;
-          label.textContent = element.tagName.toLowerCase();
+          
+          // Adiciona indicador de bloqueio ao label se o elemento estiver bloqueado
+          if (isLocked) {
+            label.innerHTML = \`<span style="display:inline-flex;align-items:center;">\${element.tagName.toLowerCase()} <svg style="margin-left:4px;" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></span>\`;
+          } else {
+            label.textContent = element.tagName.toLowerCase();
+          }
+          
           overlay.appendChild(label);
           
           this.updateOverlayPosition(overlay, element);
@@ -310,6 +324,7 @@ export function getVisualEditorScript() {
           
           // Reseta estado
           selectedElement = null;
+          lockedElement = null;
           currentTargetPath = '';
           lastScrollPosition = window.scrollY;
 
@@ -323,6 +338,9 @@ export function getVisualEditorScript() {
             if (target.closest('.prismium-quick-chat') || 
                 target.closest('.prismium-editor-overlay') || 
                 target.closest('.prismium-style-panel')) return;
+                
+            // Se já tiver um elemento bloqueado, não mostrar overlay para outros elementos
+            if (lockedElement) return;
             
             // Encontra o elemento mais específico para edição
             let editableTarget = target;
@@ -356,6 +374,9 @@ export function getVisualEditorScript() {
                 target.closest('.prismium-editor-overlay') || 
                 target.closest('.prismium-style-panel')) return;
             
+            // Se estiver bloqueado, não remove o overlay
+            if (lockedElement) return;
+            
             // Remove overlay apenas se o mouse saiu do elemento selecionado
             if (currentOverlay && !e.relatedTarget?.closest(target.tagName)) {
               currentOverlay.remove();
@@ -366,11 +387,33 @@ export function getVisualEditorScript() {
           const handleElementClick = (e) => {
             if (!isEditMode) return;
             
+            // Ignora cliques em elementos do editor
+            if (e.target.closest('.prismium-editor-overlay') || 
+                e.target.closest('.prismium-style-panel') || 
+                e.target.classList.contains('close-button')) {
+              return;
+            }
+            
             e.preventDefault();
             e.stopPropagation();
             
             const target = e.target;
             if (target === document.body) return;
+            
+            // Se clicar fora do elemento bloqueado, desbloqueia
+            if (lockedElement && target !== lockedElement && 
+                !target.closest('.prismium-quick-chat') && 
+                !target.closest('.prismium-editor-overlay') && 
+                !target.closest('.prismium-style-panel')) {
+              console.log('[Visual Editor] Desbloqueando elemento:', lockedElement.tagName);
+              if (currentOverlay) {
+                currentOverlay.remove();
+                currentOverlay = null;
+              }
+              lockedElement = null;
+              selectedElement = null;
+              return;
+            }
             
             // Remove qualquer chat existente antes de criar um novo
             document.querySelectorAll('.prismium-quick-chat').forEach(el => el.remove());
@@ -473,7 +516,7 @@ export function getVisualEditorScript() {
                     </svg>
                   </button>
                   <button 
-                    onclick="const chat = this.closest('.prismium-quick-chat'); if(chat) { chat.remove(); }"
+                    class="close-button"
                     style="
                       position: absolute;
                       right: 8px;
@@ -506,28 +549,56 @@ export function getVisualEditorScript() {
 
             // Função para remover completamente o chat e seus elementos
             const removeChat = () => {
+              console.log('[Visual Editor] Removendo chat e elementos relacionados...');
+              
               // Remove o chat atual
               chat.remove();
               
-              // Remove qualquer overlay residual
-              document.querySelectorAll('.prismium-editor-overlay').forEach(el => el.remove());
+              // Remove qualquer overlay existente
+              document.querySelectorAll('.prismium-editor-overlay').forEach(el => {
+                console.log('[Visual Editor] Removendo overlay existente');
+                el.remove();
+              });
+              currentOverlay = null;
               
               // Remove qualquer outro chat que possa existir
-              document.querySelectorAll('.prismium-quick-chat').forEach(el => el.remove());
+              document.querySelectorAll('.prismium-quick-chat').forEach(el => {
+                console.log('[Visual Editor] Removendo chat existente');
+                el.remove();
+              });
               
               // Remove qualquer painel de estilo
-              document.querySelectorAll('.prismium-style-panel').forEach(el => el.remove());
+              document.querySelectorAll('.prismium-style-panel').forEach(el => {
+                console.log('[Visual Editor] Removendo painel de estilo');
+                el.remove();
+              });
               
               // Limpa as referências de overlay nos elementos
               document.querySelectorAll('*').forEach(el => {
                 if (el.overlay) {
                   el.overlay = null;
                 }
+                // Limpa também referências de stylePanel
+                if (el.stylePanel) {
+                  el.stylePanel = null;
+                }
               });
+              
+              // Desbloqueia o elemento
+              if (lockedElement) {
+                console.log('[Visual Editor] Desbloqueando elemento:', lockedElement.tagName);
+                lockedElement = null;
+              }
               
               // Reseta o elemento selecionado
               if (selectedElement) {
+                console.log('[Visual Editor] Resetando elemento selecionado');
                 selectedElement = null;
+              }
+
+              // Restaura o cursor padrão se necessário
+              if (!isEditMode) {
+                document.body.style.cursor = '';
               }
             };
 
@@ -595,8 +666,14 @@ Target Path: \${currentTargetPath}
             sendButton.addEventListener('click', sendMessage);
 
             // Adiciona o evento de fechar no botão X
-            const closeBtn = content.querySelector('button:last-child');
-            closeBtn.addEventListener('click', removeChat);
+            const closeBtn = content.querySelector('.close-button');
+            console.log('[Visual Editor] Botão de fechar selecionado:', closeBtn);
+            closeBtn.addEventListener('click', (e) => {
+              console.log('[Visual Editor] Botão X clicado, fechando chat...');
+              e.preventDefault();
+              e.stopPropagation();
+              removeChat();
+            });
 
             // Adiciona o chat ao DOM e foca no input
             document.body.appendChild(chat);
@@ -607,7 +684,15 @@ Target Path: \${currentTargetPath}
               selectedElement.stylePanel = null;
             }
             
+            // Define o elemento como bloqueado e atualiza o overlay
             selectedElement = target;
+            lockedElement = target;
+            
+            // Atualiza o overlay para mostrar que está bloqueado
+            if (currentOverlay) {
+              currentOverlay.remove();
+            }
+            currentOverlay = this.createOverlay(target, true);
           };
 
           document.addEventListener('mouseover', handleMouseOver, { passive: true });
@@ -616,9 +701,9 @@ Target Path: \${currentTargetPath}
           
           // Atualiza posição do overlay durante a rolagem
           const handleScroll = () => {
-            if (currentOverlay && selectedElement) {
+            if (currentOverlay && (selectedElement || lockedElement)) {
               requestAnimationFrame(() => {
-                this.updateOverlayPosition(currentOverlay, selectedElement);
+                this.updateOverlayPosition(currentOverlay, lockedElement || selectedElement);
               });
             }
           };
@@ -639,6 +724,7 @@ Target Path: \${currentTargetPath}
             });
             isEditMode = false;
             selectedElement = null;
+            lockedElement = null;
             document.body.style.cursor = '';
           };
         }
